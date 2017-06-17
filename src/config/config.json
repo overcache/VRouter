@@ -1,0 +1,26 @@
+{
+    "privateKey": "/Users/simon/.ssh/id_rsa",
+    "host": {
+        "ip": "10.29.37.47"
+    },
+    "configDir": "/etc/com.icymind.vrouter",
+    "vrouter": {
+        "vmName": "com.icymind.vrouter",
+        "ip": "10.29.37.46",
+        "port": 22,
+        "username": "root"
+    },
+    "shadowsocks": {
+        "client": "/etc/com.icymind.vrouter/ss_client.json",
+        "dns": "/etc/com.icymind.vrouter/ss_dns.json",
+        "overKcptun": "/etc/com.icymind.vrouter/ss_over_kcptun.json"
+    },
+    "kcptun": {
+        "client": "/etc/com.icymind.vrouter/kcptun_client.json",
+        "init": "/etc/com.icymind.vrouter/kcptun_init",
+        "restart": "/etc/com.icymind.vrouter/kcptun_restart"
+    },
+    "firewall": {
+        "user": "/etc/firewall.user"
+    }
+}

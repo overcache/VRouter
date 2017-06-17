@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VRouter</title>
+  <link rel="stylesheet" href="../../node_modules/semantic/dist/semantic.min.css">
+  <link rel="stylesheet" href="../style/custom.css">
+</head>
+<body>
+  <div class="ui top attached tabular menu">
+    <a class="item active" data-tab="status">
+      <i class="dashboard icon"></i>
+      Status
+    </a>
+    <a class="item" data-tab="proxy">
+      <i class="send icon"></i>
+      Proxy
+    </a>
+    <a class="item" data-tab="rules">
+      <i class="filter icon"></i>
+      Rules
+    </a>
+    <a class="item" data-tab="system">
+      <i class="linux icon"></i>
+      System
+    </a>
+  </div>
+  <div id="status-tab" class="ui bottom attached tab segment active" data-tab="status">
+    <div id="logo">
+      <img src="../img/vrouter.png" alt="">
+    </div>
+    <div id="demo" class="ui message">
+      <div id="demonstration">
+        <i class="ui huge laptop icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui huge cube icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui circle icon"></i>
+        <i class="ui huge wifi icon"></i>
+      </div>
+    </div>
+    <div class="ui buttons">
+      <button id="toggle-gateway" class="ui teal button" data-content="">
+        <i id="toggle-gateway-icon" class="pause icon"></i>
+      </button>
+      <div class="or"></div>
+      <button id="shutdown-vrouter" class="ui negative button" data-content="停止接管网络数据, 并关闭虚拟机">
+        <i id="shutdown-vrouter-icon" class="power icon"></i>
+      </button>
+    </div>
+  </div>
+  <div class="ui bottom attached tab segment" data-tab="proxy">
+    <!-- <h2 class="ui blue header">Proxy Chains</h2> -->
+    <!-- <div class="ui divider"></div> -->
+    <form id="vrouter-mode-form" class="ui form">
+      <!-- <fieldset id="vrouter-mode" disabled> -->
+        <div class="field">
+          <label>Proxy Chains</label>
+          <div id="proxy-chains" class="ui selection dropdown">
+            <input type="hidden" name="proxy-chains">
+            <i class="dropdown icon"></i>
+            <div class="default text">Choose Proxy Chains</div>
+            <div class="menu">
+              <div class="item" data-value="shadowsocks-only">
+                Shadowsocks only
+              </div>
+              <div class="item" data-value="shadowsocks-kcptun">
+                Shadowsocks + Kcptun
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- <div class="fields"> -->
+          <div class="six wide field">
+            <label for="server">Server</label>
+            <input id="server" name="server" type="text">
+          </div>
+          <div class="six wide field">
+            <label for="server-port">Server Port</label>
+            <input id="server-port" name="server-port" type="text">
+          </div>
+          <div class="six wide field">
+            <label for="encrypt">Encrypt Method</label>
+            <input id="encrypt" name="encryp" type="text">
+          </div>
+          <div class="six wide icon field">
+            <label for="password">Password</label>
+            <div class="ui icon input">
+              <input id="password" name="password" type="password">
+              <i id="password-icon" class="unhide link icon"></i>
+            </div>
+          </div>
+          <div class="six wide field">
+            <label for="fast-open">Fast Open</label>
+            <input id="fast-open" name="fast-open" type="text">
+          </div>
+          <div class="six wide field">
+            <label for="timeout">Timeout</label>
+            <input id="timeout" name="timeout" type="text">
+          </div>
+          <div class="field">
+            <label for="kcptun">Kcptun Options</label>
+            <input id="kcptun" name="kcptun" type="text">
+          </div>
+          <!-- </div> -->
+        <!-- </fieldset> -->
+      <button id="edit-form" type="button" class="ui primary button">Edit</button>
+      <button id="save-apply" type="button" class="ui primary button">Save and Apply</button>
+    </form>
+
+    <!-- <h2 class="ui blue header">List Mode</h2> -->
+    <!-- <div class="ui divider"></div> -->
+
+  </div>
+  <div class="ui bottom attached tab segment" data-tab="rules">
+        <div class="field">
+          <label>Route Mode</label>
+          <div id="bypass-mode" class="ui selection dropdown">
+            <input type="hidden" name="bypass-mode">
+            <i class="dropdown icon"></i>
+            <div class="default text">Select Route Mode</div>
+            <div class="menu">
+              <div class="item" data-value="all">All</div>
+              <div class="item" data-value="bypass-lan">Bypass LAN</div>
+              <div class="item" data-value="bypass-chind">Bypass mainland China</div>
+              <div class="item" data-value="bypass-lan-china">Bypass mainland China</div>
+              <div class="item" data-value="gfw-list">GWF List</div>
+            </div>
+          </div>
+        </div>
+    <h2 class="ui blue header">List Details</h1>
+    <div class="ui divider"></div>
+    <div class="ui top attached tabular menu">
+      <a class="item" data-tab="rules/blacklist">blacklist</a>
+      <a class="item" data-tab="rules/whitelist">whitelist</a>
+      <a class="item" data-tab="rules/lans">lans</a>
+    </div>
+    <div class="ui bottom attached active tab segment" data-tab="rules/blacklist"></div>
+    <div class="ui bottom attached tab segment" data-tab="rules/whitelist"></div>
+    <div class="ui bottom attached tab segment" data-tab="rules/lans"></div>
+  </div>
+  <div class="ui bottom attached tab segment" data-tab="system">
+    <h2 class="ui blue header">OSX gateway & dns</h2>
+    <div class="ui divider"></div>
+    <div class="ui list">
+      <div class="item">
+        <div class="ui label">
+          gateway: <span id="gateway"></span>
+        </div>
+      </div>
+      <div class="item">
+        <div class="ui label">
+          dns: <span id="dns"></span>
+        </div>
+      </div>
+    </div>
+    <div class="ui positive message">
+      <div class="header">traffic route</div>
+      <p id="current-traffic"></p>
+      <button id="btn-route"class="ui button"></button>
+    </div>
+    <h2 class="ui blue header">VRouter Status</h2>
+    <div class="ui divider"></div>
+    <div class="ui list">
+      <div class="item">
+        <div class="ui label">
+          openwrt version: <span id="openwrt-version"></span>
+        </div>
+      </div>
+      <div class="item">
+        <div class="ui label">
+          br-lan IP address: <span id="lan"></span>
+        </div>
+      </div>
+      <div class="item">
+        <div class="ui label">
+          VRouter IP address: <span id="wan"></span>
+        </div>
+      </div>
+      <div class="item">
+        <div class="ui label">
+          shadowsocks-libev version: <span id="ss-version"></span>
+        </div>
+      </div>
+      <div class="item">
+        <div class="ui label">
+          kcptun version: <span id="kt-version"></span>
+        </div>
+      </div>
+    </div>
+    <h2 class="ui blue header">Services</h2>
+    <div class="ui divider"></div>
+    <table class="ui definition table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Version</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>openwrt</td>
+          <td>demo</td>
+          <td>demo</td>
+        </tr>
+        <tr>
+          <td>shadowsocks</td>
+          <td>demo</td>
+          <td>demo</td>
+        </tr>
+        <tr>
+          <td>kcptun</td>
+          <td>demo</td>
+          <td>demo</td>
+        </tr>
+        <tr>
+          <td>dnsmasq</td>
+          <td>demo</td>
+          <td>demo</td>
+        </tr>
+        <tr>
+          <td>iptables</td>
+          <td>demo</td>
+          <td>demo</td>
+        </tr>
+        <tr>
+          <td>ipset</td>
+          <td>demo</td>
+          <td>demo</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 class="ui blue header">SSH Keyfile</h2>
+    <div class="ui divider"></div>
+    <button class="ui button">regenerate</button>
+    <button class="ui button">restart</button>
+    <button class="ui button">shutdown</button>
+  </div>
+
+  <div class="ui basic modal">
+    <div class="ui icon header">
+      <i class="archive icon"></i>
+      Archive Old Messages
+    </div>
+    <div class="content">
+      <p>Your inbox is getting full, would you like us to enable automatic archiving of old messages?</p>
+    </div>
+    <div class="actions">
+      <div class="ui red basic cancel inverted button">
+        <i class="remove icon"></i>
+        No
+      </div>
+      <div class="ui green ok inverted button">
+        <i class="checkmark icon"></i>
+        Yes
+      </div>
+    </div>
+  </div>
+  <script>window.$ = window.jQuery = require("../../node_modules/jquery/dist/jquery.min.js")</script>
+  <script src="../../node_modules/semantic/dist/semantic.min.js"></script>
+  <script src="../js/manage.js"></script>
+</body>
+</html>
