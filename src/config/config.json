@@ -1,14 +1,14 @@
 {
-    "privateKey": "/Users/simon/.ssh/id_rsa",
     "host": {
-        "ip": "10.29.37.47"
+        "ip": "10.19.28.46"
     },
     "configDir": "/etc/com.icymind.vrouter",
     "vrouter": {
         "vmName": "com.icymind.vrouter",
-        "ip": "10.29.37.46",
+        "ip": "10.19.28.37",
         "port": 22,
-        "username": "root"
+        "username": "root",
+        "password": "root"
     },
     "shadowsocks": {
         "client": "/etc/com.icymind.vrouter/ss_client.json",
