@@ -1,7 +1,8 @@
 {
     "host": {
         "ip": "10.19.37.55",
-        "configDir": ""
+        "configDir": "",
+        "serialFile": "serial"
     },
     "vrouter": {
         "name": "com.icymind.test",
@@ -42,6 +43,7 @@
         "lanNetworks": "lan-networks.txt",
         "chinaIPs": "chind-ips.txt",
         "currentMode": "",
+        "currentProtocal": "",
         "dnsmasqFile": "custom.conf",
         "firewallFile": "firewall.user",
         "ipsetsFile": "custom.ipset"

@@ -3,16 +3,21 @@ const Client = require('ssh2').Client
 const http = require('http')
 const fs = require('fs-extra')
 const path = require('path')
+const { VRouterRemote } = require('./vrouter-remote.js')
+const { getAppDir } = require('./helper.js')
+const packageJson = require('../../package.json')
 
 class VRouter {
   constructor (config) {
+    if (!config.host.configDir) {
+      config.host.configDir = path.join(getAppDir(), packageJson.name)
+    }
     this.config = config
   }
 
   wait (time) {
     return new Promise(resolve => setTimeout(resolve, time))
   }
-
   localExec (cmd) {
     const specialCmd = [
       /^VBoxManage hostonlyif .*$/ig,
@@ -33,33 +38,36 @@ class VRouter {
     })
   }
 
-  downloadFile (url, dest) {
-    return new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(dest)
-      http.get(url, (response) => {
-        response.pipe(file)
-        file.on('finish', () => file.close())
-        resolve()
-      }).on('error', (err) => {
-        fs.unlink(dest)
-        reject(err)
-      })
-    })
-  }
-
   importVM (vmFile) {
     const cmd = `VBoxManage import ${vmFile}`
     return this.localExec(cmd)
   }
-
   deleteVM () {
     const cmd = `VBoxManage unregistervm ${this.config.vrouter.name} --delete`
-    return this.localExec(cmd)
+    return this.isVRouterRunning()
+      .catch(() => {
+        throw Error('vm must be shudown before delete')
+      })
+      .then(() => {
+        return this.localExec(cmd)
+      })
   }
-
+  startVM (type = 'headless') {
+    const cmd = `VBoxManage startvm --type ${type} ${this.config.vrouter.name}`
+    return this.isVRouterRunning()
+      .catch(() => {
+        return this.localExec(cmd)
+      })
+  }
   stopVM () {
     const cmd = `VBoxManage controlvm ${this.config.vrouter.name} poweroff`
-    return this.localExec(cmd)
+    return this.isVRouterRunning()
+      .catch(() => 'poweroff')
+      .then((output) => {
+        if (output !== 'poweroff') {
+          return this.localExec(cmd)
+        }
+      })
   }
 
   hideVM (action = true) {
@@ -67,16 +75,10 @@ class VRouter {
     return this.localExec(cmd)
   }
 
-  startVM (type = 'headless') {
-    const cmd = `VBoxManage startvm --type ${type} ${this.config.vrouter.name}`
-    return this.localExec(cmd)
-  }
-
   isVBInstalled () {
     const cmd = 'VBoxManage --version'
     return this.localExec(cmd)
   }
-
   isVRouterExisted () {
     const cmd = 'VBoxManage list vms'
     return this.localExec(cmd)
@@ -86,9 +88,19 @@ class VRouter {
         }
       })
   }
-
+  getVMState () {
+    // much slow then 'VBoxManage list runningvms'
+    const cmd = `VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable | grep VMState=`
+    return this.localExec(cmd)
+      .then((output) => {
+        const state = output.trim().split('=')[1].replace(/"/g, '')
+        return state
+      })
+  }
   isVRouterRunning () {
     // State:           running (since 2017-06-16T02:13:09.066000000)
+    // VBoxManage showvminfo com.icymind.test --machinereadable  | grep VMState
+    // VMState="running"
     const cmd = 'VBoxManage list runningvms'
     return this.localExec(cmd)
       .then((stdout) => {
@@ -98,18 +110,21 @@ class VRouter {
       })
   }
 
+  getInfIP (inf) {
+    const cmd = `ifconfig ${inf}`
+    return this.localExec(cmd)
+      .then((output) => {
+        const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(output)
+        const ip = (ipMatch && ipMatch[1]) || ''
+        return ip
+      })
+  }
   getAllInf () {
     const cmd = 'ifconfig'
     return this.localExec(cmd)
   }
-
-  removeHostonlyInf (inf) {
-    const cmd = `VBoxManage hostonlyif remove ${inf}`
-    return this.localExec(cmd)
-  }
-
-  // return [rightInf, firstEmptyInf]
   getHostonlyInf () {
+    // return [correspondingInf, firstAvailableInf]
     return this.getAllInf()
       .then((infs) => {
         const reg = /^vboxnet\d+.*\n(?:\t.*\n)*/img
@@ -132,74 +147,6 @@ class VRouter {
         return [correspondingInf, firstAvailableInf]
       })
   }
-
-  isNIC1ConfigedAsHostonly () {
-    let cmd = `VBoxManage showvminfo ${this.config.vrouter.name} | grep 'NIC 1'`
-    return this.localExec(cmd)
-      .then((output) => {
-        const typeMatch = /Attachment: (.*) Interface/ig.exec(output)
-        if (!typeMatch || typeMatch[1] !== 'Host-only') {
-          return Promise.reject(Error("NIC1 isn't hostonly network"))
-        }
-        const infMatch = /Attachment: .* Interface '(.*)'/ig.exec(output)
-        if (!infMatch || !/^vboxnet\d+$/ig.test(infMatch[1])) {
-          return Promise.reject(Error("NIC1 doesn't specify host-only adapter"))
-        }
-        const inf = infMatch[1]
-        cmd = `ifconfig ${inf}`
-        return this.localExec(cmd)
-          .then((infConfig) => {
-            const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(infConfig)
-            if (!ipMatch || ipMatch[1] !== this.config.host.ip) return Promise.reject(Error("host-only adapter doesn't config as hostIP"))
-            return inf
-          })
-      })
-  }
-
-  isNIC2ConfigedAsBridged () {
-    let cmd = `VBoxManage showvminfo ${this.config.vrouter.name} | grep 'NIC 2'`
-    return this.localExec(cmd)
-      .then((output) => {
-        const typeMatch = /Attachment: (.*) Interface/ig.exec(output)
-        if (!typeMatch || typeMatch[1] !== 'Bridged') {
-          return Promise.reject(Error("NIC2 isn't bridged network"))
-        }
-        const infMatch = /Attachment: .* Interface '(.*)'/ig.exec(output)
-        if (!infMatch) {
-          return Promise.reject(Error("NIC2 doesn't specify bridged adapter"))
-        }
-        const bridgedInf = infMatch[1]
-        cmd = `ifconfig ${bridgedInf.split(':')[0]}`
-        return this.localExec(cmd)
-          .then((infConfig) => {
-            const statusMatch = /status: active/ig.exec(infConfig)
-            if (!statusMatch) return Promise.reject(Error("bridged adapter doesn't active"))
-            return bridgedInf
-          })
-      })
-  }
-
-  async specifyHostonlyAdapter (inf, nic = '1') {
-    // VBoxManage modifyvm com.icymind.vrouter --nic1 hostonly --hostonlyadapter1 vboxnet1
-    let iinf = inf
-    if (!iinf) {
-      iinf = await this.configHostonlyInf()
-    }
-    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} hostonly --hostonlyadapter${nic} ${iinf}`
-    return this.localExec(cmd)
-  }
-
-  async specifyBridgeAdapter (inf, nic = '2') {
-    // VBoxManage modifyvm com.icymind.vrouter --nic2 bridged --bridgeadapter1 en0
-    let iinf = inf
-    if (!iinf) {
-      iinf = await this.getActiveAdapter()
-    }
-    if (!iinf) return
-    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} bridged --bridgeadapter${nic} "${iinf}"`
-    return this.localExec(cmd)
-  }
-
   createHostonlyInf () {
     const cmd = `VBoxManage hostonlyif create`
     return this.localExec(cmd)
@@ -208,17 +155,10 @@ class VRouter {
         return infMatch && infMatch[1]
       })
   }
-
-  getInfIP (inf) {
-    const cmd = `ifconfig ${inf}`
+  removeHostonlyInf (inf) {
+    const cmd = `VBoxManage hostonlyif remove ${inf}`
     return this.localExec(cmd)
-      .then((output) => {
-        const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(output)
-        const ip = (ipMatch && ipMatch[1]) || ''
-        return ip
-      })
   }
-
   async configHostonlyInf (inf, netmask = '255.255.255.0') {
     let iinf = inf
     if (!inf) {
@@ -257,49 +197,103 @@ class VRouter {
               return nameMatch && nameMatch[1]
             })
           })
+          .then((arr) => {
+            return arr.filter(element => element !== null)
+          })
+      })
+  }
+  async specifyHostonlyAdapter (inf, nic = '1') {
+    // VBoxManage modifyvm com.icymind.vrouter --nic1 hostonly --hostonlyadapter1 vboxnet1
+    let iinf = inf
+    if (!iinf) {
+      iinf = await this.configHostonlyInf()
+    }
+    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} hostonly --hostonlyadapter${nic} ${iinf}`
+    return this.isVRouterRunning()
+      .then(() => {
+        throw Error('vm must be shutdown before modify')
+      })
+      .catch(() => {
+        return this.localExec(cmd)
+      })
+  }
+  async specifyBridgeAdapter (inf, nic = '2') {
+    // VBoxManage modifyvm com.icymind.vrouter --nic2 bridged --bridgeadapter1 en0
+    let iinf = inf
+    if (!iinf) {
+      let arr = await this.getActiveAdapter()
+      if (arr.length !== 1) {
+        console.log(arr)
+        return Promise.reject(Error(`more than one active adapter: ${arr}`))
+      }
+      iinf = arr[0]
+    }
+    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} bridged --bridgeadapter${nic} "${iinf.replace(/["']/g, '')}"`
+    return this.isVRouterRunning()
+      .then(() => {
+        throw Error('vm must be shutdown before modify')
+      })
+      .catch(() => {
+        return this.localExec(cmd)
       })
   }
 
-  toggleSerialPort (action = 'on', num = 1) {
-    const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${path.join(__dirname, 'serial')}"` : 'off'
-    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
-    console.log(cmd)
+  isNIC1ConfigedAsHostonly () {
+    let cmd = `VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic1\\|hostonlyadapter1'`
     return this.localExec(cmd)
-  }
-  configVMLanIP (shutdownAfterCf = false) {
-    /*
-     * 0. vm must be stopped
-     * 1. open serial port
-     * 2. execute cmd
-     * 3. close serial port
-     */
-    return this.isVRouterRunning()
-      .then(() => {
-        throw Error('vm must be shutdown before configVMLanIP')
+      .then((output) => {
+        // hostonlyadapter1="vboxnet4"
+        // nic1="hostonly"
+        const infos = new Map()
+        output.trim().split('\n').map((element) => {
+          const temp = element.split('=')
+          infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
+        })
+        if (infos.get('nic1') !== 'hostonly') {
+          return Promise.reject(Error("NIC1 isn't hostonly network"))
+        }
+        if (!/^vboxnet\d+$/ig.test(infos.get('hostonlyadapter1'))) {
+          return Promise.reject(Error("NIC1 doesn't specify host-only adapter"))
+        }
+        return infos.get('hostonlyadapter1')
       })
-      .catch(() => {
-        return this.toggleSerialPort('on')
+      .then((inf) => {
+        return this.getInfIP(inf)
+          .then((ip) => [inf, ip])
       })
-      .then(() => {
-        return this.wait(100)
-      })
-      .then(() => {
-        return this.startVM()
-      })
-      .then(() => {
-        return this.wait(10000)
-      })
-      .then(() => {
-        // todo:
-        // execute
-      })
-      .then(() => {
-        return shutdownAfterCf ? this.stopVM().then(() => {
-          return this.wait(1000)
-            .then(() => this.toggleSerialPort('off'))
-        }) : null
+      .then(([inf, ip]) => {
+        if (ip !== this.config.host.ip) {
+          return Promise.reject(Error("host-only adapter doesn't config as hostIP"))
+        }
+        return inf
       })
   }
+  isNIC2ConfigedAsBridged () {
+    let cmd = `VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic2\\|bridgeadapter2'`
+    return this.localExec(cmd)
+      .then((output) => {
+        const infos = new Map()
+        output.trim().split('\n').map((element) => {
+          const temp = element.split('=')
+          infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
+        })
+        if (infos.get('nic2') !== 'bridged') {
+          return Promise.reject(Error("NIC2 isn't bridged network"))
+        }
+        const inf = infos.get('bridgeadapter2')
+        if (!inf) {
+          return Promise.reject(Error("NIC2 doesn't specify bridged adapter"))
+        }
+        cmd = `ifconfig ${inf.trim().split(':')[0]}`
+        return this.localExec(cmd)
+          .then((infConfig) => {
+            const statusMatch = /status: active/ig.exec(infConfig)
+            if (!statusMatch) return Promise.reject(Error("bridged adapter doesn't active"))
+            return inf
+          })
+      })
+  }
+
   configVMNetwork () {
     /*
      * 1. make sure two ip in same network
@@ -323,6 +317,124 @@ class VRouter {
       .catch(() => {
         return this.specifyBridgeAdapter()
       })
+  }
+
+  isSerialPortOn () {
+    // VBoxManage showvminfo com.icymind.test --machinereadable  | grep "uart\(mode\)\?1"
+    // uart1="0x03f8,4"
+    // uartmode1="server,/Users/simon/Library/Application Support/VRouter/serial"
+    const cmd = `VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable  | grep "uart\\(mode\\)\\?1"`
+    return this.localExec(cmd)
+      .then((output) => {
+        const infos = new Map()
+        output.trim().split('\n').map((element) => {
+          const temp = element.split('=')
+          infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
+        })
+        return infos.get('uart1') === '0x03f8,4' &&
+          infos.get('uartmode1') === `server,${path.join(this.config.host.configDir, this.config.host.serialFile)}`
+      })
+  }
+  toggleSerialPort (action = 'on', num = 1) {
+    const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${path.join(this.config.host.configDir, this.config.host.serialFile)}"` : 'off'
+    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
+    return this.isVRouterRunning()
+      .then(() => {
+        throw Error('vm must be shutdown before modify')
+      })
+      .catch(() => {
+        return this.localExec(cmd)
+      })
+  }
+
+  async configVMLanIP (changepassword = true, shutdownAfterCf = false) {
+    // password: changepassword at the sametime
+    /*
+     * 0. vm must be stopped
+     * 1. open serial port
+     * 2. execute cmd
+     * 3. close serial port
+     */
+    const serialPortState = await this.isSerialPortOn()
+
+    // toggleSerialPort on
+    if (!serialPortState) {
+      // turn vm off if necessary
+      await this.isVRouterRunning()
+        .catch(() => {})
+        .then(() => {
+          return this.stopVM()
+            .then(() => {
+              return this.wait(200)
+            })
+        })
+      await this.toggleSerialPort('on')
+    }
+
+    // startVM if necessary
+    await this.isVRouterRunning()
+      .catch(() => {
+        return this.startVM()
+          .then(() => {
+            return this.wait(30000)
+          })
+      })
+
+    // execute cmd
+    const subCmds = []
+    if (changepassword) {
+      subCmds.push("echo -e 'root\\nroot' | (passwd root)")
+    }
+    subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}'/g /etc/config/network`)
+    subCmds.push('/etc/init.d/network restart')
+    const cmd = `echo "${subCmds.join(' && ')}" | nc -U "${path.join(this.config.host.configDir, this.config.host.serialFile)}"`
+    await this.localExec(cmd)
+      .then(() => {
+        return this.wait(7000)
+      })
+
+    if (shutdownAfterCf) {
+      await this.stopVM()
+    }
+    // return this.isSerialPortOn()
+      // .catch(() => {
+        // // state: off
+      // })
+      // .then()
+    // return this.isVRouterRunning()
+      // .then(() => {
+        // throw Error('vm must be shutdown before configVMLanIP')
+      // })
+      // .catch(() => {
+        // return this.toggleSerialPort('on')
+      // })
+      // .then(() => {
+        // return this.wait(100)
+      // })
+      // .then(() => {
+        // return this.startVM()
+      // })
+      // .then(() => {
+        // return this.wait(30000)
+      // })
+      // .then(() => {
+        // // todo:
+        // // execute
+        // const subCmds = []
+        // if (changepassword) {
+          // subCmds.push("echo -e 'root\nroot' | (passwd root)")
+        // }
+        // subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}' /etc/config/network`)
+        // subCmds.push('/etc/init.d/network restart')
+        // const cmd = `echo "${subCmds.join(' && ')}" | nc -U "${path.join(this.config.host.configDir, this.config.host.serialFile)}"`
+        // return this.localExec(cmd)
+          // .then(() => {
+            // return this.wait(300)
+          // })
+      // })
+      // .then(() => {
+        // return shutdownAfterCf ? this.stopVM() : null
+      // })
   }
 
   async generateIPsets () {
@@ -364,8 +476,8 @@ class VRouter {
   generateFWRulesHelper (str) {
     return `iptables -t nat -A PREROUTING -d ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
-  // whitelist/blacklist/global/none
   async generateFWRules (protocal, mode = 'whitelist') {
+    // whitelist/blacklist/global/none
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.firewallFile))
     const redirPort = protocal === 'kcptun'
       ? this.config.shadowsocks.overKtPort
@@ -418,7 +530,6 @@ class VRouter {
     }
     ws.end()
   }
-  // todo
   getDNSServer () {
     const dnsmasq = '53'
     return [
@@ -461,112 +572,40 @@ class VRouter {
     })
     ws.end()
   }
+  downloadFile (url, dest) {
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(dest)
+      http.get(url, (response) => {
+        response.pipe(file)
+        file.on('finish', () => file.close())
+        resolve()
+      }).on('error', (err) => {
+        fs.unlink(dest)
+        reject(err)
+      })
+    })
+  }
 
   connect () {
-    return new Promise((resolve, reject) => {
-      const conn = new Client()
-      conn.on('ready', () => {
-        resolve(new VRouterRemote(conn, this.config))
-      }).connect({
-        host: this.config.vrouter.ip,
-        port: this.config.vrouter.port,
-        username: this.config.vrouter.username,
-        password: this.config.vrouter.password,
-        keepaliveInterval: 30000,
-        readyTimeout: 1500
+    return this.isVRouterRunning()
+      .catch(() => {
+        return Promise.reject(Error("vm doesn't running."))
       })
-    })
-  }
-}
-
-class VRouterRemote {
-  constructor (connect, config) {
-    this.connect = connect
-    this.config = config
-  }
-
-  remoteExec (cmd) {
-    return new Promise((resolve, reject) => {
-      this.connect.exec(cmd, (err, stream) => {
-        let result = ''
-        if (err) reject(err)
-        stream.on('data', (data) => {
-          result += data
+      .then(() => {
+        return new Promise((resolve, reject) => {
+          const conn = new Client()
+          conn.on('ready', () => {
+            resolve(new VRouterRemote(conn, this.config, this))
+          }).connect({
+            host: this.config.vrouter.ip,
+            port: this.config.vrouter.port,
+            username: this.config.vrouter.username,
+            password: this.config.vrouter.password,
+            keepaliveInterval: 30000,
+            readyTimeout: 1500
+          })
         })
-        stream.stderr.on('data', data => resolve(data.toString().trim()))
-        stream.on('end', () => resolve(result.toString().trim()))
       })
-    })
-  }
-
-  getSSOverKTProcess () {
-    const cmd = 'ps | grep "[s]s-redir -c .*ss-over-kt.json"'
-    return this.remoteExec(cmd)
-  }
-  getSSProcess () {
-    // const cmd = 'ps | grep "[s]s-redir -c .*ss-client.json"'
-    const cmd = 'ps | grep "[s]s-redir -c .*ss_client.json"'
-    return this.remoteExec(cmd)
-  }
-  getSSDNSProcess () {
-    const cmd = 'ps | grep "[s]s-tunnel -c .*ss-dns.json"'
-    return this.remoteExec(cmd)
-  }
-  getSSVersion () {
-    const cmd = 'ss-redir -h | grep "shadowsocks-libev" | cut -d" " -f2'
-    return this.remoteExec(cmd)
-  }
-  getSSConfig () {
-    return this.getFile(`${this.config.vrouter.configDir}/${this.config.shadowsocks.client}`)
-  }
-  getSSDNSConfig () {
-    return this.getFile(`${this.config.vrouter.configDir}/${this.config.shadowsocks.dns}`)
-  }
-  getSSOverKTConfig () {
-    return this.getFile(`${this.config.vrouter.configDir}/${this.config.shadowsocks.overKt}`)
-  }
-
-  getKTProcess () {
-    const cmd = 'ps | grep "[k]cptun -c .*/kt-client.json"'
-    return this.remoteExec(cmd)
-  }
-  getKTVersion () {
-    const cmd = 'kcptun --version | cut -d" " -f3'
-    return this.remoteExec(cmd)
-  }
-
-  getOSVersion () {
-    const cmd = 'cat /etc/banner | grep "(*)" | xargs'
-    return this.remoteExec(cmd)
-  }
-  getKTConfig () {
-    return this.getFile(`${this.config.vrouter.configDir}/${this.config.kcptun.client}`)
-  }
-
-  getUptime () {
-    return this.remoteExec('uptime')
-  }
-
-  getBrlan () {
-    const cmd = 'ifconfig br-lan | grep "inet addr" | cut -d: -f2 | cut -d" " -f1'
-    return this.remoteExec(cmd)
-  }
-
-  getWifilan () {
-    const cmd = 'ifconfig eth1 | grep "inet addr" | cut -d: -f2 | cut -d" " -f1'
-    return this.remoteExec(cmd)
-  }
-
-  getFile (file) {
-    const cmd = `cat ${file}`
-    return this.remoteExec(cmd)
-  }
-  getFWUsersRules () {
-    return this.getFile(`${this.config.firewall.file}`)
-  }
-
-  close () {
-    return this.connect.end()
   }
 }
 
