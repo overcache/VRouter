@@ -584,32 +584,32 @@ config globals 'globals'
     })
 
     if (mode === 'none') {
-      ws.write('# stay in wall')
+      ws.write('# stay in wall\n')
       ws.end()
       return promise
     }
 
-    const whiteDomains = await fs.readFile(path.join(this.config.host.configDir, this.config.firewall.whiteDomains))
+    const whiteDomains = await this.getCfgContent(this.config.firewall.whiteDomains)
     whiteDomains.split('\n').forEach((line) => {
       if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`server=/${line}/${DNSs[0]}`)
-        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.white}`)
+        ws.write(`server=/${line}/${DNSs[0]}\n`)
+        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.white}\n`)
       }
     })
 
-    const gfwDomains = await fs.readFile(path.join(this.config.host.configDir, this.config.firewall.gfwDomains))
+    const gfwDomains = await this.getCfgContent(this.config.firewall.gfwDomains)
     gfwDomains.split('\n').forEach((line) => {
       if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`server=/${line}/${DNSs[1]}`)
-        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.black}`)
+        ws.write(`server=/${line}/${DNSs[1]}\n`)
+        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.black}\n`)
       }
     })
 
-    const extraBlockedDomains = await fs.readFile(path.join(this.config.host.configDir, this.config.firewall.extraBlockedDomains))
+    const extraBlockedDomains = await this.getCfgContent(this.config.firewall.extraBlockedDomains)
     extraBlockedDomains.split('\n').forEach((line) => {
       if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`server=/${line}/${DNSs[1]}`)
-        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.black}`)
+        ws.write(`server=/${line}/${DNSs[1]}\n`)
+        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.black}\n`)
       }
     })
     ws.end()

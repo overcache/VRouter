@@ -486,7 +486,7 @@ ipset create BLACKLIST hash:net -exist`
     vrouter.config.server.ip = '1.2.3.4'
     return fs.readFile(cfgPath, 'utf8')
       .then((data) => {
-        originRules = data
+        originRules = data || ''
       })
       .then(() => {
         return vrouter.generateFWRules('kcptun', 'global')
@@ -567,7 +567,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
     vrouter.config.server.ip = '1.2.3.4'
     return fs.readFile(cfgPath, 'utf8')
       .then((data) => {
-        originRules = data
+        originRules = data | ''
       })
       .then(() => {
         return vrouter.generateFWRules('shadowsocks', 'blacklist')
@@ -606,7 +606,7 @@ iptables -t nat -A OUTPUT -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --
     vrouter.config.server.ip = '1.2.3.4'
     return fs.readFile(cfgPath, 'utf8')
       .then((data) => {
-        originRules = data
+        originRules = data || ''
       })
       .then(() => {
         return vrouter.generateFWRules('shadowsocks', 'whitelist')
@@ -652,16 +652,17 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
     let originContent
     return fs.readFile(cfgPath).catch(() => {})
       .then((data) => {
-        originContent = data
+        originContent = data || ''
       })
       .then(() => {
         return vrouter.generateDnsmasqCf()
       })
       .then(() => {
-        // return fs.readFile(cfgPath, 'utf8')
+        return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        
+        const reg = /server=\/google.com\/127.0.0.1#1081\nipset=\/google.com\/BLACKLIST/
+        return expect(reg.test(data)).to.be.true
       })
       .then(() => {
         return fs.outputFile(cfgPath, originContent)
@@ -698,7 +699,7 @@ fi`
     let originContent = ''
     return fs.readFile(cfgPath).catch(() => {})
       .then((data) => {
-        originContent = data
+        originContent = data || ''
       })
       .then(() => {
         return vrouter.generateService('kcptun')
@@ -740,7 +741,7 @@ stop() {
     let originContent = ''
     return fs.readFile(cfgPath).catch(() => {})
       .then((data) => {
-        originContent = data
+        originContent = data || ''
       })
       .then(() => {
         return vrouter.generateService('shadowsocks')
@@ -784,7 +785,7 @@ stop() {
     let originContent
     return fs.readFile(cfgPath).catch(() => {})
       .then((data) => {
-        originContent = data
+        originContent = data || ''
       })
       .then(() => {
         vrouter.config.shadowsocks.server = {
@@ -829,7 +830,7 @@ stop() {
     let originContent
     return fs.readFile(cfgPath).catch(() => {})
       .then((data) => {
-        originContent = data
+        originContent = data || ''
       })
       .then(() => {
         vrouter.config.shadowsocks.server = {
@@ -874,7 +875,7 @@ stop() {
     let originContent
     return fs.readFile(cfgPath).catch(() => {})
       .then((data) => {
-        originContent = data
+        originContent = data || ''
       })
       .then(() => {
         vrouter.config.shadowsocks.server = {

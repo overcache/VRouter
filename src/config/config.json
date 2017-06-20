@@ -63,7 +63,7 @@
             "white": "WHITELIST",
             "lan": "LAN"
         },
-        "gfwDomains": "gwf-domains.txt",
+        "gfwDomains": "gfw-domains.txt",
         "extraBlockedDomains": "extra-blocked-domains.txt",
         "whiteDomains": "white-domains.txt",
         "extraBlockedIPs": "extra-blocked-ips.txt",
