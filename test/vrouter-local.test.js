@@ -339,7 +339,7 @@ describe('Test ability of manage vm', function () {
       })
     return expect(promise).to.eventually.be.true
   })
-  it.skip("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
+  it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
     this.timeout(50000)
     const promise = vrouter.configVMLanIP()
       .then(() => {

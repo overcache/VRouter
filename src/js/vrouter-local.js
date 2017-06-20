@@ -453,18 +453,19 @@ class VRouter {
     if (changepassword) {
       subCmds.push("echo -e 'root\\nroot' | (passwd root)")
     }
-    // todo: maybe cmd is too long, and exe fail.
-    // subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
-    // subCmds.push(`sed -i "s/'192.168.1.1/'${this.config.vrouter.ip}'/g" /etc/config/network`)
-    subCmds.push(`sed -i 's/192/88/g' /etc/config/network`)
+    subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
     subCmds.push('/etc/init.d/network restart')
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
-    await fs.remove(serialPath)
-    // const pre = `echo "" |  nc -U "${serialPath}" && echo "" |  nc -U "${serialPath}"`
-    // const cmd = `${pre} && echo "${subCmds.join(' && ')}" | nc -U "${serialPath}"`
-    const cmd = `echo "${subCmds.join(' && ')}" | nc -U "${serialPath}"`
+    const pre = `echo "" |  nc -U "${serialPath}"`
+    const cmd = `echo "${subCmds.join(' && ')}" | nc -U '${serialPath}'`
     console.log(cmd)
-    await this.localExec(cmd)
+    await this.localExec(pre)
+      .then(() => {
+        return this.localExec(pre)
+      })
+      .then(() => {
+        return this.localExec(cmd)
+      })
       .then(() => {
         return this.wait(7000)
       })
