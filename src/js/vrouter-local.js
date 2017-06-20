@@ -23,23 +23,82 @@ class VRouter {
     return new Promise(resolve => setTimeout(resolve, time))
   }
   localExec (cmd) {
-    const specialCmd = [
-      /^VBoxManage hostonlyif .*$/ig,
-      /^VBoxManage startvm/ig,
-      /^VBoxManage controlvm .* poweroff/ig
-    ]
+    // const specialCmd = [
+      // /^VBoxManage hostonlyif .*$/ig,
+      // /^VBoxManage startvm/ig,
+      // /^VBoxManage controlvm .* poweroff/ig,
+      // /^VBoxManage convertfromraw .ig
+     // ]
+
     return new Promise((resolve, reject) => {
       exec(cmd, (err, stdout, stderr) => {
-        if (err) reject(err)
-        else {
-          if (stderr && !specialCmd.some((element) => element.test(cmd))) {
-            reject(stderr)
-          } else {
-            resolve(stdout)
-          }
+        if (err) {
+          console.log(err)
+          reject(err)
+        } else {
+          stderr && console.log(stderr)
+          resolve(stdout)
         }
       })
     })
+  }
+
+  async buildVM (imagePath) {
+    let image = imagePath
+    if (!image) {
+      // download
+      throw Error('need a image to buildFrom')
+    }
+    await this.isVRouterExisted().catch(() => 'not exist---')
+      .then((msg) => {
+        if (msg !== 'not exist---') {
+          throw Error('vrouter already existed')
+        }
+      })
+    // specify size: 64M
+    const vdiSize = 67108864
+    const subCmds = []
+    const vdi = path.join(this.config.host.configDir, this.config.vrouter.name + '.vdi')
+    await fs.remove(vdi)
+    subCmds.push(`cat ${imagePath} | gunzip | ` +
+      `VBoxManage convertfromraw --format VDI stdin "${vdi}" ${vdiSize}`)
+
+    subCmds.push(`VBoxManage createvm --name ${this.config.vrouter.name} --register`)
+
+    subCmds.push(`VBoxManage modifyvm ${this.config.vrouter.name} ` +
+      ` --ostype "Linux26" --memory "256" --cpus "1" ` +
+      ` --boot1 "disk" --boot2 "none" --boot3 "none" --boot4 "none" ` +
+      ` --audio "none" ` +
+      ` --uart1 "0x3F8" "4" --uartmode1 server "${path.join(__dirname, 'serial')}" ` +
+      ` --nic1 "nat" --cableconnected1 "on" ` +
+      ` --natdnshostresolver1 "on" `)
+
+    subCmds.push(`VBoxManage storagectl ${this.config.vrouter.name} ` +
+      `--name "SATA Controller" --add "sata" --portcount "4" ` +
+      `--hostiocache "on" --bootable "on"`)
+
+    subCmds.push(`VBoxManage storageattach ${this.config.vrouter.name} ` +
+      `--storagectl "SATA Controller" --port "1" ` +
+      `--type "hdd" --nonrotational "on" --medium "${vdi}"`)
+
+    console.log(subCmds.join(' && '))
+    return this.localExec(subCmds.join(' && '))
+      // .then(() => {
+        // return this.toggleSerialPort('on')
+      // })
+      // .then(() => {
+        // return this.configVMNetwork()
+      // })
+      .then(() => {
+        return this.localExec(`VBoxManage startvm ${this.config.vrouter.name} --type gui`)
+          .then(() => {
+            return this.wait(40000)
+          })
+      })
+      .then(() => {
+        // return this.configVMLanIP()
+        return this.localExec(`echo "sed -i 's/192/168/g' /etc/config/network" | nc -U serial`)
+      })
   }
 
   importVM (vmFile) {
@@ -212,7 +271,9 @@ class VRouter {
     if (!iinf) {
       iinf = await this.configHostonlyInf()
     }
-    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} hostonly --hostonlyadapter${nic} ${iinf}`
+    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} ` +
+      `--nic${nic} hostonly --hostonlyadapter${nic} ${iinf} ` +
+      `--cableconnected${nic} "on"`
     const vmState = await this.isVRouterRunning()
       .then(() => true)
       .catch(() => false)
@@ -232,7 +293,9 @@ class VRouter {
       }
       iinf = arr[0]
     }
-    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} bridged --bridgeadapter${nic} "${iinf.replace(/["']/g, '')}"`
+    const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} ` +
+      `--nic${nic} bridged --bridgeadapter${nic} "${iinf.replace(/["']/g, '')}" ` +
+      `--cableconnected${nic} "on"`
     const vmState = await this.isVRouterRunning()
       .then(() => true)
       .catch(() => false)
@@ -340,7 +403,8 @@ class VRouter {
       })
   }
   async toggleSerialPort (action = 'on', num = 1) {
-    const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${path.join(this.config.host.configDir, this.config.host.serialFile)}"` : 'off'
+    const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
+    const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${serialPath}"` : 'off'
     const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
     const vmState = await this.isVRouterRunning()
       .then(() => true)
@@ -389,9 +453,17 @@ class VRouter {
     if (changepassword) {
       subCmds.push("echo -e 'root\\nroot' | (passwd root)")
     }
-    subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
+    // todo: maybe cmd is too long, and exe fail.
+    // subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
+    // subCmds.push(`sed -i "s/'192.168.1.1/'${this.config.vrouter.ip}'/g" /etc/config/network`)
+    subCmds.push(`sed -i 's/192/88/g' /etc/config/network`)
     subCmds.push('/etc/init.d/network restart')
-    const cmd = `echo "${subCmds.join(' && ')}" | nc -U "${path.join(this.config.host.configDir, this.config.host.serialFile)}"`
+    const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
+    await fs.remove(serialPath)
+    // const pre = `echo "" |  nc -U "${serialPath}" && echo "" |  nc -U "${serialPath}"`
+    // const cmd = `${pre} && echo "${subCmds.join(' && ')}" | nc -U "${serialPath}"`
+    const cmd = `echo "${subCmds.join(' && ')}" | nc -U "${serialPath}"`
+    console.log(cmd)
     await this.localExec(cmd)
       .then(() => {
         return this.wait(7000)

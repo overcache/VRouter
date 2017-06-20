@@ -12,7 +12,24 @@ const { VRouterRemote } = require(path.join(__dirname, '../src/js/vrouter-remote
 const configFile = path.join(__dirname, '../src/config/config.json')
 const vmFile = path.join(os.homedir(), 'Desktop', 'com.icymind.test.ova')
 
-describe('Test ability of manage vm', function () {
+describe('Test ability of building VM', function () {
+  this.timeout(600000)
+  let vrouter
+  before('get vrouter instance', function () {
+    return fs.readJson(configFile)
+      .then((obj) => {
+        vrouter = new VRouter(obj)
+      })
+  })
+  it('buildVM', function () {
+    return vrouter.buildVM('/Users/simon/Desktop/openwrt-15.05.1-x86-generic-combined-ext4.img.gz')
+  })
+  // it.only('configVMLanIP', function () {
+    // return vrouter.configVMLanIP()
+  // })
+})
+
+describe.only('Test ability of manage vm', function () {
   this.slow(1000)
   let vrouter
   let isImportByTest = false
@@ -347,7 +364,7 @@ describe('Test ability of manage vm', function () {
   })
 })
 
-describe.only('Test ability of manage file', function () {
+describe('Test ability of manage file', function () {
   let vrouter
   before('get a vrouter instance', function () {
     return fs.readJson(configFile)
@@ -647,7 +664,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
       `127.0.0.1#${vrouter.config.shadowsocks.dnsPort}`
     ])
   })
-  it('generateDnsmasqCf should generate expect content to file', function () {
+  it('generateDnsmasqCfg should generate expect content to file', function () {
     const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.dnsmasqFile)
     let originContent
     return fs.readFile(cfgPath).catch(() => {})
