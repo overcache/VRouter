@@ -718,11 +718,11 @@ stop() {
 }`
         break
       case 'ss-dns':
-        cfg = this.config.shadowsocks.overKt
+        cfg = this.config.shadowsocks.dns
         content = String.raw`
 {
     "server":"${this.config.shadowsocks.server.ip}",
-    "server_port":${this.config.shadowsocks.server.host},
+    "server_port":${this.config.shadowsocks.server.port},
     "local_address": "0.0.0.0",
     "local_port":${this.config.shadowsocks.clientPort},
     "password":"${this.config.shadowsocks.server.password}",
