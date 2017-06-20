@@ -803,6 +803,51 @@ stop() {
         return fs.outputFile(cfgPath, originContent)
       })
   })
+  it('generateConfig("ss-overKt") should generate expect content to file', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.shadowsocks.overKt)
+    let originServer = vrouter.config.shadowsocks.server
+    let originContent
+    return fs.readFile(cfgPath).catch(() => {})
+      .then((data) => {
+        originContent = data
+      })
+      .then(() => {
+        vrouter.config.shadowsocks.server = {
+          ip: '5.5.5.5',
+          domain: '',
+          port: '999',
+          password: 'a-test-passwd',
+          timeout: 300,
+          method: 'chacha30',
+          fastOpen: true
+        }
+      })
+      .then(() => {
+        return vrouter.generateConfig('ss-overKt')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const expectContent = String.raw`
+{
+    "server":"5.5.5.5",
+    "server_port":999,
+    "local_address": "0.0.0.0",
+    "local_port":1080,
+    "password":"a-test-passwd",
+    "timeout":300,
+    "method":"chacha30",
+    "fast_open": true,
+    "mode": "tcp_only"
+}`
+        return expect(data).to.equal(expectContent)
+      })
+      .then(() => {
+        vrouter.config.shadowsocks.server = originServer
+        return fs.outputFile(cfgPath, originContent)
+      })
+  })
   it('generateConfig("ss-dns") should generate expect content to file', function () {
     const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.shadowsocks.dns)
     let originServer = vrouter.config.shadowsocks.server
