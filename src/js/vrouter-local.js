@@ -1,11 +1,15 @@
 const { exec } = require('child_process')
 const Client = require('ssh2').Client
+const { URL } = require('url')
 const http = require('http')
+const https = require('https')
 const fs = require('fs-extra')
 const path = require('path')
 const { VRouterRemote } = require('./vrouter-remote.js')
 const { getAppDir } = require('./helper.js')
 const packageJson = require('../../package.json')
+const dns = require('dns')
+const crypto = require('crypto')
 
 class VRouter {
   constructor (config) {
@@ -209,13 +213,13 @@ class VRouter {
       iinf = await this.configHostonlyInf()
     }
     const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} hostonly --hostonlyadapter${nic} ${iinf}`
-    return this.isVRouterRunning()
-      .then(() => {
-        throw Error('vm must be shutdown before modify')
-      })
-      .catch(() => {
-        return this.localExec(cmd)
-      })
+    const vmState = await this.isVRouterRunning()
+      .then(() => true)
+      .catch(() => false)
+    if (vmState) {
+      return Promise.reject(Error('vm must be shutdown before modify'))
+    }
+    await this.localExec(cmd)
   }
   async specifyBridgeAdapter (inf, nic = '2') {
     // VBoxManage modifyvm com.icymind.vrouter --nic2 bridged --bridgeadapter1 en0
@@ -229,13 +233,13 @@ class VRouter {
       iinf = arr[0]
     }
     const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --nic${nic} bridged --bridgeadapter${nic} "${iinf.replace(/["']/g, '')}"`
-    return this.isVRouterRunning()
-      .then(() => {
-        throw Error('vm must be shutdown before modify')
-      })
-      .catch(() => {
-        return this.localExec(cmd)
-      })
+    const vmState = await this.isVRouterRunning()
+      .then(() => true)
+      .catch(() => false)
+    if (vmState) {
+      return Promise.reject(Error('vm must be shutdown before modify'))
+    }
+    await this.localExec(cmd)
   }
 
   isNIC1ConfigedAsHostonly () {
@@ -335,16 +339,16 @@ class VRouter {
           infos.get('uartmode1') === `server,${path.join(this.config.host.configDir, this.config.host.serialFile)}`
       })
   }
-  toggleSerialPort (action = 'on', num = 1) {
+  async toggleSerialPort (action = 'on', num = 1) {
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${path.join(this.config.host.configDir, this.config.host.serialFile)}"` : 'off'
     const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
-    return this.isVRouterRunning()
-      .then(() => {
-        throw Error('vm must be shutdown before modify')
-      })
-      .catch(() => {
-        return this.localExec(cmd)
-      })
+    const vmState = await this.isVRouterRunning()
+      .then(() => true)
+      .catch(() => false)
+    if (vmState) {
+      return Promise.reject(Error('vm must be shutdown before modify'))
+    }
+    await this.localExec(cmd)
   }
 
   async configVMLanIP (changepassword = true, shutdownAfterCf = false) {
@@ -385,7 +389,7 @@ class VRouter {
     if (changepassword) {
       subCmds.push("echo -e 'root\\nroot' | (passwd root)")
     }
-    subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}'/g /etc/config/network`)
+    subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
     subCmds.push('/etc/init.d/network restart')
     const cmd = `echo "${subCmds.join(' && ')}" | nc -U "${path.join(this.config.host.configDir, this.config.host.serialFile)}"`
     await this.localExec(cmd)
@@ -396,90 +400,89 @@ class VRouter {
     if (shutdownAfterCf) {
       await this.stopVM()
     }
-    // return this.isSerialPortOn()
-      // .catch(() => {
-        // // state: off
-      // })
-      // .then()
-    // return this.isVRouterRunning()
-      // .then(() => {
-        // throw Error('vm must be shutdown before configVMLanIP')
-      // })
-      // .catch(() => {
-        // return this.toggleSerialPort('on')
-      // })
-      // .then(() => {
-        // return this.wait(100)
-      // })
-      // .then(() => {
-        // return this.startVM()
-      // })
-      // .then(() => {
-        // return this.wait(30000)
-      // })
-      // .then(() => {
-        // // todo:
-        // // execute
-        // const subCmds = []
-        // if (changepassword) {
-          // subCmds.push("echo -e 'root\nroot' | (passwd root)")
-        // }
-        // subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}' /etc/config/network`)
-        // subCmds.push('/etc/init.d/network restart')
-        // const cmd = `echo "${subCmds.join(' && ')}" | nc -U "${path.join(this.config.host.configDir, this.config.host.serialFile)}"`
-        // return this.localExec(cmd)
-          // .then(() => {
-            // return this.wait(300)
-          // })
-      // })
-      // .then(() => {
-        // return shutdownAfterCf ? this.stopVM() : null
-      // })
   }
 
   async generateIPsets () {
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.ipsetsFile))
+    const promise = new Promise((resolve, reject) => {
+      ws.on('finish', resolve)
+      ws.on('error', reject)
+    })
 
     // create or flush ipset
-    ws.write(`create ${this.config.firewall.ipsets.lan} hash:net family inet hashsize 1024 maxelem 65536`)
-    ws.write(`create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536`)
-    ws.write(`create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536`)
+    ws.write(`create ${this.config.firewall.ipsets.lan} hash:net family inet hashsize 1024 maxelem 65536\n`)
+    ws.write(`create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536\n`)
+    ws.write(`create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536\n`)
 
-    const lan = await fs.readFile(path.join(this.config.host.configDir, this.config.firewall.lanNetworks))
+    const lan = await this.getCfgContent(this.config.firewall.lanNetworks)
     lan.split('\n').forEach((line) => {
       if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`add ${this.config.firewall.ipsets.lan} ${line}`)
+        ws.write(`add ${this.config.firewall.ipsets.lan} ${line}\n`)
       }
     })
 
-    const chinaIPs = await fs.readFile(path.join(this.config.host.configDir, this.config.firewall.chinaIPs))
+    const chinaIPs = await this.getCfgContent(this.config.firewall.chinaIPs)
     chinaIPs.split('\n').forEach((line) => {
       if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`add ${this.config.firewall.ipsets.white} ${line}`)
+        ws.write(`add ${this.config.firewall.ipsets.white} ${line}\n`)
       }
     })
 
     // add extra_blocked_ips to blacklist_ipset
-    const extraBlockedIPs = await fs.readFile(path.join(this.config.host.configDir, this.config.firewall.chinaIPs))
+    const extraBlockedIPs = await this.getCfgContent(this.config.firewall.extraBlockedIPs)
     extraBlockedIPs.split('\n').forEach((line) => {
       if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`add ${this.config.firewall.ipsets.black} ${line}`)
+        ws.write(`add ${this.config.firewall.ipsets.black} ${line}\n`)
       }
     })
-
     ws.end()
+    return promise
   }
 
-  async getServerIP () {
-    //
+  deleteCfgFile (fileName) {
+    const filePath = path.join(this.config.host.configDir, fileName)
+    return fs.remove(filePath)
+      .catch(() => {
+        // don't panic. that's unnecessary to delete a non existed file.
+      })
+  }
+  getCfgContent (fileName) {
+    const filePath = path.join(this.config.host.configDir, fileName)
+    return fs.readFile(filePath, 'utf8')
+      .catch(() => {
+        const template = path.join(__dirname, '../config', fileName)
+        return fs.copy(template, filePath)
+          .then(() => {
+            return fs.readFile(filePath, 'utf8')
+          })
+      })
+  }
+
+  getServerIP () {
+    if (this.config.server.ip) {
+      return Promise.resolve(this.config.server.ip)
+    }
+    if (!this.config.server.domain) {
+      return Promise.resolve('')
+    }
+    return new Promise((resolve, reject) => {
+      dns.lookup(this.config.server.domain, { family: 4 }, (err, address, family) => {
+        if (err) reject(err)
+        resolve(address)
+      })
+    })
   }
   generateFWRulesHelper (str) {
     return `iptables -t nat -A PREROUTING -d ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
-  async generateFWRules (protocal, mode = 'whitelist') {
+  async generateFWRules (protocol, mode = 'whitelist') {
     // whitelist/blacklist/global/none
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.firewallFile))
-    const redirPort = protocal === 'kcptun'
+    const promise = new Promise((resolve, reject) => {
+      ws.on('finish', resolve)
+      ws.on('error', reject)
+    })
+    const redirPort = protocol === 'kcptun'
       ? this.config.shadowsocks.overKtPort
       : this.config.shadowsocks.clientPort
 
@@ -491,44 +494,50 @@ class VRouter {
     ws.write(`ipset create ${this.config.firewall.ipsets.black} hash:net -exist\n`)
 
     const serverIP = await this.getServerIP()
+    if (!serverIP) {
+      ws.end()
+      return promise
+    }
 
-    // if kcp protocal: speedup ssh
-    if (protocal === 'kcptun' && this.config.server.sshPort) {
+    // if kcp protocol: speedup ssh
+    if (protocol === 'kcptun' && this.config.server.sshPort) {
+      ws.write('# speedup ssh connection if current protocol is kcptun\n')
       const rule = `-d ${serverIP} -p tcp --dport ${this.config.server.sshPort} -j REDIRECT --to-port ${redirPort}`
       ws.write(this.generateFWRulesHelper(rule))
     }
 
     // bypass server_ip
-    ws.write('# bypass server ip')
+    ws.write('# bypass server ip\n')
     ws.write(this.generateFWRulesHelper(`-d ${serverIP} -j RETURN`))
 
     // bypass lan_networks
-    ws.write('# bypass lan networks')
+    ws.write('# bypass lan networks\n')
     let rule = `-m set --match-set ${this.config.firewall.ipsets.lan} dst -j RETURN`
     ws.write(this.generateFWRulesHelper(rule))
 
     // whitelist mode: bypass whitelist and route others
     if (mode === 'whitelist') {
-      ws.write('# bypass whitelist')
+      ws.write('# bypass whitelist\n')
       rule = `-m set --match-set ${this.config.firewall.ipsets.white} dst -j RETURN`
       ws.write(this.generateFWRulesHelper(rule))
-      ws.write('# route all other traffic')
+      ws.write('# route all other traffic\n')
       rule = `-p tcp -j REDIRECT --to-ports ${redirPort}`
       ws.write(this.generateFWRulesHelper(rule))
     }
 
     if (mode === 'blacklist') {
-      ws.write('# route all blacklist traffic')
+      ws.write('# route all blacklist traffic\n')
       rule = `-p tcp -m set --match-set ${this.config.firewall.ipsets.black} dst -j REDIRECT --to-port ${redirPort}`
       ws.write(this.generateFWRulesHelper(rule))
     }
 
     if (mode === 'global') {
-      ws.write('# route all traffic')
+      ws.write('# route all traffic\n')
       rule = `-p tcp -j REDIRECT --to-ports ${redirPort}`
       ws.write(this.generateFWRulesHelper(rule))
     }
     ws.end()
+    return promise
   }
   getDNSServer () {
     const dnsmasq = '53'
@@ -537,14 +546,47 @@ class VRouter {
       `127.0.0.1#${this.config.shadowsocks.dnsPort}`
     ]
   }
+  generateNetworkCfg () {
+    const cfg = String.raw`
+config interface 'loopback'
+        option ifname 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config interface 'lan'
+        option ifname 'eth0'
+        option type 'bridge'
+        option proto 'static'
+        option ipaddr '${this.config.vrouter.ip}'
+        option netmask '255.255.255.0'
+        option ip6assign '60'
+
+config interface 'wan'
+        option ifname 'eth1'
+        option proto 'dhcp'
+
+config interface 'wan6'
+        option ifname 'eth1'
+        option proto 'dhcpv6'
+
+config globals 'globals'
+        option ula_prefix 'fd2c:a5b2:c85d::/48'
+`
+    return cfg
+  }
   async generateDnsmasqCf (mode) {
     const DNSs = this.getDNSServer()
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile))
+    const promise = new Promise((resolve, reject) => {
+      ws.on('finish', resolve)
+      ws.on('reject', reject)
+    })
 
     if (mode === 'none') {
       ws.write('# stay in wall')
       ws.end()
-      return
+      return promise
     }
 
     const whiteDomains = await fs.readFile(path.join(this.config.host.configDir, this.config.firewall.whiteDomains))
@@ -571,17 +613,169 @@ class VRouter {
       }
     })
     ws.end()
+    return promise
   }
-  downloadFile (url, dest) {
+  generateWatchdog () {
+    const cfgPath = path.join(this.config.host.configDir, this.config.firewall.watchdogFile)
+    const content = String.raw`
+#!/bin/sh
+# KCPTUN
+if ! pgrep kcptun;then
+    /etc/init.d/${this.config.kcptun.service} restart
+    date >> /root/watchdog.log
+    echo "restart kcptun" >> /root/watchdog.log
+fi
+# SHADOWSOCKS
+if ! (pgrep ss-redir && pgrep ss-tunnel);then
+    /etc/init.d/${this.config.shadowsocks.service} restart
+    date >> /root/watchdog.log
+    echo "restart ss" >> /root/watchdog.log
+fi`
+    return fs.outputFile(cfgPath, content, 'utf8')
+  }
+  generateService (type = 'shadowsocks') {
+    const cfgPath = path.join(this.config.host.configDir,
+      type === 'shadowsocks' ? this.config.shadowsocks.service : this.config.kcptun.service)
+    const ss = String.raw`
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=90
+
+SERVICE_USE_PID=1
+SERVICE_WRITE_PID=1
+SERVICE_DAEMONIZE=1
+
+
+start() {
+    # ss-tunnel cannot work fine with kcptun.
+    service_start /usr/bin/ss-tunnel -c /${this.config.vrouter.configDir}/${this.config.shadowsocks.dns}
+    service_start /usr/bin/ss-redir  -c /${this.config.vrouter.configDir}/${this.config.shadowsocks.client}
+    service_start /usr/bin/ss-redir  -c /${this.config.vrouter.configDir}/${this.config.shadowsocks.overKt}
+}
+
+stop() {
+    service_stop /usr/bin/ss-tunnel
+    service_stop /usr/bin/ss-redir
+    killall ss-redir
+}`
+    const kt = String.raw`
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=88
+
+SERVICE_USE_PID=1
+SERVICE_WRITE_PID=1
+SERVICE_DAEMONIZE=1
+
+start() {
+    # kcptun will fail if network not ready
+    while true;do
+        service_start /usr/bin/kcptun -c /${this.config.vrouter.configDir}/${this.config.kcptun.client}
+        sleep 30
+        (pgrep kcptun) && break
+    done
+}
+
+stop() {
+    killall kcptun
+}`
+    return fs.outputFile(cfgPath, type === 'shadowsocks' ? ss : kt)
+  }
+  generateConfig (type = 'shadowsocks') {
+    let cfg
+    let content
+    switch (type) {
+      case 'ss-client':
+        cfg = this.config.shadowsocks.client
+        content = String.raw`
+{
+    "server":"${this.config.shadowsock.server.ip}",
+    "server_port":${this.config.shadowsock.server.host},
+    "local_address": "0.0.0.0",
+    "local_port":${this.config.shadowsocks.clientPort},
+    "password":"${this.config.shadowsock.server.password}",
+    "timeout":${this.config.shadowsock.server.timeout},
+    "method":"${this.config.shadowsock.server.method}",
+    "fast_open": ${this.config.shadowsock.server.fastOpen},
+    "mode": "tcp_only"
+}`
+        break
+      case 'ss-overKt':
+        cfg = this.config.shadowsocks.dns
+        content = String.raw`
+{
+    "server":       "127.0.0.1",
+    "server_port":  ${this.config.kcptun.clientPort},
+    "local_address": "0.0.0.0",
+    "local_port":   ${this.config.shadowsock.overKtPort},
+    "password":     "${this.config.shadowsock.server.password}",
+    "timeout":      20,
+    "method":       "${this.config.shadowsock.server.method}",
+    "fast_open":    ${this.config.shadowsock.server.fastOpen},
+    "mode":         "tcp_only"
+}`
+        break
+      case 'ss-dns':
+        cfg = this.config.shadowsocks.overKt
+        content = String.raw`
+{
+    "server":"${this.config.shadowsock.server.ip}",
+    "server_port":${this.config.shadowsock.server.host},
+    "local_address": "0.0.0.0",
+    "local_port":${this.config.shadowsocks.clientPort},
+    "password":"${this.config.shadowsock.server.password}",
+    "timeout":${this.config.shadowsock.server.timeout},
+    "method":"${this.config.shadowsock.server.method}",
+    "fast_open": ${this.config.shadowsock.server.fastOpen},
+    "mode": "udp_only"
+}`
+        break
+      case 'kt-client':
+        cfg = this.config.kcptun.client
+        content = String.raw`
+{
+    "remoteaddr": "${this.config.kcptun.server.ip}:${this.config.kcptun.server.port}",
+    "localaddr": ":${this.config.kcptun.clientPort}",
+    "key": "${this.config.kcptun.server.key}",
+    "crypt":    "${this.config.kcptun.server.crypt}",
+    "mode":     "${this.config.kcptun.server.mode}",
+    "sndwnd":   ${this.config.kcptun.server.sndwnd},
+    "rcvwnd":   ${this.config.kcptun.server.rcvwnd},
+    "nocomp":    ${this.config.kcptun.server.nocomp}
+}`
+    }
+    const cfgPath = path.join(this.config.host.configDir, cfg)
+    return fs.outputFile(cfgPath, content)
+  }
+
+  downloadFile (src, dest) {
+    const protocol = (new URL(src)).protocol
+    const method = protocol === 'https' ? https : http
     return new Promise((resolve, reject) => {
       const file = fs.createWriteStream(dest)
-      http.get(url, (response) => {
+      method.get(src, (response) => {
         response.pipe(file)
-        file.on('finish', () => file.close())
-        resolve()
+        file.on('finish', () => {
+          file.close()
+          resolve()
+        })
       }).on('error', (err) => {
         fs.unlink(dest)
         reject(err)
+      })
+    })
+  }
+  hashFile (file) {
+    var algo = 'sha256'
+    var shasum = crypto.createHash(algo)
+    var s = fs.ReadStream(file)
+    return new Promise((resolve, reject) => {
+      s.on('data', function (d) { shasum.update(d) })
+      s.on('end', function () {
+        var d = shasum.digest('hex')
+        resolve(d)
       })
     })
   }

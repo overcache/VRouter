@@ -1,31 +1,43 @@
 /* eslint-env mocha */
 const path = require('path')
 const os = require('os')
-const fs = require('fs')
+const fs = require('fs-extra')
 var chai = require('chai')
 var chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 const expect = chai.expect
 const { VRouter } = require(path.join(__dirname, '../src/js/vrouter-local.js'))
-const configFile = path.join(__dirname, './config-test.json')
+const { VRouterRemote } = require(path.join(__dirname, '../src/js/vrouter-remote.js'))
+// const configFile = path.join(__dirname, './config-test.json')
+const configFile = path.join(__dirname, '../src/config/config.json')
 const vmFile = path.join(os.homedir(), 'Desktop', 'com.icymind.test.ova')
 
-describe.only('Test ability of manage vm', function () {
-  const vrouter = new VRouter(JSON.parse(fs.readFileSync(configFile)))
+describe('Test ability of manage vm', function () {
+  this.slow(1000)
+  let vrouter
+  let isImportByTest = false
   before('import test-vm', function () {
-    return vrouter.isVRouterExisted()
+    return fs.readJson(configFile)
+      .then((obj) => {
+        vrouter = new VRouter(obj)
+      })
+      .then(() => {
+        return vrouter.isVRouterExisted()
+      })
       .catch((err) => {
         console.log(err)
         return vrouter.importVM(vmFile)
+          .then(() => {
+            isImportByTest = true
+          })
       })
   })
 
-  /*
-   * after('remove test-vm', async function () {
-   *   const func = lib.__get__('deleteVM')
-   *   return func()
-   * })
-   */
+  after('remove test-vm', function () {
+    if (isImportByTest) {
+      return vrouter.deleteVM()
+    }
+  })
 
   it('localExec("echo hello") should return hello', function () {
     return expect(vrouter.localExec('echo hello'))
@@ -40,7 +52,7 @@ describe.only('Test ability of manage vm', function () {
       })
     return expect(promise).to.eventually.within(500, 510)
   })
-  it.skip('startVM/stopVM should be able start/stop a vm', function () {
+  it('startVM/stopVM should be able start/stop a vm', function () {
   })
   it('hideVM should hide vm in virtualbox manager', function () {
     const promise = vrouter.hideVM()
@@ -100,7 +112,7 @@ describe.only('Test ability of manage vm', function () {
   it('benchmark isVRouterRunning', function () {
     return vrouter.isVRouterRunning().catch(() => {})
   })
-  it('isVRouterRunning should works well', function () {
+  it.skip('isVRouterRunning should works well', function () {
     return vrouter.stopVM()
       .catch(() => {})
       .then(() => {
@@ -155,13 +167,19 @@ describe.only('Test ability of manage vm', function () {
   })
   it('specifyHostonlyAdapter(inf, nic) should change vm\'s adapter', function () {
     let currentInf = ''
-    const promise = vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep hostonlyadapter`)
-      .then((output) => {
-        currentInf = output.trim().split('=')[1]
+    const promise = vrouter.isVRouterRunning()
+      .then(() => {
+        return vrouter.stopVM()
       })
-      // .then(() => {
-        // return vrouter.wait(100)
-      // })
+      .catch(() => {
+        // don't panic, that's allright. catch isVRouterRunning error
+      })
+      .then(() => {
+        return vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep hostonlyadapter`)
+          .then((output) => {
+            currentInf = output.trim().split('=')[1]
+          })
+      })
       .then(() => {
         return vrouter.specifyHostonlyAdapter('something')
       })
@@ -193,85 +211,49 @@ describe.only('Test ability of manage vm', function () {
 
   it('isNIC1ConfigedAsHostonly should be fulfilled when adapter1 was config as hostonly network', function () {
     this.timeout(5000)
-    return vrouter.stopVM().catch(() => {})
-      .then(() => {
-        return vrouter.specifyHostonlyAdapter()
-      })
-      // .then(() => {
-        // return vrouter.wait(100)
-      // })
+    return vrouter.specifyHostonlyAdapter()
       .then(() => {
         return expect(vrouter.isNIC1ConfigedAsHostonly())
           .to.be.fulfilled
       })
       .then(() => {
         const ip = vrouter.config.host.ip
-        return vrouter.wait(200)
-          .then(() => {
-            vrouter.config.host.ip = '8.8.8.8'
-          })
-          .then(() => {
-            return expect(vrouter.isNIC1ConfigedAsHostonly())
-              .to.be.rejectedWith(Error, "host-only adapter doesn't config as hostIP")
-          })
+        vrouter.config.host.ip = '8.8.8.8'
+        return expect(vrouter.isNIC1ConfigedAsHostonly())
+          .to.be.rejectedWith(Error, "host-only adapter doesn't config as hostIP")
           .then(() => {
             vrouter.config.host.ip = ip
           })
       })
       .then(() => {
-        return vrouter.wait(100)
-          .then(() => {
-            return expect(vrouter.specifyBridgeAdapter('en0', '1'))
-              .to.be.fulfilled
-          })
+        return expect(vrouter.specifyBridgeAdapter('en0', '1'))
+          .to.be.fulfilled
       })
       .then(() => {
-        return vrouter.wait(100)
-          .then(() => {
-            return expect(vrouter.isNIC1ConfigedAsHostonly())
-              .to.be.rejectedWith(Error, "NIC1 isn't hostonly network")
-          })
+        return expect(vrouter.isNIC1ConfigedAsHostonly())
+          .to.be.rejectedWith(Error, "NIC1 isn't hostonly network")
       })
       .then(() => {
-        return vrouter.wait(100)
-          .then(() => {
-            return expect(vrouter.specifyHostonlyAdapter('vboxnet999'))
-              .to.be.fulfilled
-          })
+        return expect(vrouter.specifyHostonlyAdapter('vboxnet999'))
+          .to.be.fulfilled
       })
       .then(() => {
-        return vrouter.wait(100)
-          .then(() => {
-            return expect(vrouter.isNIC1ConfigedAsHostonly())
-              .to.be.rejectedWith(Error, 'ifconfig: interface vboxnet999 does not exist')
-          })
+        return expect(vrouter.isNIC1ConfigedAsHostonly())
+          .to.be.rejectedWith(Error, 'ifconfig: interface vboxnet999 does not exist')
       })
       .then(() => {
-        return vrouter.wait(100)
-          .then(() => {
-            return expect(vrouter.specifyHostonlyAdapter())
-              .to.be.fulfilled
-          })
+        return expect(vrouter.specifyHostonlyAdapter())
+          .to.be.fulfilled
       })
   })
   it('isNIC2ConfigedAsBridged should be fulfilled when vm\'s first adapter config as bridged', function () {
     this.timeout(5000)
 
-    // 确保在测试完start/stopVM后再运行, 因为指定网络适配器为不存在会引起无法开机
-    return vrouter.stopVM().catch(() => {})
+    const promise = vrouter.specifyBridgeAdapter()
+    return expect(promise).to.be.fulfilled
       .then(() => {
-        const promise = vrouter.specifyBridgeAdapter()
+        const promise = vrouter.specifyHostonlyAdapter('vboxnet0', '2')
         return expect(promise).to.be.fulfilled
-      })
-      .then(() => {
-        return vrouter.wait(500)
-      })
-      .then(() => {
-        const promise = vrouter.specifyHostonlyAdapter('vboxnet0', '2').then(console.log)
-        return expect(promise).to.be.fulfilled
-      })
-      .then(() => {
-        return vrouter.wait(100)
       })
       .then(() => {
         return expect(vrouter.isNIC2ConfigedAsBridged())
@@ -282,18 +264,12 @@ describe.only('Test ability of manage vm', function () {
         return expect(promise).to.be.fulfilled
       })
       .then(() => {
-        return vrouter.wait(100)
-      })
-      .then(() => {
         return expect(vrouter.isNIC2ConfigedAsBridged())
           .to.be.rejectedWith(Error, 'ifconfig: interface no-exist-inf does not exist')
       })
       .then(() => {
         const promise = vrouter.specifyBridgeAdapter('en1: Thunderbolt 1')
         return expect(promise).to.be.fulfilled
-      })
-      .then(() => {
-        return vrouter.wait(100)
       })
       .then(() => {
         return expect(vrouter.isNIC2ConfigedAsBridged())
@@ -322,9 +298,6 @@ describe.only('Test ability of manage vm', function () {
   it('toggleSerialPort("on") should turnon serialport 1', function () {
     const promise = vrouter.toggleSerialPort('on')
       .then(() => {
-        return vrouter.wait(100)
-      })
-      .then(() => {
         return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep "uart.*1"')
       })
     return expect(promise).to.eventually.equal(
@@ -333,9 +306,6 @@ describe.only('Test ability of manage vm', function () {
   })
   it('toggleSerialPort("off") should turnoff serialport 1', function () {
     const promise = vrouter.toggleSerialPort('off')
-      .then(() => {
-        return vrouter.wait(100)
-      })
       .then(() => {
         return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep uart1')
       })
@@ -369,15 +339,387 @@ describe.only('Test ability of manage vm', function () {
       })
       .then(() => {
         return vrouter.connect()
+          .then((ret) => {
+            return ret instanceof VRouterRemote
+          })
       })
-    return promise
+    return expect(promise).to.eventually.be.true
   })
 })
 
-describe('Test ability of manage file', function () {
-  it('getServerIP should return correct ip')
-  it('generateFWRulesHelper should return two lines with newline')
-  it('generateFWRules should redirect all traffic in "none" mode')
-  it('getDNSServer should return an array: [dnsmasq, ss-dns-tunnel]')
-  it('downloadFile should be able download a complete file')
+describe.only('Test ability of manage file', function () {
+  let vrouter
+  before('get a vrouter instance', function () {
+    return fs.readJson(configFile)
+      .then((obj) => {
+        vrouter = new VRouter(obj)
+      })
+  })
+  it('cfg should be delte after running deleteCfgFile(cfg)', function () {
+    const cfg = vrouter.config.firewall.ipsetsFile
+    const filePath = path.join(vrouter.config.host.configDir, cfg)
+    return fs.ensureFile(filePath)
+      .then(() => {
+        return expect(fs.pathExists(filePath)).to.eventually.be.true
+      })
+      .then(() => {
+        return vrouter.deleteCfgFile(cfg)
+      })
+      .then(() => {
+        return expect(fs.pathExists(filePath)).to.eventually.be.false
+      })
+  })
+  it('getCfgContent(file) should be fulfilled with content.', function () {
+    const cfg = vrouter.config.firewall.whiteIPs
+    const cfgPath = path.join(vrouter.config.host.configDir, cfg)
+    const template = path.join(__dirname, '../src/config', cfg)
+    let originTemplateData = ''
+    let originCfgData = ''
+    return fs.readFile(cfgPath, 'utf8').catch(() => {})
+      .then((data) => {
+        originCfgData = data || ''
+        return fs.outputFile(cfgPath, '1.1.1.1')
+      })
+      .then(() => {
+        const promise = fs.readFile(cfgPath, 'utf8')
+        return expect(promise).to.eventually.equal('1.1.1.1')
+      })
+      .then(() => {
+        return expect(vrouter.getCfgContent(cfg)).to.eventually.equal('1.1.1.1')
+      })
+      .then(() => {
+        return fs.remove(cfgPath)
+      })
+      .then(() => {
+        return fs.readFile(template, 'utf8')
+          .catch(() => {
+            // don't panic.
+          })
+          .then((data) => {
+            originTemplateData = data || ''
+          })
+      })
+      .then(() => {
+        return fs.outputFile(template, '2.2.2.2')
+      })
+      .then(() => {
+        return expect(vrouter.getCfgContent(cfg)).to.eventually.equal('2.2.2.2')
+      })
+      .then(() => {
+        return Promise.all([
+          fs.outputFile(template, originTemplateData),
+          fs.outputFile(cfgPath, originCfgData)
+        ])
+      })
+  })
+  it("generateIPsets's output should contains 127.0.0.0/chinaip/extraip", function () {
+    const cfg = vrouter.config.firewall.ipsetsFile
+    const cfgPath = path.join(vrouter.config.host.configDir, cfg)
+    let originData = ''
+    return fs.readFile(cfgPath, 'utf8').catch(() => {})
+      .then((data) => {
+        originData = data || ''
+      })
+      .then(() => {
+        return fs.remove(cfgPath).catch(() => {})
+      })
+      .then(() => {
+        return vrouter.generateIPsets()
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        // console.log(data)
+        expect(/^add LAN 127.0.0.0\/8$/mg.test(data)).to.be.true
+        expect(/^add WHITELIST 114.114.0.0\/16$/mg.test(data)).to.be.true
+        expect(/^add BLACKLIST 8.8.8.8\/32$/m.test(data)).to.be.true
+      })
+      .then(() => {
+        return fs.outputFile(cfgPath, originData, 'utf8')
+      })
+  })
+
+  it('generateFWRulesHelper should return two lines with newline', function () {
+    const rule = vrouter.generateFWRulesHelper('a test')
+    return expect(rule).to.be.equal(`iptables -t nat -A PREROUTING -d a test\niptables -t nat -A OUTPUT a test\n`)
+  })
+  it('getServerIP should return server ip', function () {
+    const origin = [vrouter.config.server.domain, vrouter.config.server.ip]
+    return Promise.resolve()
+      .then(() => {
+        vrouter.config.server.ip = '1.2.3.4'
+        return expect(vrouter.getServerIP()).to.eventually.equal('1.2.3.4')
+      })
+      .then(() => {
+        vrouter.config.server.ip = ''
+        vrouter.config.server.domain = 'localhost'
+        const promise = vrouter.getServerIP()
+        return expect(promise).to.eventually.equal('127.0.0.1')
+      })
+      .then(() => {
+        vrouter.config.server.domain = origin[0]
+        vrouter.config.server.ip = origin[1]
+      })
+  })
+  it('generateFWRules should redirect only lan traffic in "none" mode', function () {
+    return vrouter.generateFWRules('kcptun', 'none')
+      .then(() => {
+        const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.firewallFile)
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const expectContent = String.raw`
+# com.icymind.vrouter
+# workMode: none
+# create ipsets in order to avoid errors when run firewall.user
+ipset create LAN hash:net -exist
+ipset create WHITELIST hash:net -exist
+ipset create BLACKLIST hash:net -exist`
+        return expect(data.trim()).to.equal(expectContent.trim())
+      })
+  })
+  it('generateFWRules should works fine with kt+global mode', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.firewallFile)
+    const originIP = vrouter.config.server.ip
+    let originRules = ''
+    vrouter.config.server.ip = '1.2.3.4'
+    return fs.readFile(cfgPath, 'utf8')
+      .then((data) => {
+        originRules = data
+      })
+      .then(() => {
+        return vrouter.generateFWRules('kcptun', 'global')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const expectContent = String.raw`
+# com.icymind.vrouter
+# workMode: global
+# create ipsets in order to avoid errors when run firewall.user
+ipset create LAN hash:net -exist
+ipset create WHITELIST hash:net -exist
+ipset create BLACKLIST hash:net -exist
+# bypass server ip
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
+iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
+# bypass lan networks
+iptables -t nat -A PREROUTING -d -m set --match-set LAN dst -j RETURN
+iptables -t nat -A OUTPUT -m set --match-set LAN dst -j RETURN
+# route all traffic
+iptables -t nat -A PREROUTING -d -p tcp -j REDIRECT --to-ports 1090
+iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
+        return expect(data.trim()).to.equal(expectContent.trim())
+      })
+      .then(() => {
+        vrouter.config.server.ip = originIP
+        return fs.outputFile(cfgPath, originRules)
+      })
+  })
+  it('generateFWRules should works fine with kt+whitelist mode', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.firewallFile)
+    const originIP = vrouter.config.server.ip
+    let originRules = ''
+    vrouter.config.server.ip = '1.2.3.4'
+    return fs.readFile(cfgPath, 'utf8')
+      .then((data) => {
+        originRules = data
+      })
+      .then(() => {
+        return vrouter.generateFWRules('kcptun', 'whitelist')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const expectContent = String.raw`
+# com.icymind.vrouter
+# workMode: whitelist
+# create ipsets in order to avoid errors when run firewall.user
+ipset create LAN hash:net -exist
+ipset create WHITELIST hash:net -exist
+ipset create BLACKLIST hash:net -exist
+# bypass server ip
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
+iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
+# bypass lan networks
+iptables -t nat -A PREROUTING -d -m set --match-set LAN dst -j RETURN
+iptables -t nat -A OUTPUT -m set --match-set LAN dst -j RETURN
+# bypass whitelist
+iptables -t nat -A PREROUTING -d -m set --match-set WHITELIST dst -j RETURN
+iptables -t nat -A OUTPUT -m set --match-set WHITELIST dst -j RETURN
+# route all other traffic
+iptables -t nat -A PREROUTING -d -p tcp -j REDIRECT --to-ports 1090
+iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
+        return expect(data.trim()).to.equal(expectContent.trim())
+      })
+      .then(() => {
+        vrouter.config.server.ip = originIP
+        return fs.outputFile(cfgPath, originRules)
+      })
+  })
+  it('generateFWRules should works fine with ss+blacklist', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.firewallFile)
+    const originIP = vrouter.config.server.ip
+    let originRules = ''
+    vrouter.config.server.ip = '1.2.3.4'
+    return fs.readFile(cfgPath, 'utf8')
+      .then((data) => {
+        originRules = data
+      })
+      .then(() => {
+        return vrouter.generateFWRules('shadowsocks', 'blacklist')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const expectContent = String.raw`
+# com.icymind.vrouter
+# workMode: blacklist
+# create ipsets in order to avoid errors when run firewall.user
+ipset create LAN hash:net -exist
+ipset create WHITELIST hash:net -exist
+ipset create BLACKLIST hash:net -exist
+# bypass server ip
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
+iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
+# bypass lan networks
+iptables -t nat -A PREROUTING -d -m set --match-set LAN dst -j RETURN
+iptables -t nat -A OUTPUT -m set --match-set LAN dst -j RETURN
+# route all blacklist traffic
+iptables -t nat -A PREROUTING -d -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --to-port 1080
+iptables -t nat -A OUTPUT -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --to-port 1080`
+        return expect(data.trim()).to.equal(expectContent.trim())
+      })
+      .then(() => {
+        vrouter.config.server.ip = originIP
+        return fs.outputFile(cfgPath, originRules)
+      })
+  })
+  it('generateFWRules should works fine with ss+whitelist', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.firewallFile)
+    const originIP = vrouter.config.server.ip
+    let originRules = ''
+    vrouter.config.server.ip = '1.2.3.4'
+    return fs.readFile(cfgPath, 'utf8')
+      .then((data) => {
+        originRules = data
+      })
+      .then(() => {
+        return vrouter.generateFWRules('shadowsocks', 'whitelist')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const expectContent = String.raw`
+# com.icymind.vrouter
+# workMode: whitelist
+# create ipsets in order to avoid errors when run firewall.user
+ipset create LAN hash:net -exist
+ipset create WHITELIST hash:net -exist
+ipset create BLACKLIST hash:net -exist
+# bypass server ip
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
+iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
+# bypass lan networks
+iptables -t nat -A PREROUTING -d -m set --match-set LAN dst -j RETURN
+iptables -t nat -A OUTPUT -m set --match-set LAN dst -j RETURN
+# bypass whitelist
+iptables -t nat -A PREROUTING -d -m set --match-set WHITELIST dst -j RETURN
+iptables -t nat -A OUTPUT -m set --match-set WHITELIST dst -j RETURN
+# route all other traffic
+iptables -t nat -A PREROUTING -d -p tcp -j REDIRECT --to-ports 1080
+iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
+        return expect(data.trim()).to.equal(expectContent.trim())
+      })
+      .then(() => {
+        vrouter.config.server.ip = originIP
+        return fs.outputFile(cfgPath, originRules)
+      })
+  })
+  it('getDNSServer should return an array: [dnsmasq, ss-dns-tunnel]', function () {
+    return expect(vrouter.getDNSServer()).to.be.deep.equal([
+      '127.0.0.1#53',
+      `127.0.0.1#${vrouter.config.shadowsocks.dnsPort}`
+    ])
+  })
+  it('generateDnsmasqCf')
+  it('generateWatchdog should works', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.watchdogFile)
+    const expectContent = String.raw`
+#!/bin/sh
+# KCPTUN
+if ! pgrep kcptun;then
+    /etc/kcptun_restart
+    date >> /root/watchdog.log
+    echo "restart kcptun" >> /root/watchdog.log
+fi
+# SHADOWSOCKS
+if ! (pgrep ss-redir && pgrep ss-tunnel);then
+    /etc/init.d/ss restart
+    date >> /root/watchdog.log
+    echo "restart ss" >> /root/watchdog.log
+fi`
+    return vrouter.generateWatchdog()
+      .then(() => {
+        return expect(fs.readFile(cfgPath, 'utf8'))
+          .to.eventually.equal(expectContent)
+      })
+  })
+  it('generateService("kcptun")')
+  it('generateService("shadowsocks")')
+  it('generateConfig')
+  it.skip('downloadFile should be able download a complete file', function () {
+    this.timeout(50000)
+    const url = 'http://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz'
+    const dest = path.join(os.tmpdir(), path.basename(url))
+    const sha = '3f3d92a088b24e6aa4ae856270ffcd714efb1be8867ceef4cf619abf1ad09bfc'
+    return vrouter.downloadFile(url, dest)
+      .then(() => {
+        return fs.readFile(dest)
+      })
+      .then((data) => {
+        return expect(vrouter.hashFile(dest)).to.eventually.equal(sha)
+      })
+      .then(() => {
+        return fs.remove(dest)
+      })
+  })
+  it('generateNetworkCfg should should return expect string', function () {
+    const originIP = vrouter.config.vrouter.ip
+    vrouter.config.vrouter.ip = '7.7.7.7'
+    const ret = vrouter.generateNetworkCfg()
+    vrouter.config.vrouter.ip = originIP
+    const expectContent = String.raw`
+config interface 'loopback'
+        option ifname 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config interface 'lan'
+        option ifname 'eth0'
+        option type 'bridge'
+        option proto 'static'
+        option ipaddr '7.7.7.7'
+        option netmask '255.255.255.0'
+        option ip6assign '60'
+
+config interface 'wan'
+        option ifname 'eth1'
+        option proto 'dhcp'
+
+config interface 'wan6'
+        option ifname 'eth1'
+        option proto 'dhcpv6'
+
+config globals 'globals'
+        option ula_prefix 'fd2c:a5b2:c85d::/48'
+    `
+    return expect(ret.trim()).to.be.equal(expectContent.trim())
+  })
 })

@@ -41,7 +41,7 @@
         "extraBlockedIPs": "extra-blocked-ips.txt",
         "whiteIPs": "white-ips.txt",
         "lanNetworks": "lan-networks.txt",
-        "chinaIPs": "chind-ips.txt",
+        "chinaIPs": "china-ips.txt",
         "currentMode": "",
         "currentProtocal": "",
         "dnsmasqFile": "custom.conf",
