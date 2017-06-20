@@ -692,7 +692,7 @@ stop() {
         content = String.raw`
 {
     "server":"${this.config.shadowsocks.server.ip}",
-    "server_port":${this.config.shadowsocks.server.host},
+    "server_port":${this.config.shadowsocks.server.port},
     "local_address": "0.0.0.0",
     "local_port":${this.config.shadowsocks.clientPort},
     "password":"${this.config.shadowsocks.server.password}",
@@ -732,7 +732,7 @@ stop() {
     "mode": "udp_only"
 }`
         break
-      case 'kt-client':
+      case 'kcptun':
         cfg = this.config.kcptun.client
         content = String.raw`
 {

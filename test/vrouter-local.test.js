@@ -758,7 +758,51 @@ stop() {
         return fs.outputFile(cfgPath, originContent)
       })
   })
-  it('generateConfig')
+  it('generateConfig("ss-client") should generate expect content to file', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.shadowsocks.client)
+    let originServer = vrouter.config.shadowsocks.server
+    let originContent
+    return fs.readFile(cfgPath).catch(() => {})
+      .then((data) => {
+        originContent = data
+      })
+      .then(() => {
+        vrouter.config.shadowsocks.server = {
+          ip: '5.5.5.5',
+          domain: '',
+          port: '999',
+          password: 'a-test-passwd',
+          timeout: 300,
+          method: 'chacha30',
+          fastOpen: true
+        }
+      })
+      .then(() => {
+        return vrouter.generateConfig('ss-client')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const expectContent = String.raw`
+{
+    "server":"5.5.5.5",
+    "server_port":999,
+    "local_address": "0.0.0.0",
+    "local_port":1080,
+    "password":"a-test-passwd",
+    "timeout":300,
+    "method":"chacha30",
+    "fast_open": true,
+    "mode": "tcp_only"
+}`
+        return expect(data).to.equal(expectContent)
+      })
+      .then(() => {
+        vrouter.config.shadowsocks.server = originServer
+        return fs.outputFile(cfgPath, originContent)
+      })
+  })
   it.skip('downloadFile should be able download a complete file', function () {
     this.timeout(50000)
     const url = 'http://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz'
