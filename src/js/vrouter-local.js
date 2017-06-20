@@ -649,9 +649,9 @@ SERVICE_DAEMONIZE=1
 
 start() {
     # ss-tunnel cannot work fine with kcptun.
-    service_start /usr/bin/ss-tunnel -c /${this.config.vrouter.configDir}/${this.config.shadowsocks.dns}
-    service_start /usr/bin/ss-redir  -c /${this.config.vrouter.configDir}/${this.config.shadowsocks.client}
-    service_start /usr/bin/ss-redir  -c /${this.config.vrouter.configDir}/${this.config.shadowsocks.overKt}
+    service_start /usr/bin/ss-tunnel -c ${this.config.vrouter.configDir}/${this.config.shadowsocks.dns}
+    service_start /usr/bin/ss-redir  -c ${this.config.vrouter.configDir}/${this.config.shadowsocks.client}
+    service_start /usr/bin/ss-redir  -c ${this.config.vrouter.configDir}/${this.config.shadowsocks.overKt}
 }
 
 stop() {
@@ -672,7 +672,7 @@ SERVICE_DAEMONIZE=1
 start() {
     # kcptun will fail if network not ready
     while true;do
-        service_start /usr/bin/kcptun -c /${this.config.vrouter.configDir}/${this.config.kcptun.client}
+        service_start /usr/bin/kcptun -c ${this.config.vrouter.configDir}/${this.config.kcptun.client}
         sleep 30
         (pgrep kcptun) && break
     done
@@ -691,14 +691,14 @@ stop() {
         cfg = this.config.shadowsocks.client
         content = String.raw`
 {
-    "server":"${this.config.shadowsock.server.ip}",
-    "server_port":${this.config.shadowsock.server.host},
+    "server":"${this.config.shadowsocks.server.ip}",
+    "server_port":${this.config.shadowsocks.server.host},
     "local_address": "0.0.0.0",
     "local_port":${this.config.shadowsocks.clientPort},
-    "password":"${this.config.shadowsock.server.password}",
-    "timeout":${this.config.shadowsock.server.timeout},
-    "method":"${this.config.shadowsock.server.method}",
-    "fast_open": ${this.config.shadowsock.server.fastOpen},
+    "password":"${this.config.shadowsocks.server.password}",
+    "timeout":${this.config.shadowsocks.server.timeout},
+    "method":"${this.config.shadowsocks.server.method}",
+    "fast_open": ${this.config.shadowsocks.server.fastOpen},
     "mode": "tcp_only"
 }`
         break
@@ -709,11 +709,11 @@ stop() {
     "server":       "127.0.0.1",
     "server_port":  ${this.config.kcptun.clientPort},
     "local_address": "0.0.0.0",
-    "local_port":   ${this.config.shadowsock.overKtPort},
-    "password":     "${this.config.shadowsock.server.password}",
+    "local_port":   ${this.config.shadowsocks.overKtPort},
+    "password":     "${this.config.shadowsocks.server.password}",
     "timeout":      20,
-    "method":       "${this.config.shadowsock.server.method}",
-    "fast_open":    ${this.config.shadowsock.server.fastOpen},
+    "method":       "${this.config.shadowsocks.server.method}",
+    "fast_open":    ${this.config.shadowsocks.server.fastOpen},
     "mode":         "tcp_only"
 }`
         break
@@ -721,14 +721,14 @@ stop() {
         cfg = this.config.shadowsocks.overKt
         content = String.raw`
 {
-    "server":"${this.config.shadowsock.server.ip}",
-    "server_port":${this.config.shadowsock.server.host},
+    "server":"${this.config.shadowsocks.server.ip}",
+    "server_port":${this.config.shadowsocks.server.host},
     "local_address": "0.0.0.0",
     "local_port":${this.config.shadowsocks.clientPort},
-    "password":"${this.config.shadowsock.server.password}",
-    "timeout":${this.config.shadowsock.server.timeout},
-    "method":"${this.config.shadowsock.server.method}",
-    "fast_open": ${this.config.shadowsock.server.fastOpen},
+    "password":"${this.config.shadowsocks.server.password}",
+    "timeout":${this.config.shadowsocks.server.timeout},
+    "method":"${this.config.shadowsocks.server.method}",
+    "fast_open": ${this.config.shadowsocks.server.fastOpen},
     "mode": "udp_only"
 }`
         break

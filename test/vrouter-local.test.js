@@ -654,24 +654,110 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
 #!/bin/sh
 # KCPTUN
 if ! pgrep kcptun;then
-    /etc/kcptun_restart
+    /etc/init.d/kcptun restart
     date >> /root/watchdog.log
     echo "restart kcptun" >> /root/watchdog.log
 fi
 # SHADOWSOCKS
 if ! (pgrep ss-redir && pgrep ss-tunnel);then
-    /etc/init.d/ss restart
+    /etc/init.d/shadowsocks restart
     date >> /root/watchdog.log
     echo "restart ss" >> /root/watchdog.log
 fi`
     return vrouter.generateWatchdog()
       .then(() => {
+        // return expect(fs.readFile(cfgPath, 'utf8').then((data => {console.log(data);return data})))
+          // .to.eventually.equal(expectContent)
         return expect(fs.readFile(cfgPath, 'utf8'))
           .to.eventually.equal(expectContent)
       })
   })
-  it('generateService("kcptun")')
-  it('generateService("shadowsocks")')
+
+  it('generateService("kcptun") should generate expect content to file', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.kcptun.service)
+    let originContent = ''
+    return fs.readFile(cfgPath).catch(() => {})
+      .then((data) => {
+        originContent = data
+      })
+      .then(() => {
+        return vrouter.generateService('kcptun')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const kt = String.raw`
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=88
+
+SERVICE_USE_PID=1
+SERVICE_WRITE_PID=1
+SERVICE_DAEMONIZE=1
+
+start() {
+    # kcptun will fail if network not ready
+    while true;do
+        service_start /usr/bin/kcptun -c ${vrouter.config.vrouter.configDir}/${vrouter.config.kcptun.client}
+        sleep 30
+        (pgrep kcptun) && break
+    done
+}
+
+stop() {
+    killall kcptun
+}`
+        return expect(data).to.equal(kt)
+      })
+      .then(() => {
+        return fs.outputFile(cfgPath, originContent)
+      })
+  })
+  it('generateService("shadowsocks") should generate expect content to file', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.shadowsocks.service)
+    let originContent = ''
+    return fs.readFile(cfgPath).catch(() => {})
+      .then((data) => {
+        originContent = data
+      })
+      .then(() => {
+        return vrouter.generateService('shadowsocks')
+      })
+      .then(() => {
+        return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        const kt = String.raw`
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=90
+
+SERVICE_USE_PID=1
+SERVICE_WRITE_PID=1
+SERVICE_DAEMONIZE=1
+
+
+start() {
+    # ss-tunnel cannot work fine with kcptun.
+    service_start /usr/bin/ss-tunnel -c ${vrouter.config.vrouter.configDir}/${vrouter.config.shadowsocks.dns}
+    service_start /usr/bin/ss-redir  -c ${vrouter.config.vrouter.configDir}/${vrouter.config.shadowsocks.client}
+    service_start /usr/bin/ss-redir  -c ${vrouter.config.vrouter.configDir}/${vrouter.config.shadowsocks.overKt}
+}
+
+stop() {
+    service_stop /usr/bin/ss-tunnel
+    service_stop /usr/bin/ss-redir
+    killall ss-redir
+}`
+        return expect(data).to.equal(kt)
+      })
+      .then(() => {
+        return fs.outputFile(cfgPath, originContent)
+      })
+  })
   it('generateConfig')
   it.skip('downloadFile should be able download a complete file', function () {
     this.timeout(50000)
