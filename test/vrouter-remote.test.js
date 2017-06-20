@@ -8,7 +8,7 @@ const expect = chai.expect
 const { VRouter } = require(path.join(__dirname, '../src/js/vrouter-local.js'))
 const configFile = path.join(__dirname, './config-test.json')
 
-describe('Test Suite for vrouter-remote', function () {
+describe.skip('Test Suite for vrouter-remote', function () {
   // const SSVersion = '3.0.5'
   // const KTVersion = '20170329'
   // const OSVersion = 'CHAOS CALMER (15.05.1, r48532)'

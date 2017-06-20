@@ -12,7 +12,7 @@ const { VRouterRemote } = require(path.join(__dirname, '../src/js/vrouter-remote
 const configFile = path.join(__dirname, '../src/config/config.json')
 const vmFile = path.join(os.homedir(), 'Desktop', 'com.icymind.test.ova')
 
-describe('Test ability of building VM', function () {
+describe.skip('Test ability of building VM', function () {
   this.timeout(600000)
   let vrouter
   before('get vrouter instance', function () {
@@ -29,7 +29,7 @@ describe('Test ability of building VM', function () {
   // })
 })
 
-describe.only('Test ability of manage vm', function () {
+describe('Test ability of manage vm', function () {
   this.slow(1000)
   let vrouter
   let isImportByTest = false
@@ -154,7 +154,11 @@ describe.only('Test ability of manage vm', function () {
     return expect(promise).to.be.eventually.true
   })
   it('getHostonlyInf() should return array: [correspondingInf, firstAvailableInf]', function () {
-    return expect(vrouter.getHostonlyInf()).to.become(['vboxnet4', null])
+    return vrouter.getHostonlyInf()
+      .then((arr) => {
+        return expect(vrouter.getInfIP(arr[0])).to.eventually.equal(vrouter.config.host.ip)
+          .then(() => expect(vrouter.getInfIP(arr[1])).to.eventually.equal(''))
+      })
   })
   it('Test createHostonlyInf and removeHostonlyInf', function () {
     return vrouter.createHostonlyInf()
@@ -335,7 +339,7 @@ describe.only('Test ability of manage vm', function () {
       })
     return expect(promise).to.eventually.be.true
   })
-  it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
+  it.skip("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
     this.timeout(50000)
     const promise = vrouter.configVMLanIP()
       .then(() => {
@@ -345,7 +349,7 @@ describe.only('Test ability of manage vm', function () {
       })
     return expect(promise).to.be.fulfilled
   })
-  it('connect should return a VRouterRemote object with correct properties', function () {
+  it.skip('connect should return a VRouterRemote object with correct properties', function () {
     this.timeout(50000)
     const promise = vrouter.isVRouterRunning()
       .catch(() => {

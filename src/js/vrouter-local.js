@@ -33,10 +33,10 @@ class VRouter {
     return new Promise((resolve, reject) => {
       exec(cmd, (err, stdout, stderr) => {
         if (err) {
-          console.log(err)
+          // console.log(err)
           reject(err)
         } else {
-          stderr && console.log(stderr)
+          // stderr && console.log(stderr)
           resolve(stdout)
         }
       })
@@ -200,7 +200,7 @@ class VRouter {
           const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(infConfig)
           const nameMatch = /^(vboxnet\d+):/ig.exec(infConfig)
           if (!ipMatch && !firstAvailableInf && nameMatch) {
-            console.log(infConfig)
+            // console.log(infConfig)
             firstAvailableInf = nameMatch[1]
           }
           if (ipMatch && nameMatch && ipMatch[1] === this.config.host.ip) {
