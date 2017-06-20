@@ -647,7 +647,27 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
       `127.0.0.1#${vrouter.config.shadowsocks.dnsPort}`
     ])
   })
-  it('generateDnsmasqCf')
+  it('generateDnsmasqCf should generate expect content to file', function () {
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.dnsmasqFile)
+    let originContent
+    return fs.readFile(cfgPath).catch(() => {})
+      .then((data) => {
+        originContent = data
+      })
+      .then(() => {
+        return vrouter.generateDnsmasqCf()
+      })
+      .then(() => {
+        // return fs.readFile(cfgPath, 'utf8')
+      })
+      .then((data) => {
+        
+      })
+      .then(() => {
+        return fs.outputFile(cfgPath, originContent)
+      })
+  })
+
   it('generateWatchdog should works', function () {
     const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.watchdogFile)
     const expectContent = String.raw`
@@ -893,6 +913,7 @@ stop() {
         return fs.outputFile(cfgPath, originContent)
       })
   })
+
   it.skip('downloadFile should be able download a complete file', function () {
     this.timeout(50000)
     const url = 'http://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz'
