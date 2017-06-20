@@ -6,33 +6,26 @@ var chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 const expect = chai.expect
 const { VRouter } = require(path.join(__dirname, '../src/js/vrouter-local.js'))
-const configFile = path.join(__dirname, './config-test.json')
+const { VRouterRemote } = require(path.join(__dirname, '../src/js/vrouter-remote.js'))
+const configFile = path.join(__dirname, '../src/config/config.json')
 
-describe.skip('Test Suite for vrouter-remote', function () {
+describe('Test Suite for vrouter-remote', function () {
   // const SSVersion = '3.0.5'
   // const KTVersion = '20170329'
   // const OSVersion = 'CHAOS CALMER (15.05.1, r48532)'
   this.timeout(50000)
-  let local
+  let vrouter
   let remote
-  before('connect to vrouter', function () {
-    local = new VRouter(JSON.parse(fs.readFileSync(configFile)))
-    return local.configVMNetwork()
-      .then(() => {
-        return local.wait(500)
-      })
-      .then(() => {
-        return local.isVRouterRunning()
-          .catch(() => {
-            return local.startVM()
-              .then(() => {
-                return local.wait(20000)
-              })
-          })
-      })
-      .then(() => {
-        return local.connect()
-      })
+  before('connect to vrouter', async function () {
+    vrouter = new VRouter(JSON.parse(fs.readFileSync(configFile)))
+    const state = await vrouter.getVMState()
+    if (state !== 'running') {
+      await vrouter.startVM()
+        .then(() => {
+          return vrouter.wait(30000)
+        })
+    }
+    await vrouter.connect()
       .then((r) => {
         remote = r
       })
@@ -49,6 +42,10 @@ describe.skip('Test Suite for vrouter-remote', function () {
    * })
    */
 
+  it('connect should return a VRouterRemote object with correct properties', function () {
+    this.timeout(50000)
+    return expect(remote instanceof VRouterRemote).to.be.true
+  })
   it('Test Case for getSSVersion', function () {
     return expect(remote.getSSVersion())
       .to.eventually.match(/\d+\.\d+\.\d+/ig)

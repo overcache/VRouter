@@ -43,18 +43,20 @@ class VRouter {
     })
   }
 
-  async buildVM (imagePath) {
+  async buildVM (imagePath, deleteFirst = false) {
     let image = imagePath
     if (!image) {
       // download
       throw Error('need a image to buildFrom')
     }
-    await this.isVRouterExisted().catch(() => 'not exist---')
-      .then((msg) => {
-        if (msg !== 'not exist---') {
-          throw Error('vrouter already existed')
-        }
-      })
+    const existed = await this.isVRouterExisted()
+      .catch(() => false)
+      .then(() => true)
+
+    if (!deleteFirst && existed) {
+      throw Error('vrouter already existed')
+    }
+    await this.deleteVM(true)
     // specify size: 64M
     const vdiSize = 67108864
     const subCmds = []
@@ -68,10 +70,7 @@ class VRouter {
     subCmds.push(`VBoxManage modifyvm ${this.config.vrouter.name} ` +
       ` --ostype "Linux26" --memory "256" --cpus "1" ` +
       ` --boot1 "disk" --boot2 "none" --boot3 "none" --boot4 "none" ` +
-      ` --audio "none" ` +
-      ` --uart1 "0x3F8" "4" --uartmode1 server "${path.join(__dirname, 'serial')}" ` +
-      ` --nic1 "nat" --cableconnected1 "on" ` +
-      ` --natdnshostresolver1 "on" `)
+      ` --audio "none" `)
 
     subCmds.push(`VBoxManage storagectl ${this.config.vrouter.name} ` +
       `--name "SATA Controller" --add "sata" --portcount "4" ` +
@@ -81,23 +80,15 @@ class VRouter {
       `--storagectl "SATA Controller" --port "1" ` +
       `--type "hdd" --nonrotational "on" --medium "${vdi}"`)
 
-    console.log(subCmds.join(' && '))
     return this.localExec(subCmds.join(' && '))
-      // .then(() => {
-        // return this.toggleSerialPort('on')
-      // })
-      // .then(() => {
-        // return this.configVMNetwork()
-      // })
       .then(() => {
-        return this.localExec(`VBoxManage startvm ${this.config.vrouter.name} --type gui`)
-          .then(() => {
-            return this.wait(40000)
-          })
+        return this.toggleSerialPort('on')
       })
       .then(() => {
-        // return this.configVMLanIP()
-        return this.localExec(`echo "sed -i 's/192/168/g' /etc/config/network" | nc -U serial`)
+        return this.configVMNetwork()
+      })
+      .then(() => {
+        return this.configVMLanIP(true, true)
       })
   }
 
@@ -105,30 +96,34 @@ class VRouter {
     const cmd = `VBoxManage import ${vmFile}`
     return this.localExec(cmd)
   }
-  deleteVM () {
+  async deleteVM (stopFirst = false) {
     const cmd = `VBoxManage unregistervm ${this.config.vrouter.name} --delete`
-    return this.isVRouterRunning()
-      .catch(() => {
-        throw Error('vm must be shudown before delete')
-      })
-      .then(() => {
-        return this.localExec(cmd)
-      })
+    const state = await this.getVMState()
+    if (state === 'running' && !stopFirst) {
+      throw Error('vm must be stopped before delete')
+    }
+    await this.stopVM('poweroff')
+    return this.localExec(cmd)
   }
-  startVM (type = 'headless') {
-    const cmd = `VBoxManage startvm --type ${type} ${this.config.vrouter.name}`
-    return this.isVRouterRunning()
-      .catch(() => {
-        return this.localExec(cmd)
-      })
+  async startVM (type = 'headless') {
+    const state = await this.getVMState()
+    if (state !== 'running') {
+      const cmd = `VBoxManage startvm --type ${type} ${this.config.vrouter.name}`
+      return this.localExec(cmd)
+    }
   }
-  stopVM () {
-    const cmd = `VBoxManage controlvm ${this.config.vrouter.name} poweroff`
-    return this.isVRouterRunning()
-      .catch(() => 'poweroff')
-      .then((output) => {
-        if (output !== 'poweroff') {
+  stopVM (action = 'savestate') {
+    const cmd = `VBoxManage controlvm ${this.config.vrouter.name} ${action}`
+    return this.getVMState()
+      .then((state) => {
+        // "saved" "poweroff" "running"
+        if (state === 'saved' && action === 'poweroff') {
+          return this.localExec(`VBoxManage discardstate ${this.config.vrouter.name}`)
+        } else if (state === 'running') {
           return this.localExec(cmd)
+            .then(() => {
+              return this.wait(3000)
+            })
         }
       })
   }
@@ -272,12 +267,13 @@ class VRouter {
       iinf = await this.configHostonlyInf()
     }
     const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} ` +
-      `--nic${nic} hostonly --hostonlyadapter${nic} ${iinf} ` +
-      `--cableconnected${nic} "on"`
-    const vmState = await this.isVRouterRunning()
-      .then(() => true)
-      .catch(() => false)
-    if (vmState) {
+      ` --nic${nic} hostonly ` +
+      ` --nictype${nic} "82540EM" ` +
+      ` --hostonlyadapter${nic} ${iinf} ` +
+      ` --cableconnected${nic} "on"`
+
+    const vmState = await this.getVMState()
+    if (vmState !== 'poweroff') {
       return Promise.reject(Error('vm must be shutdown before modify'))
     }
     await this.localExec(cmd)
@@ -294,12 +290,12 @@ class VRouter {
       iinf = arr[0]
     }
     const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} ` +
-      `--nic${nic} bridged --bridgeadapter${nic} "${iinf.replace(/["']/g, '')}" ` +
+      `--nic${nic} bridged ` +
+      ` --nictype${nic} "82540EM" ` +
+      `--bridgeadapter${nic} "${iinf.replace(/["']/g, '')}" ` +
       `--cableconnected${nic} "on"`
-    const vmState = await this.isVRouterRunning()
-      .then(() => true)
-      .catch(() => false)
-    if (vmState) {
+    const vmState = await this.getVMState()
+    if (vmState !== 'poweroff') {
       return Promise.reject(Error('vm must be shutdown before modify'))
     }
     await this.localExec(cmd)
@@ -406,10 +402,8 @@ class VRouter {
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${serialPath}"` : 'off'
     const cmd = `VBoxManage modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
-    const vmState = await this.isVRouterRunning()
-      .then(() => true)
-      .catch(() => false)
-    if (vmState) {
+    const vmState = await this.getVMState()
+    if (vmState !== 'poweroff') {
       return Promise.reject(Error('vm must be shutdown before modify'))
     }
     await this.localExec(cmd)
@@ -428,51 +422,48 @@ class VRouter {
     // toggleSerialPort on
     if (!serialPortState) {
       // turn vm off if necessary
-      await this.isVRouterRunning()
-        .catch(() => {})
-        .then(() => {
-          return this.stopVM()
-            .then(() => {
-              return this.wait(200)
-            })
-        })
+      await this.stopVM('poweroff')
       await this.toggleSerialPort('on')
     }
 
     // startVM if necessary
-    await this.isVRouterRunning()
-      .catch(() => {
-        return this.startVM()
-          .then(() => {
-            return this.wait(30000)
-          })
-      })
+    const state = await this.getVMState()
+    if (state !== 'running') {
+      await this.startVM()
+        .then(() => {
+          return this.wait(35000)
+        })
+    }
 
     // execute cmd
     const subCmds = []
     if (changepassword) {
       subCmds.push("echo -e 'root\\nroot' | (passwd root)")
     }
-    subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
+    // subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
+    subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}'/g /etc/config/network`)
     subCmds.push('/etc/init.d/network restart')
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const pre = `echo "" |  nc -U "${serialPath}"`
+    if (shutdownAfterCf) {
+      subCmds.push('poweroff')
+    }
     const cmd = `echo "${subCmds.join(' && ')}" | nc -U '${serialPath}'`
-    console.log(cmd)
     await this.localExec(pre)
       .then(() => {
         return this.localExec(pre)
       })
       .then(() => {
+        // console.log(cmd)
         return this.localExec(cmd)
+        // const temp = `echo "touch /769081" | nc -U "${serialPath}"`
+        // console.log(temp)
+        // return this.localExec(temp)
       })
       .then(() => {
-        return this.wait(7000)
+        // console.log('wait cmd to execute')
+        return this.wait(shutdownAfterCf ? 10000 : 3000)
       })
-
-    if (shutdownAfterCf) {
-      await this.stopVM()
-    }
   }
 
   async generateIPsets () {
@@ -853,7 +844,7 @@ stop() {
     })
   }
 
-  connect () {
+  connect (startFirst) {
     return this.isVRouterRunning()
       .catch(() => {
         return Promise.reject(Error("vm doesn't running."))
