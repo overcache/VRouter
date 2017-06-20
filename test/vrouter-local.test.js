@@ -831,15 +831,15 @@ stop() {
       .then((data) => {
         const expectContent = String.raw`
 {
-    "server":"5.5.5.5",
-    "server_port":999,
+    "server":       "127.0.0.1",
+    "server_port":  ${vrouter.config.kcptun.clientPort},
     "local_address": "0.0.0.0",
-    "local_port":1080,
-    "password":"a-test-passwd",
-    "timeout":300,
-    "method":"chacha30",
-    "fast_open": true,
-    "mode": "tcp_only"
+    "local_port":   ${vrouter.config.shadowsocks.overKtPort},
+    "password":     "a-test-passwd",
+    "timeout":      20,
+    "method":       "chacha30",
+    "fast_open":    true,
+    "mode":         "tcp_only"
 }`
         return expect(data).to.equal(expectContent)
       })

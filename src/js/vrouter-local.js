@@ -703,7 +703,7 @@ stop() {
 }`
         break
       case 'ss-overKt':
-        cfg = this.config.shadowsocks.dns
+        cfg = this.config.shadowsocks.overKt
         content = String.raw`
 {
     "server":       "127.0.0.1",
