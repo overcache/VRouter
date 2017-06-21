@@ -93,6 +93,18 @@ class VRouter {
       })
   }
 
+  initVM () {
+    /*
+     * 0. copy files to vm, save to right dir
+     * 1. remove dnsmasq && install dnsmasq-full
+     * 2. install ipset
+     * 3. install kcptun
+     * 4. install shadowsocks
+     * 5. exec watchdog by crontab
+     * 5. enable kcptun/shadowsocks/crontab service
+     * 6. restart kcptun/shadowsocks/dnsmasq/firewall/ipset?
+     */
+  }
   importVM (vmFile) {
     const cmd = `VBoxManage import ${vmFile}`
     return this.localExec(cmd)
@@ -476,6 +488,7 @@ class VRouter {
       })
   }
 
+  // need fixed. think about global mode.
   async generateIPsets () {
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.ipsetsFile))
     const promise = new Promise((resolve, reject) => {
@@ -484,9 +497,9 @@ class VRouter {
     })
 
     // create or flush ipset
-    ws.write(`create ${this.config.firewall.ipsets.lan} hash:net family inet hashsize 1024 maxelem 65536\n`)
-    ws.write(`create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536\n`)
-    ws.write(`create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536\n`)
+    ws.write(`create ${this.config.firewall.ipsets.lan}   hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    ws.write(`create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    ws.write(`create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
 
     const lan = await this.getCfgContent(this.config.firewall.lanNetworks)
     lan.split('\n').forEach((line) => {
@@ -549,6 +562,7 @@ class VRouter {
   generateFWRulesHelper (str) {
     return `iptables -t nat -A PREROUTING -d ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
+
   async generateFWRules (protocol, mode = 'whitelist') {
     // whitelist/blacklist/global/none
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.firewallFile))
@@ -563,9 +577,10 @@ class VRouter {
     ws.write('# com.icymind.vrouter\n')
     ws.write(`# workMode: ${mode}\n`)
     ws.write('# create ipsets in order to avoid errors when run firewall.user\n')
-    ws.write(`ipset create ${this.config.firewall.ipsets.lan} hash:net -exist\n`)
-    ws.write(`ipset create ${this.config.firewall.ipsets.white} hash:net -exist\n`)
-    ws.write(`ipset create ${this.config.firewall.ipsets.black} hash:net -exist\n`)
+    ws.write(`ipset create ${this.config.firewall.ipsets.lan}   hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    ws.write(`ipset create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    ws.write(`ipset create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    ws.write(`/usr/sbin/ipset restore -exist -file ${this.config.vrouter.configDir}/${this.config.firewall.ipsetsFile} &> /dev/null\n`)
 
     const serverIP = await this.getServerIP()
     if (!serverIP) {

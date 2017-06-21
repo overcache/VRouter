@@ -436,7 +436,7 @@ describe('Test ability of modify vm', function () {
   })
 })
 
-describe('Test ability of manage file', function () {
+describe.only('Test ability of manage file', function () {
   let vrouter
   before('get a vrouter instance', function () {
     return fs.readJson(configFile)
@@ -562,9 +562,11 @@ describe('Test ability of manage file', function () {
 # com.icymind.vrouter
 # workMode: none
 # create ipsets in order to avoid errors when run firewall.user
-ipset create LAN hash:net -exist
-ipset create WHITELIST hash:net -exist
-ipset create BLACKLIST hash:net -exist`
+ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+/usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
+`
         return expect(data.trim()).to.equal(expectContent.trim())
       })
   })
@@ -588,9 +590,10 @@ ipset create BLACKLIST hash:net -exist`
 # com.icymind.vrouter
 # workMode: global
 # create ipsets in order to avoid errors when run firewall.user
-ipset create LAN hash:net -exist
-ipset create WHITELIST hash:net -exist
-ipset create BLACKLIST hash:net -exist
+ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+/usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
 # bypass server ip
 iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
 iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
@@ -627,9 +630,10 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
 # com.icymind.vrouter
 # workMode: whitelist
 # create ipsets in order to avoid errors when run firewall.user
-ipset create LAN hash:net -exist
-ipset create WHITELIST hash:net -exist
-ipset create BLACKLIST hash:net -exist
+ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+/usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
 # bypass server ip
 iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
 iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
@@ -669,9 +673,10 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
 # com.icymind.vrouter
 # workMode: blacklist
 # create ipsets in order to avoid errors when run firewall.user
-ipset create LAN hash:net -exist
-ipset create WHITELIST hash:net -exist
-ipset create BLACKLIST hash:net -exist
+ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+/usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
 # bypass server ip
 iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
 iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
@@ -708,9 +713,10 @@ iptables -t nat -A OUTPUT -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --
 # com.icymind.vrouter
 # workMode: whitelist
 # create ipsets in order to avoid errors when run firewall.user
-ipset create LAN hash:net -exist
-ipset create WHITELIST hash:net -exist
-ipset create BLACKLIST hash:net -exist
+ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
+/usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
 # bypass server ip
 iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
 iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
