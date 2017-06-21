@@ -701,35 +701,37 @@ class VRouter {
       `127.0.0.1#${this.config.shadowsocks.dnsPort}`
     ]
   }
-  generateNetworkCfg () {
-    const cfg = String.raw`
-config interface 'loopback'
-        option ifname 'lo'
-        option proto 'static'
-        option ipaddr '127.0.0.1'
-        option netmask '255.0.0.0'
-
-config interface 'lan'
-        option ifname 'eth0'
-        option type 'bridge'
-        option proto 'static'
-        option ipaddr '${this.config.vrouter.ip}'
-        option netmask '255.255.255.0'
-        option ip6assign '60'
-
-config interface 'wan'
-        option ifname 'eth1'
-        option proto 'dhcp'
-
-config interface 'wan6'
-        option ifname 'eth1'
-        option proto 'dhcpv6'
-
-config globals 'globals'
-        # option ula_prefix 'fd2c:a5b2:c85d::/48'
-`
-    return cfg.trim()
-  }
+/*
+ *   generateNetworkCfg () {
+ *     const cfg = String.raw`
+ * config interface 'loopback'
+ *         option ifname 'lo'
+ *         option proto 'static'
+ *         option ipaddr '127.0.0.1'
+ *         option netmask '255.0.0.0'
+ * 
+ * config interface 'lan'
+ *         option ifname 'eth0'
+ *         option type 'bridge'
+ *         option proto 'static'
+ *         option ipaddr '${this.config.vrouter.ip}'
+ *         option netmask '255.255.255.0'
+ *         option ip6assign '60'
+ * 
+ * config interface 'wan'
+ *         option ifname 'eth1'
+ *         option proto 'dhcp'
+ * 
+ * config interface 'wan6'
+ *         option ifname 'eth1'
+ *         option proto 'dhcpv6'
+ * 
+ * config globals 'globals'
+ *         # option ula_prefix 'fd2c:a5b2:c85d::/48'
+ * `
+ *     return cfg.trim()
+ *   }
+ */
   async generateDnsmasqCf (mode) {
     const DNSs = this.getDNSServer()
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile))

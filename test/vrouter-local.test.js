@@ -10,9 +10,8 @@ const { VRouter } = require(path.join(__dirname, '../js/vrouter-local.js'))
 const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'))
 // const configFile = path.join(__dirname, './config-test.json')
 const configFile = path.join(__dirname, '../config/config.json')
-// const vmFile = path.join(os.homedir(), 'Desktop', 'com.icymind.test.ova')
 
-describe.only('Test ability of building VM', function () {
+describe.skip('Test ability of building VM', function () {
   this.timeout(600000)
   let vrouter
   before('get vrouter instance', function () {
@@ -70,7 +69,7 @@ describe('Test ability of manage vm', function () {
       })
       .catch((err) => {
         console.log(err)
-        return vrouter.importVM(vmFile)
+        return vrouter.buildVM()
           .then(() => {
             isImportByTest = true
           })
@@ -357,6 +356,7 @@ describe('Test ability of modify vm', function () {
           .to.be.rejectedWith(Error, "bridged adapter doesn't active")
       })
   })
+
   it('configVMNetwork should config adapter1 as with host.ip', function () {
     this.timeout(10000)
     const promise = vrouter.stopVM('poweroff')
@@ -364,14 +364,13 @@ describe('Test ability of modify vm', function () {
         return vrouter.configVMNetwork()
       })
       .then(() => {
-        return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep hostonlyadapter')
+        return vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep hostonlyadapter`)
       })
       .then((output) => {
         return vrouter.getInfIP(output.trim().split('=')[1])
       })
     return expect(promise).to.eventually.equal(vrouter.config.host.ip)
   })
-
   it('configVMNetwork should config adapter1 as hostonly, adapter2 as bridged', function () {
     this.timeout(10000)
     const promise = vrouter.stopVM('poweroff')
@@ -379,7 +378,7 @@ describe('Test ability of modify vm', function () {
         return vrouter.configVMNetwork()
       })
       .then(() => {
-        return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep "nic[12]"')
+        return vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep "nic[12]"`)
       })
     return expect(promise).to.eventually.become('nic1="hostonly"\nnic2="bridged"\n')
   })
@@ -391,7 +390,7 @@ describe('Test ability of modify vm', function () {
         return vrouter.toggleSerialPort('on')
       })
       .then(() => {
-        return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep "uart.*1"')
+        return vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep "uart.*1"`)
       })
     return expect(promise).to.eventually.equal(
       `uart1="0x03f8,4"\nuartmode1="server,${path.join(vrouter.config.host.configDir, vrouter.config.host.serialFile)}"\n`
@@ -403,11 +402,11 @@ describe('Test ability of modify vm', function () {
         return vrouter.toggleSerialPort('off')
       })
       .then(() => {
-        return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep uart1')
+        return vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep uart1`)
       })
     return expect(promise).to.eventually.equal('uart1="off"\n')
   })
-  it.skip("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
+  it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
     // need fixed
     // When test alone, it pass test
     // When test togeter, Uncaught Error: read ECONNRESET
@@ -448,7 +447,7 @@ describe('Test ability of modify vm', function () {
   })
 })
 
-describe.skip('Test ability of manage file', function () {
+describe('Test ability of manage file', function () {
   let vrouter
   before('get a vrouter instance', function () {
     return fs.readJson(configFile)
@@ -473,7 +472,7 @@ describe.skip('Test ability of manage file', function () {
   it('getCfgContent(file) should be fulfilled with content.', function () {
     const cfg = vrouter.config.firewall.whiteIPs
     const cfgPath = path.join(vrouter.config.host.configDir, cfg)
-    const template = path.join(__dirname, '../src/config', cfg)
+    const template = path.join(__dirname, '../config', cfg)
     let originTemplateData = ''
     let originCfgData = ''
     return fs.readFile(cfgPath, 'utf8').catch(() => {})
@@ -1037,38 +1036,5 @@ stop() {
       .then(() => {
         return fs.remove(dest)
       })
-  })
-  it('generateNetworkCfg should should return expect string', function () {
-    const originIP = vrouter.config.vrouter.ip
-    vrouter.config.vrouter.ip = '7.7.7.7'
-    const ret = vrouter.generateNetworkCfg()
-    vrouter.config.vrouter.ip = originIP
-    const expectContent = String.raw`
-config interface 'loopback'
-        option ifname 'lo'
-        option proto 'static'
-        option ipaddr '127.0.0.1'
-        option netmask '255.0.0.0'
-
-config interface 'lan'
-        option ifname 'eth0'
-        option type 'bridge'
-        option proto 'static'
-        option ipaddr '7.7.7.7'
-        option netmask '255.255.255.0'
-        option ip6assign '60'
-
-config interface 'wan'
-        option ifname 'eth1'
-        option proto 'dhcp'
-
-config interface 'wan6'
-        option ifname 'eth1'
-        option proto 'dhcpv6'
-
-config globals 'globals'
-        # option ula_prefix 'fd2c:a5b2:c85d::/48'
-    `
-    return expect(ret.trim()).to.be.equal(expectContent.trim())
   })
 })
