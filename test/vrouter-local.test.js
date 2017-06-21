@@ -395,7 +395,7 @@ describe('Test ability of modify vm', function () {
       })
     return expect(promise).to.eventually.equal('uart1="off"\n')
   })
-  it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
+  it.only("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
     // need fixed
     // When test alone, it pass test
     // When test togeter, Uncaught Error: read ECONNRESET
@@ -413,7 +413,6 @@ describe('Test ability of modify vm', function () {
         // const cmd = `ping -c 20 ${vrouter.config.vrouter.ip}`
         return vrouter.localExec(cmd)
           .then(() => {
-            console.log('ping sucess.')
             return Promise.resolve()
           })
           .catch((err) => {
