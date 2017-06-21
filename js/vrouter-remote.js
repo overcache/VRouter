@@ -43,7 +43,7 @@ class VRouterRemote {
     return this.remoteExec(cmd)
   }
   installSS () {
-    const cmd = `ls ${this.config.vrouter.configDir}/*.ipk | xargs opkg install`
+    const cmd = `ls ${this.config.vrouter.configDir}/third_party/*.ipk | xargs opkg install`
     return this.remoteExec(cmd)
   }
   shutdown () {

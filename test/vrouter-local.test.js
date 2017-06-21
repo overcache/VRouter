@@ -27,15 +27,12 @@ describe.only('Test ability of building VM', function () {
         return vrouter.wait(5000)
       })
       .then(() => {
-        console.log('startting vm')
         return vrouter.startVM()
       })
       .then(() => {
-        console.log('wait vm to finish startting')
         return vrouter.wait(30000)
       })
       .then(() => {
-        console.log('vm started, now loggin')
         return vrouter.connect()
       })
       .then((vrouterRemote) => {
@@ -48,9 +45,14 @@ describe.only('Test ability of building VM', function () {
           })
       })
   })
-  it.only('test serialExec.', function () {
+  it('test serialExec.', function () {
     // return vrouter.serialExec('touch /serialExec')
-    return vrouter.serialExec('echo `date` > /`date "+%H%M%S"`')
+    return vrouter.serialExec('echo `date` > /`date "+%H%M%S"`', 'test')
+  })
+  it('scp', function () {
+    const src = path.join(__dirname, '..', 'third_party')
+    const dst = vrouter.config.vrouter.configDir + '/third_party/'
+    return vrouter.scp(src, dst)
   })
 })
 

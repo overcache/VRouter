@@ -43,7 +43,7 @@ class VRouter {
       })
     })
   }
-  async serialExec (cmd) {
+  async serialExec (cmd, msg) {
     const serialPortState = await this.isSerialPortOn()
 
     // toggleSerialPort on
@@ -74,13 +74,13 @@ class VRouter {
 
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const pre = `echo "" |  nc -U "${serialPath}"`
-    const serialCmd = `echo "${cmd}" | nc -U '${serialPath}'`
+    const message = msg || 'executing'
+    const serialCmd = `echo "echo '>>>VRouter: ${message}' >> /dev/kmsg && ${cmd} && echo '>>>VRouter: done' >> /dev/kmsg" | nc -U '${serialPath}'`
     await this.localExec(pre)
       .then(() => {
         return this.localExec(pre)
       })
       .then(() => {
-        console.log(serialCmd)
         return this.localExec(serialCmd)
       })
   }
@@ -89,27 +89,30 @@ class VRouter {
     let image = imagePath
     if (!image) {
       // download
-      try {
-        image = await this.downloadFile(this.config.vrouter.imageUrl)
-        console.log('download sucess.')
-        console.log(image)
-      } catch (err) {
-        console.log(err)
-        throw Error('download failed')
+      const oldImage = path.join(this.config.host.configDir, path.basename(this.config.vrouter.imageUrl))
+      const hashValue = await this.hashFile(oldImage)
+      if (hashValue === this.config.vrouter.imageSha256) {
+        image = oldImage
+      } else {
+        try {
+          image = await this.downloadFile(this.config.vrouter.imageUrl)
+          console.log('download image sucess.')
+          // console.log(image)
+        } catch (err) {
+          console.log(err)
+          throw Error('download failed')
+        }
       }
     }
     const existed = await this.isVRouterExisted()
       .then(() => true)
       .catch(() => false)
 
-    console.log(existed)
     if (!deleteFirst && existed) {
       throw Error('vrouter already existed')
     }
     if (existed) {
-      console.log('deleting')
       await this.deleteVM(true)
-      console.log('deleted')
     }
     // specify size: 64M
     const vdiSize = 67108864
@@ -148,16 +151,26 @@ class VRouter {
           })
       })
       .then(() => {
-        return this.configVMLanIP({
-          changepassword: true,
-          reboot: true,
-          changeTZ: true,
-          installPackage: true
-        })
+        return this.changeVMPasswd()
+      })
+      .then(() => {
+        return this.changeVMTZ()
+      })
+      .then(() => {
+        return this.configVMLanIP()
+          .then(() => {
+            return this.wait(5000)
+          })
+      })
+      .then(() => {
+        return this.installPackage()
+          .then(() => {
+            return this.wait(20000)
+          })
       })
       .then(() => {
         const src = path.join(__dirname, '..', 'third_party')
-        const dst = this.config.vrouter.configDir
+        const dst = this.config.vrouter.configDir + '/third_party/'
         return this.scp(src, dst)
       })
       .then(() => {
@@ -517,10 +530,10 @@ class VRouter {
         uci set system.@system[0].timezone='HKT-8'
         uci set system.@system[0].zonename='Asia/Hong Kong'
         uci commit system`
-    return this.serialExec(cc.trim().split('\n').map(line => line.trim()).join(' && '))
+    return this.serialExec(cc.trim().split('\n').map(line => line.trim()).join(' && '), 'change timezone')
   }
   async changeVMPasswd () {
-    return this.serialExec("echo -e 'root\\nroot' | (passwd root)")
+    return this.serialExec("echo -e 'root\\nroot' | (passwd root)", 'change password')
   }
   async installPackage () {
     const subCmds = []
@@ -528,7 +541,8 @@ class VRouter {
     subCmds.push('sleep 8')
     subCmds.push('opkg update >> /vrouter.log')
     subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server >> /vrouter.log')
-    return this.serialExec(subCmds.join(' && '))
+    subCmds.push('/etc/init.d/dropbear restart')
+    return this.serialExec(subCmds.join(' && '), 'install packages')
   }
 
   async configVMLanIP () {
@@ -537,7 +551,7 @@ class VRouter {
     subCmds.push(`uci set network.lan.ipaddr='${this.config.vrouter.ip}'`)
     subCmds.push('uci commit network')
     subCmds.push('/etc/init.d/network restart >> /vrouter.log')
-    return this.serialExec(subCmds.join(' && '))
+    return this.serialExec(subCmds.join(' && '), 'config lan ipaddr')
   }
 
   // need fixed. think about global mode.
@@ -912,7 +926,6 @@ config timeserver ntp
 
   downloadFile (src, dest) {
     const protocol = (new URL(src)).protocol
-    console.log(protocol)
     const method = protocol === 'https:' ? https : http
     let destination = dest
     if (!dest) {
@@ -932,7 +945,16 @@ config timeserver ntp
       })
     })
   }
-  hashFile (file) {
+  async hashFile (file) {
+    try {
+      const stats = await fs.stat(file)
+      if (!stats.isFile()) {
+        throw Error('file not existed')
+      }
+    } catch (err) {
+      return ''
+    }
+
     var algo = 'sha256'
     var shasum = crypto.createHash(algo)
     var s = fs.ReadStream(file)
