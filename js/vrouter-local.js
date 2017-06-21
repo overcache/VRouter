@@ -157,6 +157,9 @@ class VRouter {
         return this.changeVMPasswd()
       })
       .then(() => {
+        return this.changeDnsmasq()
+      })
+      .then(() => {
         return this.changeVMTZ()
       })
       .then(() => {
@@ -177,12 +180,24 @@ class VRouter {
         return this.scp(src, dst)
       })
       .then(() => {
+        return this.scpConfigAll()
+      })
+      .then(() => {
         return this.connect()
       })
       .then((remote) => {
         return remote.installKt()
           .then(() => {
+            return this.enableService('kcptun')
+          })
+          .then(() => {
             return remote.installSS()
+          })
+          .then(() => {
+            return this.enableService('shadowsocks')
+          })
+          .then(() => {
+            return this.enableService('cron')
           })
           .then(() => {
             return remote.shutdown()
@@ -545,6 +560,18 @@ class VRouter {
     await this.localExec(cmd)
   }
 
+  changeDnsmasq () {
+    const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.config"
+    return this.serialExec(cmd, 'changeDnsmasq')
+  }
+  enableService (service) {
+    const cmd = `/etc/init.d/${service} enable && /etc/init.d/${service} restart`
+    return this.serialExec(cmd, `enable ${service}`)
+  }
+  configWatchdog () {
+    const cmd = `crontab ${this.config.vrouter.configDir}/${this.config.firewall.watchdog}`
+    return this.serialExec(cmd, 'config watchdog')
+  }
   async changeVMTZ () {
     const cc = String.raw`
         uci set system.@system[0].hostname='VRouter'
@@ -577,10 +604,15 @@ class VRouter {
 
   // need fixed. think about global mode.
   async generateIPsets () {
-    const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.ipsetsFile))
+    const cfgPath = path.join(this.config.host.configDir, this.config.firewall.ipsetsFile)
+    const ws = fs.createWriteStream(cfgPath)
     const promise = new Promise((resolve, reject) => {
-      ws.on('finish', resolve)
-      ws.on('error', reject)
+      ws.on('finish', () => {
+        resolve(cfgPath)
+      })
+      ws.on('error', (err) => {
+        reject(err)
+      })
     })
 
     // create or flush ipset
@@ -650,12 +682,17 @@ class VRouter {
     return `iptables -t nat -A PREROUTING -d ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
 
-  async generateFWRules (protocol, mode = 'whitelist') {
+  async generateFWRules (protocol = 'shadowsocks', mode = 'whitelist') {
     // whitelist/blacklist/global/none
-    const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.firewallFile))
+    const cfgPath = path.join(this.config.host.configDir, this.config.firewall.firewallFile)
+    const ws = fs.createWriteStream(cfgPath)
     const promise = new Promise((resolve, reject) => {
-      ws.on('finish', resolve)
-      ws.on('error', reject)
+      ws.on('finish', () => {
+        resolve(cfgPath)
+      })
+      ws.on('error', (err) => {
+        reject(err)
+      })
     })
     const redirPort = protocol === 'kcptun'
       ? this.config.shadowsocks.overKtPort
@@ -722,12 +759,17 @@ class VRouter {
       `127.0.0.1#${this.config.shadowsocks.dnsPort}`
     ]
   }
-  async generateDnsmasqCf (mode) {
+  async generateDnsmasqCf (mode = 'none') {
     const DNSs = this.getDNSServer()
-    const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile))
+    const cfgPath = path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile)
+    const ws = fs.createWriteStream(cfgPath)
     const promise = new Promise((resolve, reject) => {
-      ws.on('finish', resolve)
-      ws.on('reject', reject)
+      ws.on('finish', () => {
+        resolve(cfgPath)
+      })
+      ws.on('error', (err) => {
+        reject(err)
+      })
     })
 
     if (mode === 'none') {
@@ -762,6 +804,14 @@ class VRouter {
     ws.end()
     return promise
   }
+  generateCronJob () {
+    const cfgPath = path.join(this.config.host.configDir, this.config.firewall.cronFile)
+    const content = `*/30 * * * * ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`
+    return fs.outputFile(cfgPath, content, 'utf8')
+      .then(() => {
+        return Promise.resolve(cfgPath)
+      })
+  }
   generateWatchdog () {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.watchdogFile)
     const content = String.raw`
@@ -779,6 +829,9 @@ if ! (pgrep ss-redir && pgrep ss-tunnel);then
     echo "restart ss" >> /root/watchdog.log
 fi`
     return fs.outputFile(cfgPath, content, 'utf8')
+      .then(() => {
+        return Promise.resolve(cfgPath)
+      })
   }
   generateService (type = 'shadowsocks') {
     const cfgPath = path.join(this.config.host.configDir,
@@ -829,6 +882,9 @@ stop() {
     killall kcptun
 }`
     return fs.outputFile(cfgPath, type === 'shadowsocks' ? ss : kt)
+      .then(() => {
+        return Promise.resolve(cfgPath)
+      })
   }
   generateConfig (type = 'shadowsocks') {
     let cfg
@@ -876,6 +932,7 @@ stop() {
     "timeout":${this.config.shadowsocks.server.timeout},
     "method":"${this.config.shadowsocks.server.method}",
     "fast_open": ${this.config.shadowsocks.server.fastOpen},
+    "tunnel_address": "8.8.8.8:53",
     "mode": "udp_only"
 }`
         break
@@ -895,25 +952,9 @@ stop() {
     }
     const cfgPath = path.join(this.config.host.configDir, cfg)
     return fs.outputFile(cfgPath, content)
-  }
-
-  generateTZCfg () {
-    const content = String.raw`
-config system
-        option hostname VRouter
-        option zonename 'Asia/Hong Kong'
-        option timezone 'HKT-8'
-        option conloglevel '8'
-        option cronloglevel '8'
-config timeserver ntp
-        list server     0.openwrt.pool.ntp.org
-        list server     1.openwrt.pool.ntp.org
-        list server     2.openwrt.pool.ntp.org
-        list server     3.openwrt.pool.ntp.org
-        option enabled 1
-        option enable_server 0
-`
-    return content
+      .then(() => {
+        return Promise.resolve(cfgPath)
+      })
   }
 
   downloadFile (src, dest) {
@@ -976,6 +1017,132 @@ config timeserver ntp
         }
       })
     })
+  }
+  copyTemplate (fileName) {
+    const template = path.join(__dirname, '..', 'config', fileName)
+    const dest = path.join(this.config.host.configDir, fileName)
+    return fs.stat(dest)
+      .then(() => {
+        return Promise.resolve(dest)
+      })
+      .catch(() => {
+        return fs.copy(template, dest)
+          .then(() => {
+            return Promise.resolve(dest)
+          })
+      })
+  }
+  async scpConfigAll () {
+    await this.generateService('shadowsocks')
+      .then((p) => {
+        return this.scp(p, '/etc/init.d/')
+      })
+    await this.generateService('kcptun')
+      .then((p) => {
+        return this.scp(p, '/etc/init.d/')
+      })
+    await this.copyTemplate(this.config.shadowsocks.client)
+      .then((p) => {
+        return this.scp(p, this.config.vrouter.configDir)
+      })
+    await this.copyTemplate(this.config.shadowsocks.dns)
+      .then((p) => {
+        return this.scp(p, this.config.vrouter.configDir)
+      })
+    await this.copyTemplate(this.config.shadowsocks.overKt)
+      .then((p) => {
+        return this.scp(p, this.config.vrouter.configDir)
+      })
+    await this.copyTemplate(this.config.kcptun.client)
+      .then((p) => {
+        return this.scp(p, this.config.vrouter.configDir)
+      })
+    await this.generateDnsmasqCf()
+      .then((p) => {
+        return this.scp(p, '/etc/dnsmasq.d/')
+      })
+    await this.generateIPsets()
+      .then((p) => {
+        return this.scp(p, this.config.vrouter.configDir)
+      })
+    await this.generateFWRules()
+      .then((p) => {
+        return this.scp(p, '/etc/')
+      })
+    await this.generateWatchdog()
+      .then((p) => {
+        return this.scp(p, this.config.vrouter.configDir)
+      })
+    await this.generateCronJob()
+      .then((p) => {
+        return this.scp(p, this.config.vrouter.configDir)
+      })
+  }
+  async scpConfig (type = 'shadowsocks') {
+    switch (type) {
+      case 'ssService':
+        await this.generateService('shadowsocks')
+          .then((p) => {
+            return this.scp(p, '/etc/init.d/')
+          })
+        break
+      case 'ktService':
+        await this.generateService('kcptun')
+          .then((p) => {
+            return this.scp(p, '/etc/init.d/')
+          })
+        break
+      case 'shadowsocks':
+        await this.copyTemplate(this.config.shadowsocks.client)
+          .then((p) => {
+            return this.scp(p, this.config.vrouter.configDir)
+          })
+        await this.copyTemplate(this.config.shadowsocks.dns)
+          .then((p) => {
+            return this.scp(p, this.config.vrouter.configDir)
+          })
+        await this.copyTemplate(this.config.shadowsocks.overKt)
+          .then((p) => {
+            return this.scp(p, this.config.vrouter.configDir)
+          })
+        break
+      case 'kcptun':
+        await this.copyTemplate(this.config.kcptun.client)
+          .then((p) => {
+            return this.scp(p, this.config.vrouter.configDir)
+          })
+        break
+      case 'dnsmasq':
+        await this.generateDnsmasqCf()
+          .then((p) => {
+            return this.scp(p, '/etc/dnsmasq.d/')
+          })
+        break
+      case 'ipset':
+        await this.generateIPsets()
+          .then((p) => {
+            return this.scp(p, this.config.vrouter.configDir)
+          })
+        break
+      case 'firewall':
+        await this.generateFWRules()
+          .then((p) => {
+            return this.scp(p, '/etc/')
+          })
+        break
+      case 'watchdog':
+        await this.generateWatchdog()
+          .then((p) => {
+            return this.scp(p, this.config.vrouter.configDir)
+          })
+        break
+      case 'cron':
+        await this.generateCronJob()
+          .then((p) => {
+            return this.scp(p, this.config.vrouter.configDir)
+          })
+        break
+    }
   }
 
   connect (startFirst) {

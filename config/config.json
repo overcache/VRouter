@@ -75,7 +75,8 @@
         "dnsmasqFile": "custom.conf",
         "firewallFile": "firewall.user",
         "ipsetsFile": "custom.ipset",
-        "watchdogFile": "watchdog"
+        "watchdogFile": "watchdog",
+        "cronFile": "vrouter-cron"
     },
     "third_party": "third_party"
 }

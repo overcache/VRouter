@@ -11,7 +11,7 @@ const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'
 // const configFile = path.join(__dirname, './config-test.json')
 const configFile = path.join(__dirname, '../config/config.json')
 
-describe('Test ability of building VM', function () {
+describe.skip('Test ability of building VM', function () {
   this.timeout(600000)
   let vrouter
   before('get vrouter instance', function () {
@@ -195,7 +195,11 @@ describe('Test ability of manage vm', function () {
     return vrouter.getHostonlyInf()
       .then((arr) => {
         return expect(vrouter.getInfIP(arr[0])).to.eventually.equal(vrouter.config.host.ip)
-          .then(() => expect(vrouter.getInfIP(arr[1])).to.eventually.equal(''))
+          .then(() => {
+            if (arr[1]) {
+              return expect(vrouter.getInfIP(arr[1])).to.eventually.equal('')
+            }
+          })
       })
   })
   it('Test createHostonlyInf and removeHostonlyInf', function () {
@@ -776,7 +780,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
         originContent = data || ''
       })
       .then(() => {
-        return vrouter.generateDnsmasqCf()
+        return vrouter.generateDnsmasqCf('blacklist')
       })
       .then(() => {
         return fs.readFile(cfgPath, 'utf8')
@@ -1026,6 +1030,7 @@ stop() {
     "timeout":300,
     "method":"chacha30",
     "fast_open": true,
+    "tunnel_address": "8.8.8.8:53",
     "mode": "udp_only"
 }`
         return expect(data).to.equal(expectContent)
@@ -1036,6 +1041,7 @@ stop() {
       })
   })
 
+  it('scpAll need test!!!')
   it.skip('downloadFile should be able download a complete file', function () {
     this.timeout(50000)
     const url = 'http://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz'
