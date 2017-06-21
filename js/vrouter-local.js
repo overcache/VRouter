@@ -145,6 +145,9 @@ class VRouter {
         return this.configVMNetwork()
       })
       .then(() => {
+        return this.lockGUIConfig()
+      })
+      .then(() => {
         return this.startVM('gui')
           .then(() => {
             return this.wait(30000)
@@ -257,6 +260,10 @@ class VRouter {
 
   hideVM (action = true) {
     const cmd = `VBoxManage setextradata ${this.config.vrouter.name} GUI/HideFromManager ${action}`
+    return this.localExec(cmd)
+  }
+  lockGUIConfig (action = true) {
+    const cmd = `VBoxManage setextradata ${this.config.vrouter.name} GUI/PreventReconfiguration ${action}`
     return this.localExec(cmd)
   }
 
