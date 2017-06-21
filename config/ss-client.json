@@ -1,0 +1,11 @@
+{
+    "server":"demo.example.com",
+    "server_port":8989,
+    "local_address": "0.0.0.0",
+    "local_port":1080,
+    "password":"demo",
+    "timeout":300,
+    "method":"chacha20",
+    "fast_open": true,
+    "mode": "tcp_only"
+}
