@@ -6,13 +6,13 @@ var chai = require('chai')
 var chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 const expect = chai.expect
-const { VRouter } = require(path.join(__dirname, '../src/js/vrouter-local.js'))
-const { VRouterRemote } = require(path.join(__dirname, '../src/js/vrouter-remote.js'))
+const { VRouter } = require(path.join(__dirname, '../js/vrouter-local.js'))
+const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'))
 // const configFile = path.join(__dirname, './config-test.json')
-const configFile = path.join(__dirname, '../src/config/config.json')
+const configFile = path.join(__dirname, '../config/config.json')
 // const vmFile = path.join(os.homedir(), 'Desktop', 'com.icymind.test.ova')
 
-describe('Test ability of building VM', function () {
+describe.skip('Test ability of building VM', function () {
   this.timeout(600000)
   let vrouter
   before('get vrouter instance', function () {
@@ -22,14 +22,20 @@ describe('Test ability of building VM', function () {
       })
   })
   it('buildVM', function () {
-    return vrouter.buildVM('/Users/simon/Desktop/openwrt-15.05.1-x86-generic-combined-ext4.img.gz', true)
+    return vrouter.buildVM(null, true)
       .then(() => {
+        return vrouter.wait(5000)
+      })
+      .then(() => {
+        console.log('startting vm')
         return vrouter.startVM()
       })
       .then(() => {
+        console.log('wait vm to finish startting')
         return vrouter.wait(30000)
       })
       .then(() => {
+        console.log('vm started, now loggin')
         return vrouter.connect()
       })
       .then((vrouterRemote) => {
@@ -395,7 +401,7 @@ describe('Test ability of modify vm', function () {
       })
     return expect(promise).to.eventually.equal('uart1="off"\n')
   })
-  it.only("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
+  it.skip("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
     // need fixed
     // When test alone, it pass test
     // When test togeter, Uncaught Error: read ECONNRESET
@@ -436,7 +442,7 @@ describe('Test ability of modify vm', function () {
   })
 })
 
-describe.only('Test ability of manage file', function () {
+describe.skip('Test ability of manage file', function () {
   let vrouter
   before('get a vrouter instance', function () {
     return fs.readJson(configFile)

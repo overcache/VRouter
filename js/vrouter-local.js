@@ -8,7 +8,7 @@ const fs = require('fs-extra')
 const path = require('path')
 const { VRouterRemote } = require('./vrouter-remote.js')
 const { getAppDir } = require('./helper.js')
-const packageJson = require('../../package.json')
+const packageJson = require('../package.json')
 const dns = require('dns')
 const crypto = require('crypto')
 
@@ -48,28 +48,40 @@ class VRouter {
     let image = imagePath
     if (!image) {
       // download
-      throw Error('need a image to buildFrom')
+      try {
+        image = await this.downloadFile(this.config.vrouter.imageUrl)
+        console.log('download sucess.')
+        console.log(image)
+      } catch (err) {
+        console.log(err)
+        throw Error('download failed')
+      }
     }
     const existed = await this.isVRouterExisted()
-      .catch(() => false)
       .then(() => true)
+      .catch(() => false)
 
+    console.log(existed)
     if (!deleteFirst && existed) {
       throw Error('vrouter already existed')
     }
-    await this.deleteVM(true)
+    if (existed) {
+      console.log('deleting')
+      await this.deleteVM(true)
+      console.log('deleted')
+    }
     // specify size: 64M
     const vdiSize = 67108864
     const subCmds = []
     const vdi = path.join(this.config.host.configDir, this.config.vrouter.name + '.vdi')
     await fs.remove(vdi)
-    subCmds.push(`cat ${imagePath} | gunzip | ` +
+    subCmds.push(`cat "${image}" | gunzip | ` +
       `VBoxManage convertfromraw --format VDI stdin "${vdi}" ${vdiSize}`)
 
     subCmds.push(`VBoxManage createvm --name ${this.config.vrouter.name} --register`)
 
     subCmds.push(`VBoxManage modifyvm ${this.config.vrouter.name} ` +
-      ` --ostype "Linux26" --memory "256" --cpus "1" ` +
+      ` --ostype "Linux26_64" --memory "256" --cpus "1" ` +
       ` --boot1 "disk" --boot2 "none" --boot3 "none" --boot4 "none" ` +
       ` --audio "none" `)
 
@@ -89,6 +101,12 @@ class VRouter {
         return this.configVMNetwork()
       })
       .then(() => {
+        return this.startVM('gui')
+          .then(() => {
+            return this.wait(30000)
+          })
+      })
+      .then(() => {
         return this.configVMLanIP(true, true)
       })
   }
@@ -102,7 +120,7 @@ class VRouter {
      * 4. install shadowsocks
      * 5. exec watchdog by crontab
      * 5. enable kcptun/shadowsocks/crontab service
-     * 6. restart kcptun/shadowsocks/dnsmasq/firewall/ipset?
+     * 6. restart kcptun/shadowsocks/dnsmasq/firewall
      */
   }
   importVM (vmFile) {
@@ -464,8 +482,16 @@ class VRouter {
       subCmds.push("echo -e 'root\\nroot' | (passwd root)")
     }
     subCmds.push(`echo \\"${this.generateNetworkCfg().split('\n').join('\\n')}\\" > /etc/config/network`)
+    subCmds.push('/etc/init.d/network restart >> /vrouter.log')
     // subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}'/g /etc/config/network`)
-    subCmds.push('/etc/init.d/network restart')
+
+    // speedup download speed
+    subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
+    // install package
+    subCmds.push('sleep 8')
+    subCmds.push('opkg update >> /vrouter.log')
+    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server >> /vrouter.log')
+
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const pre = `echo "" |  nc -U "${serialPath}"`
     if (shutdownAfterCf) {
@@ -484,7 +510,8 @@ class VRouter {
         // return this.localExec(temp)
       })
       .then(() => {
-        return this.wait(shutdownAfterCf ? 10000 : 3000)
+        console.log('commands has been upload to vm, now wait it to finish')
+        return this.wait(shutdownAfterCf ? 30000 : 30000)
       })
   }
 
@@ -841,14 +868,19 @@ stop() {
 
   downloadFile (src, dest) {
     const protocol = (new URL(src)).protocol
-    const method = protocol === 'https' ? https : http
+    console.log(protocol)
+    const method = protocol === 'https:' ? https : http
+    let destination = dest
+    if (!dest) {
+      destination = path.join(this.config.host.configDir, path.basename(src))
+    }
     return new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(dest)
+      const file = fs.createWriteStream(destination)
       method.get(src, (response) => {
         response.pipe(file)
         file.on('finish', () => {
           file.close()
-          resolve()
+          resolve(destination)
         })
       }).on('error', (err) => {
         fs.unlink(dest)
@@ -871,17 +903,18 @@ stop() {
 
   scp (src, dst) {
     let dest = dst || this.config.vrouter.configDir
+    const opt = {
+      host: this.config.vrouter.ip,
+      username: this.config.vrouter.username,
+      password: this.config.vrouter.password,
+      path: dest
+    }
     return new Promise((resolve, reject) => {
-      scpClient.scp(src, {
-        host: this.config.vrouter.ip,
-        username: this.config.vrouter.username,
-        password: this.config.vrouter.password,
-        path: dest
-      }, (err) => {
+      scpClient.scp(src, opt, (err) => {
         if (err) {
           reject(err)
         } else {
-          resolve()
+          resolve(dest)
         }
       })
     })

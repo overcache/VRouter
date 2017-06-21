@@ -6,11 +6,11 @@ var chai = require('chai')
 var chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 const expect = chai.expect
-const { VRouter } = require(path.join(__dirname, '../src/js/vrouter-local.js'))
-const { VRouterRemote } = require(path.join(__dirname, '../src/js/vrouter-remote.js'))
-const configFile = path.join(__dirname, '../src/config/config.json')
+const { VRouter } = require(path.join(__dirname, '../js/vrouter-local.js'))
+const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'))
+const configFile = path.join(__dirname, '../config/config.json')
 
-describe.skip('Test Suite for vrouter-remote', function () {
+describe.only('Test Suite for vrouter-remote', function () {
   // const SSVersion = '3.0.5'
   // const KTVersion = '20170329'
   // const OSVersion = 'CHAOS CALMER (15.05.1, r48532)'
@@ -89,6 +89,8 @@ describe.skip('Test Suite for vrouter-remote', function () {
     const tempFile = path.join(os.tmpdir(), tempName)
     return fs.outputFile(tempFile, tempContent)
       .then(() => {
+        // return expect(vrouter.scp(tempFile, '/'))
+        // console.log(tempFile)
         return expect(vrouter.scp(tempFile, '/'))
           .to.be.fulfilled
       })
@@ -97,7 +99,10 @@ describe.skip('Test Suite for vrouter-remote', function () {
       })
       .then((output) => {
         console.log(output)
-        return expect(output).to.euqal(tempContent)
+        return expect(output).to.equal(tempContent)
+      })
+      .then(() => {
+        return remote.remoteExec(`rm /${tempFile}`)
       })
   })
 
