@@ -43,6 +43,47 @@ class VRouter {
       })
     })
   }
+  async serialExec (cmd) {
+    const serialPortState = await this.isSerialPortOn()
+
+    // toggleSerialPort on
+    if (!serialPortState) {
+      // turn vm off if necessary
+      await this.stopVM('poweroff')
+      await this.toggleSerialPort('on')
+    }
+
+    const state = await this.getVMState()
+    // startVM if necessary
+    if (state !== 'running') {
+      try {
+        await this.startVM()
+          .then(() => {
+            return this.wait(35000)
+          })
+      } catch (err) {
+        console.log(err)
+        console.log('startvm error')
+        console.log('try again')
+        await this.stopVM('poweroff')
+        console.log('turn vm off finish')
+        console.log('now try to turn vm on')
+        await this.startVM()
+      }
+    }
+
+    const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
+    const pre = `echo "" |  nc -U "${serialPath}"`
+    const serialCmd = `echo "${cmd}" | nc -U '${serialPath}'`
+    await this.localExec(pre)
+      .then(() => {
+        return this.localExec(pre)
+      })
+      .then(() => {
+        console.log(serialCmd)
+        return this.localExec(serialCmd)
+      })
+  }
 
   async buildVM (imagePath, deleteFirst = false) {
     let image = imagePath
@@ -107,7 +148,32 @@ class VRouter {
           })
       })
       .then(() => {
-        return this.configVMLanIP(true, true)
+        return this.configVMLanIP({
+          changepassword: true,
+          reboot: true,
+          changeTZ: true,
+          installPackage: true
+        })
+      })
+      .then(() => {
+        const src = path.join(__dirname, '..', 'third_party')
+        const dst = this.config.vrouter.configDir
+        return this.scp(src, dst)
+      })
+      .then(() => {
+        return this.connect()
+      })
+      .then((remote) => {
+        return remote.installKt()
+          .then(() => {
+            return remote.installSS()
+          })
+          .then(() => {
+            remote.shutdown()
+          })
+      })
+      .then(() => {
+        return this.wait(4000)
       })
   }
 
@@ -122,6 +188,11 @@ class VRouter {
      * 5. enable kcptun/shadowsocks/crontab service
      * 6. restart kcptun/shadowsocks/dnsmasq/firewall
      */
+    const src = path.join(this.config.host.configDir, 'third_party')
+    const dst = this.config.vrouter.configDir
+    return this.scp(src, dst)
+      .then(() => {
+      })
   }
   importVM (vmFile) {
     const cmd = `VBoxManage import ${vmFile}`
@@ -440,79 +511,33 @@ class VRouter {
     await this.localExec(cmd)
   }
 
-  async configVMLanIP (changepassword = true, shutdownAfterCf = false) {
-    // password: changepassword at the sametime
-    /*
-     * 0. vm must be stopped
-     * 1. open serial port
-     * 2. execute cmd
-     * 3. close serial port
-     */
-    const serialPortState = await this.isSerialPortOn()
-
-    // toggleSerialPort on
-    if (!serialPortState) {
-      // turn vm off if necessary
-      await this.stopVM('poweroff')
-      await this.toggleSerialPort('on')
-    }
-
-    const state = await this.getVMState()
-    // startVM if necessary
-    if (state !== 'running') {
-      try {
-        await this.startVM()
-          .then(() => {
-            return this.wait(35000)
-          })
-      } catch (err) {
-        console.log(err)
-        console.log('startvm error')
-        console.log('try again')
-        await this.stopVM('poweroff')
-        console.log('turn vm off finish')
-        console.log('now try to turn vm on')
-        await this.startVM()
-      }
-    }
-
-    // execute cmd
+  async changeVMTZ () {
+    const cc = String.raw`
+        uci set system.@system[0].hostname='VRouter'
+        uci set system.@system[0].timezone='HKT-8'
+        uci set system.@system[0].zonename='Asia/Hong Kong'
+        uci commit system`
+    return this.serialExec(cc.trim().split('\n').map(line => line.trim()).join(' && '))
+  }
+  async changeVMPasswd () {
+    return this.serialExec("echo -e 'root\\nroot' | (passwd root)")
+  }
+  async installPackage () {
     const subCmds = []
-    if (changepassword) {
-      subCmds.push("echo -e 'root\\nroot' | (passwd root)")
-    }
-    subCmds.push(`echo \\"${this.generateNetworkCfg().split('\n').join('\\n')}\\" > /etc/config/network`)
-    subCmds.push('/etc/init.d/network restart >> /vrouter.log')
-    // subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}'/g /etc/config/network`)
-
-    // speedup download speed
     subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
-    // install package
     subCmds.push('sleep 8')
     subCmds.push('opkg update >> /vrouter.log')
     subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server >> /vrouter.log')
+    return this.serialExec(subCmds.join(' && '))
+  }
 
-    const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
-    const pre = `echo "" |  nc -U "${serialPath}"`
-    if (shutdownAfterCf) {
-      subCmds.push('poweroff')
-    }
-    const cmd = `echo "${subCmds.join(' && ')}" | nc -U '${serialPath}'`
-    await this.localExec(pre)
-      .then(() => {
-        return this.localExec(pre)
-      })
-      .then(() => {
-        // console.log(cmd)
-        return this.localExec(cmd)
-        // const temp = `echo "touch /769081" | nc -U "${serialPath}"`
-        // console.log(temp)
-        // return this.localExec(temp)
-      })
-      .then(() => {
-        console.log('commands has been upload to vm, now wait it to finish')
-        return this.wait(shutdownAfterCf ? 30000 : 30000)
-      })
+  async configVMLanIP () {
+    // execute cmd
+    const subCmds = []
+    subCmds.push(`uci set network.lan.ipaddr='${this.config.vrouter.ip}'`)
+    subCmds.push('uci commit network')
+    subCmds.push('/etc/init.d/network restart >> /vrouter.log')
+    return this.serialExec(subCmds.join(' && '))
   }
 
   // need fixed. think about global mode.
@@ -864,6 +889,25 @@ stop() {
     }
     const cfgPath = path.join(this.config.host.configDir, cfg)
     return fs.outputFile(cfgPath, content)
+  }
+
+  generateTZCfg () {
+    const content = String.raw`
+config system
+        option hostname VRouter
+        option zonename 'Asia/Hong Kong'
+        option timezone 'HKT-8'
+        option conloglevel '8'
+        option cronloglevel '8'
+config timeserver ntp
+        list server     0.openwrt.pool.ntp.org
+        list server     1.openwrt.pool.ntp.org
+        list server     2.openwrt.pool.ntp.org
+        list server     3.openwrt.pool.ntp.org
+        option enabled 1
+        option enable_server 0
+`
+    return content
   }
 
   downloadFile (src, dest) {

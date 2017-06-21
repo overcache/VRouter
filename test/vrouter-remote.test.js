@@ -10,7 +10,7 @@ const { VRouter } = require(path.join(__dirname, '../js/vrouter-local.js'))
 const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'))
 const configFile = path.join(__dirname, '../config/config.json')
 
-describe.only('Test Suite for vrouter-remote', function () {
+describe('Test Suite for vrouter-remote', function () {
   // const SSVersion = '3.0.5'
   // const KTVersion = '20170329'
   // const OSVersion = 'CHAOS CALMER (15.05.1, r48532)'
@@ -39,6 +39,10 @@ describe.only('Test Suite for vrouter-remote', function () {
 
   it('connect should return a VRouterRemote object with correct properties', function () {
     return expect(remote instanceof VRouterRemote).to.be.true
+  })
+  it('remoteExec should be rejected when execute bad commands', function () {
+    const promise = remote.remoteExec('non-existed')
+    return expect(promise).to.be.rejected
   })
   it('Test Case for getSSVersion', function () {
     return expect(remote.getSSVersion())
@@ -113,5 +117,8 @@ describe.only('Test Suite for vrouter-remote', function () {
         const h = parseInt(output.split(':')[0], 10)
         expect(h).to.be.equal(hours)
       })
+  })
+  it.skip('shutdown sould turn vrouter off.', function () {
+    return expect(remote.shutdown()).to.be.fulfilled
   })
 })

@@ -1,3 +1,4 @@
+const path = require('path')
 class VRouterRemote {
   // todo: reconnect
   constructor (connect, config, local) {
@@ -9,17 +10,47 @@ class VRouterRemote {
   remoteExec (cmd) {
     return new Promise((resolve, reject) => {
       this.connect.exec(cmd, (err, stream) => {
-        let result = ''
+        let stdout = ''
+        let stderr = ''
         if (err) reject(err)
         stream.on('data', (data) => {
-          result += data
+          stdout += data
         })
-        stream.stderr.on('data', data => resolve(data.toString().trim()))
-        stream.on('end', () => resolve(result.toString().trim()))
+        stream.stderr.on('data', (data) => {
+          stderr += data
+        })
+        stream.on('end', () => {
+          if (stderr) {
+            return reject(stderr.toString().trim())
+          } else {
+            return resolve(stdout.toString().trim())
+          }
+        })
       })
     })
   }
 
+  initVM () {
+    const src = path.join(this.config.host.configDir, 'third_party')
+    const dst = this.config.vrouter.configDir
+    return this.scp(src, dst)
+      .then(() => {
+      })
+  }
+  installKt () {
+    const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
+      ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
+    return this.remoteExec(cmd)
+  }
+  installSS () {
+    const cmd = `ls ${this.config.vrouter.configDir}/*.ipk | xargs opkg install`
+    return this.remoteExec(cmd)
+  }
+  shutdown () {
+    const cmd = 'poweroff'
+    // do not return
+    this.remoteExec(cmd)
+  }
   getSSOverKTProcess () {
     const cmd = 'ps | grep "[s]s-redir -c .*ss-over-kt.json"'
     return this.remoteExec(cmd)

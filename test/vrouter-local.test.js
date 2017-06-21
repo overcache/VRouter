@@ -12,7 +12,7 @@ const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'
 const configFile = path.join(__dirname, '../config/config.json')
 // const vmFile = path.join(os.homedir(), 'Desktop', 'com.icymind.test.ova')
 
-describe.skip('Test ability of building VM', function () {
+describe.only('Test ability of building VM', function () {
   this.timeout(600000)
   let vrouter
   before('get vrouter instance', function () {
@@ -47,6 +47,10 @@ describe.skip('Test ability of building VM', function () {
             return vrouter.wait(5000)
           })
       })
+  })
+  it.only('test serialExec.', function () {
+    // return vrouter.serialExec('touch /serialExec')
+    return vrouter.serialExec('echo `date` > /`date "+%H%M%S"`')
   })
 })
 
