@@ -102,7 +102,6 @@ describe('Test Suite for vrouter-remote', function () {
         return remote.getFile(`/${tempName}`)
       })
       .then((output) => {
-        console.log(output)
         return expect(output).to.equal(tempContent)
       })
       .then(() => {

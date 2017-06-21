@@ -49,7 +49,7 @@ class VRouter {
     // toggleSerialPort on
     if (!serialPortState) {
       // turn vm off if necessary
-      await this.stopVM('poweroff')
+      await this.stopVM('poweroff', 8000)
       await this.toggleSerialPort('on')
     }
 
@@ -65,7 +65,9 @@ class VRouter {
         console.log(err)
         console.log('startvm error')
         console.log('try again')
-        await this.stopVM('poweroff')
+        await this.serialExec('poweroff', 'poweroff')
+        await this.wait(8000)
+        // await this.stopVM('poweroff', 8000)
         console.log('turn vm off finish')
         console.log('now try to turn vm on')
         await this.startVM()
@@ -105,8 +107,6 @@ class VRouter {
       }
     }
     const existed = await this.isVRouterExisted()
-      .then(() => true)
-      .catch(() => false)
 
     if (!deleteFirst && existed) {
       throw Error('vrouter already existed')
@@ -159,7 +159,7 @@ class VRouter {
       .then(() => {
         return this.configVMLanIP()
           .then(() => {
-            return this.wait(5000)
+            return this.wait(8000)
           })
       })
       .then(() => {
@@ -182,7 +182,10 @@ class VRouter {
             return remote.installSS()
           })
           .then(() => {
-            remote.shutdown()
+            return remote.shutdown()
+          })
+          .then(() => {
+            return remote.close().catch(() => {})
           })
       })
       .then(() => {
@@ -217,7 +220,7 @@ class VRouter {
     if (state === 'running' && !stopFirst) {
       throw Error('vm must be stopped before delete')
     }
-    await this.stopVM('poweroff')
+    await this.stopVM('poweroff', 8000)
     return this.localExec(cmd)
   }
   async startVM (type = 'headless') {
@@ -227,20 +230,29 @@ class VRouter {
       return this.localExec(cmd)
     }
   }
-  stopVM (action = 'savestate') {
+  async stopVM (action = 'savestate', waitTime = 100) {
+    const serialPortState = await this.isSerialPortOn()
+    const vmState = await this.getVMState()
+    if (serialPortState && vmState === 'running') {
+      console.log('turn off vm by serialExec')
+      return this.serialExec('poweroff', 'poweroff')
+        .then(() => {
+          return this.wait(8000)
+        })
+    }
+    if (vmState === 'saved' && action === 'poweroff') {
+      return this.localExec(`VBoxManage discardstate ${this.config.vrouter.name}`)
+        .then(() => {
+          return this.wait(5000)
+        })
+    }
     const cmd = `VBoxManage controlvm ${this.config.vrouter.name} ${action}`
-    return this.getVMState()
-      .then((state) => {
-        // "saved" "poweroff" "running"
-        if (state === 'saved' && action === 'poweroff') {
-          return this.localExec(`VBoxManage discardstate ${this.config.vrouter.name}`)
-        } else if (state === 'running') {
-          return this.localExec(cmd)
-            .then(() => {
-              return this.wait(3000)
-            })
-        }
-      })
+    if (vmState === 'running') {
+      return this.localExec(cmd)
+        .then(() => {
+          return this.wait(waitTime)
+        })
+    }
   }
 
   hideVM (action = true) {
@@ -257,7 +269,9 @@ class VRouter {
     return this.localExec(cmd)
       .then((stdout) => {
         if (stdout.indexOf(this.config.vrouter.name) < 0) {
-          return Promise.reject(Error('vm not existed'))
+          return false
+        } else {
+          return true
         }
       })
   }
@@ -701,37 +715,6 @@ class VRouter {
       `127.0.0.1#${this.config.shadowsocks.dnsPort}`
     ]
   }
-/*
- *   generateNetworkCfg () {
- *     const cfg = String.raw`
- * config interface 'loopback'
- *         option ifname 'lo'
- *         option proto 'static'
- *         option ipaddr '127.0.0.1'
- *         option netmask '255.0.0.0'
- * 
- * config interface 'lan'
- *         option ifname 'eth0'
- *         option type 'bridge'
- *         option proto 'static'
- *         option ipaddr '${this.config.vrouter.ip}'
- *         option netmask '255.255.255.0'
- *         option ip6assign '60'
- * 
- * config interface 'wan'
- *         option ifname 'eth1'
- *         option proto 'dhcp'
- * 
- * config interface 'wan6'
- *         option ifname 'eth1'
- *         option proto 'dhcpv6'
- * 
- * config globals 'globals'
- *         # option ula_prefix 'fd2c:a5b2:c85d::/48'
- * `
- *     return cfg.trim()
- *   }
- */
   async generateDnsmasqCf (mode) {
     const DNSs = this.getDNSServer()
     const ws = fs.createWriteStream(path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile))
@@ -989,9 +972,11 @@ config timeserver ntp
   }
 
   connect (startFirst) {
-    return this.isVRouterRunning()
-      .catch(() => {
-        return Promise.reject(Error("vm doesn't running."))
+    return this.getVMState()
+      .then((state) => {
+        if (state !== 'running') {
+          return Promise.reject(Error("vm doesn't running."))
+        }
       })
       .then(() => {
         return new Promise((resolve, reject) => {
@@ -1003,7 +988,7 @@ config timeserver ntp
             port: this.config.vrouter.port,
             username: this.config.vrouter.username,
             password: this.config.vrouter.password,
-            keepaliveInterval: 30000,
+            keepaliveInterval: 60000,
             readyTimeout: 1500
           })
         })

@@ -21,9 +21,9 @@ class VRouterRemote {
         })
         stream.on('end', () => {
           if (stderr) {
-            return reject(stderr.toString().trim())
+            reject(stderr.toString().trim())
           } else {
-            return resolve(stdout.toString().trim())
+            resolve(stdout.toString().trim())
           }
         })
       })
@@ -49,7 +49,7 @@ class VRouterRemote {
   shutdown () {
     const cmd = 'poweroff'
     // do not return
-    this.remoteExec(cmd)
+    return Promise.resolve(this.remoteExec(cmd))
   }
   getSSOverKTProcess () {
     const cmd = 'ps | grep "[s]s-redir -c .*ss-over-kt.json"'
@@ -139,7 +139,15 @@ class VRouterRemote {
 
   }
   close () {
-    return this.connect.end()
+    return new Promise((resolve) => {
+      try {
+        this.connect.end()
+      } catch (err) {
+        console.log(err)
+        console.log('dont panic')
+      }
+      resolve()
+    })
   }
 }
 
