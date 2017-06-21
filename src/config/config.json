@@ -1,12 +1,12 @@
 {
     "host": {
-        "ip": "10.19.37.55",
+        "ip": "10.19.28.46",
         "configDir": "",
         "serialFile": "serial"
     },
     "vrouter": {
         "name": "com.icymind.test",
-        "ip": "10.19.37.46",
+        "ip": "10.19.28.37",
         "port": 22,
         "username": "root",
         "password": "root",
@@ -55,7 +55,7 @@
         "clientPort": 1070,
         "service": "kcptun",
         "packageUrl": "https://github.com/xtaci/kcptun/releases/download/v20170525/kcptun-linux-386-20170525.tar.gz",
-        "packageSha256": "9087ec531c06efea086d722ee360f5412e143083"
+        "packageSha1": "9087ec531c06efea086d722ee360f5412e143083"
     },
     "firewall": {
         "ipsets": {
@@ -71,15 +71,11 @@
         "lanNetworks": "lan-networks.txt",
         "chinaIPs": "china-ips.txt",
         "currentMode": "",
-        "currentProtocal": "",
+        "currentProtocol": "",
         "dnsmasqFile": "custom.conf",
         "firewallFile": "firewall.user",
         "ipsetsFile": "custom.ipset",
         "watchdogFile": "watchdog"
     },
-    "dnsmasqFull": {
-        "url": "https://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/packages/base/dnsmasq-full_2.73-1_x86.ipk",
-        "sha256": "15aea190a69e7ccd12957278abd272f5e44d5b06eed84a66b3ebb71e5287198e",
-        "Depends": "libc, libnettle, kmod-ipv6, kmod-ipt-ipset"
-    }
+    "third_party": "third_party"
 }

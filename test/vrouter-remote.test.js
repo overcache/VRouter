@@ -1,6 +1,7 @@
 /* eslint-env mocha */
 const fs = require('fs-extra')
 const path = require('path')
+const os = require('os')
 var chai = require('chai')
 var chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
@@ -9,7 +10,7 @@ const { VRouter } = require(path.join(__dirname, '../src/js/vrouter-local.js'))
 const { VRouterRemote } = require(path.join(__dirname, '../src/js/vrouter-remote.js'))
 const configFile = path.join(__dirname, '../src/config/config.json')
 
-describe('Test Suite for vrouter-remote', function () {
+describe.skip('Test Suite for vrouter-remote', function () {
   // const SSVersion = '3.0.5'
   // const KTVersion = '20170329'
   // const OSVersion = 'CHAOS CALMER (15.05.1, r48532)'
@@ -32,18 +33,11 @@ describe('Test Suite for vrouter-remote', function () {
       .catch(err => console.log(err))
   })
 
-  /*
-   * after('close vrouter connection', function () {
-   *   remote.close()
-   *   return local.wait(500)
-   *     .then(() => {
-   *       return local.stopVM()
-   *     })
-   * })
-   */
+  after('close vrouter connection', function () {
+    remote && remote.close()
+  })
 
   it('connect should return a VRouterRemote object with correct properties', function () {
-    this.timeout(50000)
     return expect(remote instanceof VRouterRemote).to.be.true
   })
   it('Test Case for getSSVersion', function () {
@@ -79,13 +73,32 @@ describe('Test Suite for vrouter-remote', function () {
       remote.getKTProcess()
     ])
       .then((result) => {
-        result.forEach(p => console.log(p))
+        result.forEach(p => p && console.log(p))
       })
   })
 
-  it('Test getFile', function () {
-    return remote.getFWUsersRules()
-      .then(console.log)
+  it('getFile: /etc/config/network must equal generateNetworkCfg()', function () {
+    return remote.remoteExec('cat /etc/config/network')
+      .then((output) => {
+        return expect(output.trim()).to.equal(vrouter.generateNetworkCfg().trim())
+      })
+  })
+  it('Test scp, verify with getFile.', function () {
+    const tempName = `scp-testing-${Date.now()}.txt`
+    const tempContent = 'hello world'
+    const tempFile = path.join(os.tmpdir(), tempName)
+    return fs.outputFile(tempFile, tempContent)
+      .then(() => {
+        return expect(vrouter.scp(tempFile, '/'))
+          .to.be.fulfilled
+      })
+      .then(() => {
+        return remote.getFile(`/${tempName}`)
+      })
+      .then((output) => {
+        console.log(output)
+        return expect(output).to.euqal(tempContent)
+      })
   })
 
   it('Test Case for uptime', function () {

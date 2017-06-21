@@ -269,16 +269,6 @@ describe('Test ability of modify vm', function () {
         return vrouter.specifyBridgeAdapter(currentInf)
       })
   })
-  it('configVMNetwork should config adapter1 as hostonly, adapter2 as bridged', function () {
-    const promise = vrouter.stopVM('poweroff')
-      .then(() => {
-        return vrouter.configVMNetwork()
-      })
-      .then(() => {
-        return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep "nic[12]"')
-      })
-    return expect(promise).to.eventually.become('nic1="hostonly"\nnic2="bridged"\n')
-  })
 
   it('isNIC1ConfigedAsHostonly should be fulfilled when adapter1 was config as hostonly network', function () {
     this.timeout(5000)
@@ -356,6 +346,7 @@ describe('Test ability of modify vm', function () {
       })
   })
   it('configVMNetwork should config adapter1 as with host.ip', function () {
+    this.timeout(10000)
     const promise = vrouter.stopVM('poweroff')
       .then(() => {
         return vrouter.configVMNetwork()
@@ -368,6 +359,19 @@ describe('Test ability of modify vm', function () {
       })
     return expect(promise).to.eventually.equal(vrouter.config.host.ip)
   })
+
+  it('configVMNetwork should config adapter1 as hostonly, adapter2 as bridged', function () {
+    this.timeout(10000)
+    const promise = vrouter.stopVM('poweroff')
+      .then(() => {
+        return vrouter.configVMNetwork()
+      })
+      .then(() => {
+        return vrouter.localExec('VBoxManage showvminfo com.icymind.test --machinereadable | grep "nic[12]"')
+      })
+    return expect(promise).to.eventually.become('nic1="hostonly"\nnic2="bridged"\n')
+  })
+
   it('toggleSerialPort("on") should turnon serialport 1', function () {
     this.timeout(10000)
     const promise = vrouter.stopVM('poweroff')
@@ -391,16 +395,32 @@ describe('Test ability of modify vm', function () {
       })
     return expect(promise).to.eventually.equal('uart1="off"\n')
   })
-  it.skip("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
+  it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
     // need fixed
     // When test alone, it pass test
     // When test togeter, Uncaught Error: read ECONNRESET
     this.timeout(50000)
     // configVMLanIP will handle stopVM
+    // const promise = Promise.resolve()
     const promise = vrouter.configVMLanIP()
+      .catch((err) => {
+        console.log('error when configVMLanIP. try again')
+        console.log(err)
+        return vrouter.configVMLanIP()
+      })
       .then(() => {
-        const cmd = `ping -c 1 -t 1 ${vrouter.config.vrouter.ip}`
+        const cmd = `ping -c 1 -t 5 ${vrouter.config.vrouter.ip}`
+        // const cmd = `ping -c 20 ${vrouter.config.vrouter.ip}`
         return vrouter.localExec(cmd)
+          .then(() => {
+            console.log('ping sucess.')
+            return Promise.resolve()
+          })
+          .catch((err) => {
+            console.log('error when ping')
+            console.log(err)
+            return Promise.reject(err)
+          })
       })
     return expect(promise).to.be.fulfilled
   })
@@ -1030,7 +1050,7 @@ config interface 'wan6'
         option proto 'dhcpv6'
 
 config globals 'globals'
-        option ula_prefix 'fd2c:a5b2:c85d::/48'
+        # option ula_prefix 'fd2c:a5b2:c85d::/48'
     `
     return expect(ret.trim()).to.be.equal(expectContent.trim())
   })

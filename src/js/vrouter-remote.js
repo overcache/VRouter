@@ -86,9 +86,6 @@ class VRouterRemote {
     return this.getFile(`${this.config.firewall.file}`)
   }
 
-  async copyFiles (files) {
-    //
-  }
   async restartFirewall (copyFiles = false) {
     /*
      * 1. ipset

@@ -1,5 +1,6 @@
 const { exec } = require('child_process')
 const Client = require('ssh2').Client
+const scpClient = require('scp2')
 const { URL } = require('url')
 const http = require('http')
 const https = require('https')
@@ -426,13 +427,23 @@ class VRouter {
       await this.toggleSerialPort('on')
     }
 
-    // startVM if necessary
     const state = await this.getVMState()
+    // startVM if necessary
     if (state !== 'running') {
-      await this.startVM()
-        .then(() => {
-          return this.wait(35000)
-        })
+      try {
+        await this.startVM()
+          .then(() => {
+            return this.wait(35000)
+          })
+      } catch (err) {
+        console.log(err)
+        console.log('startvm error')
+        console.log('try again')
+        await this.stopVM('poweroff')
+        console.log('turn vm off finish')
+        console.log('now try to turn vm on')
+        await this.startVM()
+      }
     }
 
     // execute cmd
@@ -440,8 +451,8 @@ class VRouter {
     if (changepassword) {
       subCmds.push("echo -e 'root\\nroot' | (passwd root)")
     }
-    // subCmds.push(`echo "${this.generateNetworkCfg().split('\n').join('\\n')}" > /etc/config/network`)
-    subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}'/g /etc/config/network`)
+    subCmds.push(`echo \\"${this.generateNetworkCfg().split('\n').join('\\n')}\\" > /etc/config/network`)
+    // subCmds.push(`sed -i s/'192.168.1.1'/'${this.config.vrouter.ip}'/g /etc/config/network`)
     subCmds.push('/etc/init.d/network restart')
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const pre = `echo "" |  nc -U "${serialPath}"`
@@ -461,7 +472,6 @@ class VRouter {
         // return this.localExec(temp)
       })
       .then(() => {
-        // console.log('wait cmd to execute')
         return this.wait(shutdownAfterCf ? 10000 : 3000)
       })
   }
@@ -635,9 +645,9 @@ config interface 'wan6'
         option proto 'dhcpv6'
 
 config globals 'globals'
-        option ula_prefix 'fd2c:a5b2:c85d::/48'
+        # option ula_prefix 'fd2c:a5b2:c85d::/48'
 `
-    return cfg
+    return cfg.trim()
   }
   async generateDnsmasqCf (mode) {
     const DNSs = this.getDNSServer()
@@ -840,6 +850,24 @@ stop() {
       s.on('end', function () {
         var d = shasum.digest('hex')
         resolve(d)
+      })
+    })
+  }
+
+  scp (src, dst) {
+    let dest = dst || this.config.vrouter.configDir
+    return new Promise((resolve, reject) => {
+      scpClient.scp(src, {
+        host: this.config.vrouter.ip,
+        username: this.config.vrouter.username,
+        password: this.config.vrouter.password,
+        path: dest
+      }, (err) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
       })
     })
   }

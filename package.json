@@ -16,6 +16,7 @@
     "fs-extra": "^3.0.1",
     "jquery": "^3.2.1",
     "rewire": "^2.5.2",
+    "scp2": "^0.5.0",
     "semantic-ui": "^2.2.10",
     "ssh2": "^0.5.4",
     "virtualbox": "^0.1.3"
