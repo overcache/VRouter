@@ -1,11 +1,12 @@
 {
+    "ENV": "debug",
     "host": {
         "ip": "10.19.28.46",
         "configDir": "",
         "serialFile": "serial"
     },
     "vrouter": {
-        "name": "com.icymind.vrouter",
+        "name": "vrouter",
         "ip": "10.19.28.37",
         "port": 22,
         "username": "root",

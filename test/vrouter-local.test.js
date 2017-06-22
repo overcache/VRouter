@@ -11,8 +11,9 @@ const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'
 // const configFile = path.join(__dirname, './config-test.json')
 const configFile = path.join(__dirname, '../config/config.json')
 
-describe.skip('Test ability of building VM', function () {
+describe.only('Test ability of building VM', function () {
   this.timeout(600000)
+  this.slow(150000)
   let vrouter
   before('get vrouter instance', function () {
     return fs.readJson(configFile)
@@ -588,8 +589,7 @@ describe('Test ability of manage file', function () {
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-# com.icymind.vrouter
+        const expectContent = String.raw`# com.icymind.vrouter
 # workMode: none
 # create ipsets in order to avoid errors when run firewall.user
 ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
@@ -616,8 +616,7 @@ ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-# com.icymind.vrouter
+        const expectContent = String.raw`# com.icymind.vrouter
 # workMode: global
 # create ipsets in order to avoid errors when run firewall.user
 ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
@@ -656,8 +655,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-# com.icymind.vrouter
+        const expectContent = String.raw`# com.icymind.vrouter
 # workMode: whitelist
 # create ipsets in order to avoid errors when run firewall.user
 ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
@@ -699,8 +697,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-# com.icymind.vrouter
+        const expectContent = String.raw`# com.icymind.vrouter
 # workMode: blacklist
 # create ipsets in order to avoid errors when run firewall.user
 ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
@@ -739,8 +736,7 @@ iptables -t nat -A OUTPUT -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-# com.icymind.vrouter
+        const expectContent = String.raw`# com.icymind.vrouter
 # workMode: whitelist
 # create ipsets in order to avoid errors when run firewall.user
 ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
@@ -796,8 +792,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
 
   it('generateWatchdog should works', function () {
     const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.watchdogFile)
-    const expectContent = String.raw`
-#!/bin/sh
+    const expectContent = String.raw`#!/bin/sh
 # KCPTUN
 if ! pgrep kcptun;then
     /etc/init.d/kcptun restart
@@ -833,8 +828,7 @@ fi`
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const kt = String.raw`
-#!/bin/sh /etc/rc.common
+        const kt = String.raw`#!/bin/sh /etc/rc.common
 # Copyright (C) 2006-2011 OpenWrt.org
 
 START=88
@@ -875,8 +869,7 @@ stop() {
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const kt = String.raw`
-#!/bin/sh /etc/rc.common
+        const kt = String.raw`#!/bin/sh /etc/rc.common
 # Copyright (C) 2006-2011 OpenWrt.org
 
 START=90
@@ -919,7 +912,7 @@ stop() {
           port: '999',
           password: 'a-test-passwd',
           timeout: 300,
-          method: 'chacha30',
+          method: 'chacha20',
           fastOpen: true
         }
       })
@@ -930,15 +923,14 @@ stop() {
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-{
+        const expectContent = String.raw`{
     "server":"5.5.5.5",
     "server_port":999,
     "local_address": "0.0.0.0",
     "local_port":1080,
     "password":"a-test-passwd",
     "timeout":300,
-    "method":"chacha30",
+    "method":"chacha20",
     "fast_open": true,
     "mode": "tcp_only"
 }`
@@ -964,7 +956,7 @@ stop() {
           port: '999',
           password: 'a-test-passwd',
           timeout: 300,
-          method: 'chacha30',
+          method: 'chacha20',
           fastOpen: true
         }
       })
@@ -975,15 +967,14 @@ stop() {
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-{
+        const expectContent = String.raw`{
     "server":       "127.0.0.1",
     "server_port":  ${vrouter.config.kcptun.clientPort},
     "local_address": "0.0.0.0",
     "local_port":   ${vrouter.config.shadowsocks.overKtPort},
     "password":     "a-test-passwd",
     "timeout":      20,
-    "method":       "chacha30",
+    "method":       "chacha20",
     "fast_open":    true,
     "mode":         "tcp_only"
 }`
@@ -1009,7 +1000,7 @@ stop() {
           port: '999',
           password: 'a-test-passwd',
           timeout: 300,
-          method: 'chacha30',
+          method: 'chacha20',
           fastOpen: true
         }
       })
@@ -1020,15 +1011,14 @@ stop() {
         return fs.readFile(cfgPath, 'utf8')
       })
       .then((data) => {
-        const expectContent = String.raw`
-{
+        const expectContent = String.raw`{
     "server":"5.5.5.5",
     "server_port":999,
     "local_address": "0.0.0.0",
     "local_port":1080,
     "password":"a-test-passwd",
     "timeout":300,
-    "method":"chacha30",
+    "method":"chacha20",
     "fast_open": true,
     "tunnel_address": "8.8.8.8:53",
     "mode": "udp_only"

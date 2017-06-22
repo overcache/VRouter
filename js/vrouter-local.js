@@ -43,6 +43,10 @@ class VRouter {
       })
     })
   }
+  sendKeystrokes (key = '1c 9c') {
+    const cmd = `VBoxManage controlvm ${this.config.vrouter.name} keyboardputscancode ${key}`
+    return this.localExec(cmd)
+  }
   async serialExec (cmd, msg) {
     const serialPortState = await this.isSerialPortOn()
 
@@ -83,6 +87,7 @@ class VRouter {
         return this.localExec(pre)
       })
       .then(() => {
+        console.log(serialCmd)
         return this.localExec(serialCmd)
       })
   }
@@ -143,6 +148,10 @@ class VRouter {
       })
       .then(() => {
         return this.configVMNetwork()
+          .catch((err) => {
+            console.log('error when configVMNetwork')
+            console.log(err)
+          })
       })
       .then(() => {
         return this.lockGUIConfig()
@@ -165,49 +174,82 @@ class VRouter {
       .then(() => {
         return this.configVMLanIP()
           .then(() => {
-            return this.wait(8000)
+            return this.wait(10000)
           })
       })
       .then(() => {
         return this.installPackage()
           .then(() => {
-            return this.wait(20000)
+            return this.wait(30000)
           })
       })
       .then(() => {
         const src = path.join(__dirname, '..', 'third_party')
         const dst = this.config.vrouter.configDir + '/third_party/'
         return this.scp(src, dst)
+          .then(() => {
+            return this.serialLog('done: scp third_party')
+          })
       })
       .then(() => {
         return this.scpConfigAll()
+          .then(() => {
+            return this.serialLog('done: scpConfigAll')
+          })
       })
       .then(() => {
         return this.connect()
       })
       .then((remote) => {
-        return remote.installKt()
+        return this.serialLog('done: connect to vm')
+          .then(() => {
+            return remote.installKt()
+          })
+          .then(() => {
+            return this.serialLog('done: installKt')
+          })
           .then(() => {
             return this.enableService('kcptun')
+              .then(() => {
+                return this.serialLog('done: enable kcptun')
+              })
           })
           .then(() => {
             return remote.installSS()
+              .then(() => {
+                return this.serialLog('done: install SS')
+              })
           })
           .then(() => {
             return this.enableService('shadowsocks')
+              .then(() => {
+                return this.serialLog('done: enable SS')
+              })
           })
           .then(() => {
             return this.enableService('cron')
+              .then(() => {
+                return this.serialLog('done: enable cron')
+              })
           })
           .then(() => {
-            return remote.shutdown()
+            return this.configWatchdog()
+              .then(() => {
+                return this.serialLog('done: install watchdog')
+              })
+          })
+          .then(() => {
+            return this.serialLog('done: shutting down')
+              .then(() => {
+                return remote.shutdown()
+              })
           })
           .then(() => {
             return remote.close().catch(() => {})
           })
       })
       .then(() => {
-        return this.wait(4000)
+        return this.wait(10000)
       })
   }
 
@@ -246,6 +288,18 @@ class VRouter {
     if (state !== 'running') {
       const cmd = `VBoxManage startvm --type ${type} ${this.config.vrouter.name}`
       return this.localExec(cmd)
+          .then(() => {
+            return this.wait(1000)
+              .then(() => {
+                return this.sendKeystrokes()
+              })
+          })
+          .then(() => {
+            return this.wait(500)
+              .then(() => {
+                return this.sendKeystrokes()
+              })
+          })
     }
   }
   async stopVM (action = 'savestate', waitTime = 100) {
@@ -434,7 +488,10 @@ class VRouter {
     let iinf = inf
     if (!iinf) {
       let arr = await this.getActiveAdapter()
-      if (arr.length !== 1) {
+      if (arr.length === 0) {
+        return Promise.resolve('en0: Wi-Fi (AirPort)')
+      }
+      if (arr.length > 1) {
         console.log(arr)
         return Promise.reject(Error(`more than one active adapter: ${arr}`))
       }
@@ -561,15 +618,21 @@ class VRouter {
   }
 
   changeDnsmasq () {
-    const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.config"
+    const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.conf"
     return this.serialExec(cmd, 'changeDnsmasq')
+      .then(() => {
+        return this.serialLog('done: changeDnsmasq')
+      })
   }
   enableService (service) {
-    const cmd = `/etc/init.d/${service} enable && /etc/init.d/${service} restart`
+    const cmd = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} enable && /etc/init.d/${service} restart`
     return this.serialExec(cmd, `enable ${service}`)
   }
   configWatchdog () {
-    const cmd = `crontab ${this.config.vrouter.configDir}/${this.config.firewall.watchdog}`
+    const watchdogPath = `${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`
+    const cronPath = `${this.config.vrouter.configDir}/${this.config.firewall.cronFile}`
+
+    const cmd = `chmod +x '${watchdogPath}' && crontab '${cronPath}'`
     return this.serialExec(cmd, 'config watchdog')
   }
   async changeVMTZ () {
@@ -579,18 +642,30 @@ class VRouter {
         uci set system.@system[0].zonename='Asia/Hong Kong'
         uci commit system`
     return this.serialExec(cc.trim().split('\n').map(line => line.trim()).join(' && '), 'change timezone')
+      .then(() => {
+        return this.serialLog('done: changeVMTZ')
+      })
   }
   async changeVMPasswd () {
     return this.serialExec("echo -e 'root\\nroot' | (passwd root)", 'change password')
+      .then(() => {
+        return this.serialLog('done: changeVMPasswd')
+      })
+  }
+  serialLog (msg) {
+    const cmd = `echo '${msg}' >> /vrouter.log`
+    return this.serialExec(cmd)
   }
   async installPackage () {
     const subCmds = []
     subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
-    subCmds.push('sleep 8')
-    subCmds.push('opkg update >> /vrouter.log')
-    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server >> /vrouter.log')
+    subCmds.push('opkg update')
+    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server')
     subCmds.push('/etc/init.d/dropbear restart')
     return this.serialExec(subCmds.join(' && '), 'install packages')
+      .then(() => {
+        return this.serialLog('done: install package && restart dropbear')
+      })
   }
 
   async configVMLanIP () {
@@ -598,8 +673,11 @@ class VRouter {
     const subCmds = []
     subCmds.push(`uci set network.lan.ipaddr='${this.config.vrouter.ip}'`)
     subCmds.push('uci commit network')
-    subCmds.push('/etc/init.d/network restart >> /vrouter.log')
+    subCmds.push('/etc/init.d/network restart')
     return this.serialExec(subCmds.join(' && '), 'config lan ipaddr')
+      .then(() => {
+        return this.serialLog('done: configVMLanIP')
+      })
   }
 
   // need fixed. think about global mode.
@@ -806,7 +884,7 @@ class VRouter {
   }
   generateCronJob () {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.cronFile)
-    const content = `*/30 * * * * ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`
+    const content = `*/30 * * * * ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}\n`
     return fs.outputFile(cfgPath, content, 'utf8')
       .then(() => {
         return Promise.resolve(cfgPath)
@@ -814,8 +892,7 @@ class VRouter {
   }
   generateWatchdog () {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.watchdogFile)
-    const content = String.raw`
-#!/bin/sh
+    const content = String.raw`#!/bin/sh
 # KCPTUN
 if ! pgrep kcptun;then
     /etc/init.d/${this.config.kcptun.service} restart
@@ -836,8 +913,7 @@ fi`
   generateService (type = 'shadowsocks') {
     const cfgPath = path.join(this.config.host.configDir,
       type === 'shadowsocks' ? this.config.shadowsocks.service : this.config.kcptun.service)
-    const ss = String.raw`
-#!/bin/sh /etc/rc.common
+    const ss = String.raw`#!/bin/sh /etc/rc.common
 # Copyright (C) 2006-2011 OpenWrt.org
 
 START=90
@@ -859,8 +935,7 @@ stop() {
     service_stop /usr/bin/ss-redir
     killall ss-redir
 }`
-    const kt = String.raw`
-#!/bin/sh /etc/rc.common
+    const kt = String.raw`#!/bin/sh /etc/rc.common
 # Copyright (C) 2006-2011 OpenWrt.org
 
 START=88
@@ -892,8 +967,7 @@ stop() {
     switch (type) {
       case 'ss-client':
         cfg = this.config.shadowsocks.client
-        content = String.raw`
-{
+        content = String.raw`{
     "server":"${this.config.shadowsocks.server.ip}",
     "server_port":${this.config.shadowsocks.server.port},
     "local_address": "0.0.0.0",
@@ -907,8 +981,7 @@ stop() {
         break
       case 'ss-overKt':
         cfg = this.config.shadowsocks.overKt
-        content = String.raw`
-{
+        content = String.raw`{
     "server":       "127.0.0.1",
     "server_port":  ${this.config.kcptun.clientPort},
     "local_address": "0.0.0.0",
@@ -922,8 +995,7 @@ stop() {
         break
       case 'ss-dns':
         cfg = this.config.shadowsocks.dns
-        content = String.raw`
-{
+        content = String.raw`{
     "server":"${this.config.shadowsocks.server.ip}",
     "server_port":${this.config.shadowsocks.server.port},
     "local_address": "0.0.0.0",
@@ -938,8 +1010,7 @@ stop() {
         break
       case 'kcptun':
         cfg = this.config.kcptun.client
-        content = String.raw`
-{
+        content = String.raw`{
     "remoteaddr": "${this.config.kcptun.server.ip}:${this.config.kcptun.server.port}",
     "localaddr": ":${this.config.kcptun.clientPort}",
     "key": "${this.config.kcptun.server.key}",
