@@ -24,37 +24,6 @@ describe('Test ability of building VM', function () {
   // after('poweroff vm', function () {
     // return vrouter.stopVM('poweroff', 20000)
   // })
-  it.only('getOSXNetworkService', function () {
-    return vrouter.getOSXNetworkService('en0')
-      .then((output) => {
-        expect(output).to.equal('Wi-Fi')
-      })
-  })
-  it.only('changeRouteTo vrouter', function () {
-    // return vrouter.changeRouteTo()
-    return vrouter.changeRouteTo('vrouter')
-      .then(() => {
-        return vrouter.getCurrentGateway()
-          .then((output) => {
-            expect(output).to.be.deep.equal([
-              vrouter.config.vrouter.ip,
-              vrouter.config.vrouter.ip
-            ])
-          })
-      })
-  })
-
-  it('changeRouteTo wifi', function () {
-    const ip = '192.168.1.1'
-    return vrouter.changeRouteTo('wifi')
-      .then(() => {
-        return vrouter.getCurrentGateway()
-          .then((output) => {
-            expect(output).to.be.deep.equal([ip, ip])
-          })
-      })
-  })
-
   it('process buildVM', function () {
     return expect(vrouter.buildVM(null, true))
       .to.eventually.fulfilled
@@ -90,6 +59,36 @@ describe('Test ability of building VM', function () {
       .catch((err) => {
         console.log('should not have this')
         console.log(err)
+      })
+  })
+
+  it('getOSXNetworkService', function () {
+    return vrouter.getOSXNetworkService('en0')
+      .then((output) => {
+        expect(output).to.equal('Wi-Fi')
+      })
+  })
+  it('changeRouteTo vrouter', function () {
+    // return vrouter.changeRouteTo()
+    return vrouter.changeRouteTo('vrouter')
+      .then(() => {
+        return vrouter.getCurrentGateway()
+          .then((output) => {
+            expect(output).to.be.deep.equal([
+              vrouter.config.vrouter.ip,
+              vrouter.config.vrouter.ip
+            ])
+          })
+      })
+  })
+  it('changeRouteTo wifi', function () {
+    const ip = '192.168.1.1'
+    return vrouter.changeRouteTo('wifi')
+      .then(() => {
+        return vrouter.getCurrentGateway()
+          .then((output) => {
+            expect(output).to.be.deep.equal([ip, ip])
+          })
       })
   })
 })
@@ -140,6 +139,9 @@ describe('Test ability of manage vm', function () {
           })
           .then(() => {
             return remote.remoteExec(`rm /${content}`)
+          })
+          .then(() => {
+            return remote.close()
           })
       })
   })
@@ -295,6 +297,9 @@ describe('Test ability of manage vm', function () {
           .then(() => {
             return remote.remoteExec(`rm /${tempName}`)
           })
+          .then(() => {
+            return remote.close()
+          })
       })
   })
   it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
@@ -350,6 +355,9 @@ describe('Test ability of manage vm', function () {
           })
           .catch(() => {
             return remote.remoteExec(`mv ${file}+backup ${file}`)
+          })
+          .then(() => {
+            return remote.close()
           })
       })
   })

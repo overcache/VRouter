@@ -104,7 +104,7 @@ class VRouter {
         return this.localExec(pre)
       })
       .then(() => {
-        console.log(serialCmd)
+        // console.log(serialCmd)
         return this.localExec(serialCmd)
       })
   }
