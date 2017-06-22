@@ -1,5 +1,5 @@
 {
-    "ENV": "debug",
+    "debug": true,
     "host": {
         "ip": "10.19.28.46",
         "configDir": "",
@@ -17,17 +17,17 @@
     },
     "server": {
         "ip": "",
-        "domain": "",
-        "sshPort": ""
+        "domain": "www.qq.com",
+        "sshPort": "22"
     },
     "shadowsocks": {
         "server": {
             "ip": "",
             "domain": "",
-            "port": "",
-            "password": "",
+            "port": "111",
+            "password": "demo-paswd",
             "timeout": 300,
-            "method": "",
+            "method": "chacha20",
             "fastOpen": true
         },
         "client": "ss-client.json",
@@ -44,13 +44,13 @@
         "server": {
             "ip": "",
             "domain": "",
-            "port": "",
-            "key": "",
-            "crypt": "",
-            "mode": "",
-            "sndwnd": "",
-            "rcvwnd": "",
-            "nocomp": ""
+            "port": "832",
+            "key": "secret",
+            "crypt": "md5",
+            "mode": "fast3",
+            "sndwnd": "256",
+            "rcvwnd": "2048",
+            "nocomp": "true"
         },
         "client": "kt-client.json",
         "clientPort": 1070,
@@ -71,8 +71,8 @@
         "whiteIPs": "white-ips.txt",
         "lanNetworks": "lan-networks.txt",
         "chinaIPs": "china-ips.txt",
-        "currentMode": "",
-        "currentProtocol": "",
+        "currentMode": "none",
+        "currentProtocol": "shadowsocks",
         "dnsmasqFile": "custom.conf",
         "firewallFile": "firewall.user",
         "ipsetsFile": "custom.ipset",

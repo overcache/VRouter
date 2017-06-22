@@ -8,6 +8,9 @@ class VRouterRemote {
   }
 
   remoteExec (cmd) {
+    const specialCmds = [
+      '/etc/init.d/firewall restart'
+    ]
     return new Promise((resolve, reject) => {
       this.connect.exec(cmd, (err, stream) => {
         let stdout = ''
@@ -21,7 +24,11 @@ class VRouterRemote {
         })
         stream.on('end', () => {
           if (stderr) {
-            reject(stderr.toString().trim())
+            if (specialCmds.includes(cmd)) {
+              resolve(stderr.toString().trim())
+            } else {
+              reject(stderr.toString().trim())
+            }
           } else {
             resolve(stdout.toString().trim())
           }
@@ -114,29 +121,52 @@ class VRouterRemote {
     return this.remoteExec(cmd)
   }
   getFWUsersRules () {
-    return this.getFile(`${this.config.firewall.file}`)
+    return this.getFile(`/etc/${this.config.firewall.firewallFile}`)
   }
 
-  async restartFirewall (copyFiles = false) {
-    /*
-     * 1. ipset
-     * 2. firewall
-     */
-    if (copyFiles) {
-      const files = ''
-      await copyFiles(files)
-    }
+  async restartFirewall () {
+    const cmd = `/etc/init.d/firewall restart`
+    return this.remoteExec(cmd)
   }
-  async changeProtocal (protocal) {
-    if (this.config.firewall.currentProtocal === protocal) {
-      return
-    }
-    await this.local.generateFWRules(protocal, this.config.firewall.currentMode)
-    await this.restartFirewall(true)
+  async restartDnsmasq () {
+    const cmd = `/etc/init.d/dnsmasq restart`
+    return this.remoteExec(cmd)
+  }
+  async changeProtocol (protocol, m) {
+    const mode = m || this.config.firewall.currentMode
+    await this.local.generateFWRules(mode, protocol, true)
+    await this.local.scpConfig('firewall')
+    await this.restartFirewall()
   }
 
-  async changeMode (mode) {
-
+  async changeMode (m, p) {
+    const protocol = p || this.config.firewall.currentProtocol
+    const mode = m || this.config.firewall.currentMode
+    await Promise.all([
+      this.local.generateIPsets(true),
+      this.local.generateDnsmasqCf('whitelist', true),
+      this.local.generateFWRules(mode, protocol, true)
+    ])
+    await Promise.all([
+      this.local.scpConfig('ipset'),
+      this.local.scpConfig('dnsmasq'),
+      this.local.scpConfig('firewall')
+    ])
+    await Promise.all([
+      this.restartFirewall(),
+      this.restartDnsmasq()
+    ])
+    // await this.local.generateIPsets(true)
+    // await this.local.scpConfig('ipset')
+    // await this.local.generateDnsmasqCf(null, true)
+    // await this.local.scpConfig('dnsmasq')
+    // await this.local.generateFWRules(mode, protocol, true)
+    // await this.local.scpConfig('firewall')
+    // await this.restartFirewall()
+    // await this.restartDnsmasq()
+  }
+  async changeSSConfig () {
+    // await this.local.
   }
   close () {
     return new Promise((resolve) => {

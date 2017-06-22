@@ -118,4 +118,68 @@ describe('Test Suite for vrouter-remote', function () {
   it.skip('shutdown sould turn vrouter off.', function () {
     return expect(remote.shutdown()).to.be.fulfilled
   })
+
+  it('restartFireall', function () {
+    return expect(remote.restartFirewall()).to.be.fulfilled
+  })
+  it('restartDnsmasq', function () {
+    const promise = remote.remoteExec('pgrep dnsmasq')
+      .then((pid) => {
+        return remote.restartDnsmasq()
+          .then(() => {
+            return remote.remoteExec('pgrep dnsmasq')
+          })
+          .then((newPid) => {
+            return Promise.resolve(pid === newPid)
+          })
+      })
+    return expect(promise).to.eventually.be.false
+  })
+  it('changeMode', function () {
+    return remote.changeMode('whitelist', 'shadowsocks')
+      .then(() => {
+        return remote.getFWUsersRules()
+          .then((output) => {
+            const reg = /^iptables -t nat -A PREROUTING -d -p tcp -j REDIRECT --to-ports 1080$/mg
+            expect(reg.test(output)).to.be.true
+            // console.log(output)
+          })
+      })
+      .then(() => {
+        return remote.changeMode('blacklist', 'kcptun')
+      })
+      .then(() => {
+        return remote.getFWUsersRules()
+          .then((output) => {
+            const reg = /^iptables -t nat -A PREROUTING -d -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --to-port 1090$/mg
+            expect(reg.test(output)).to.be.true
+          })
+      })
+  })
+  it('changeProtocol', function () {
+    return remote.changeProtocol('shadowsocks', 'global')
+      .then(() => {
+        return remote.getFWUsersRules()
+          .then((output) => {
+            let reg = /^# workMode: global/mg
+            expect(reg.test(output)).to.be.true
+            reg = /^iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080$/mg
+            expect(reg.test(output)).to.be.true
+            // console.log(output)
+          })
+      })
+      .then(() => {
+        return remote.changeProtocol('kcptun', 'whitelist')
+      })
+      .then(() => {
+        return remote.getFWUsersRules()
+          .then((output) => {
+            let reg = /^# workMode: whitelist$/mg
+            expect(reg.test(output)).to.be.true
+            reg = /^iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090$/mg
+            expect(reg.test(output)).to.be.true
+            // console.log(output)
+          })
+      })
+  })
 })

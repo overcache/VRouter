@@ -11,7 +11,7 @@ const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'
 // const configFile = path.join(__dirname, './config-test.json')
 const configFile = path.join(__dirname, '../config/config.json')
 
-describe.only('Test ability of building VM', function () {
+describe('Test ability of building VM', function () {
   this.timeout(600000)
   this.slow(150000)
   let vrouter
@@ -21,20 +21,46 @@ describe.only('Test ability of building VM', function () {
         vrouter = new VRouter(obj)
       })
   })
-  after('poweroff vm', function () {
-    return vrouter.stopVM('poweroff', 20000)
+  // after('poweroff vm', function () {
+    // return vrouter.stopVM('poweroff', 20000)
+  // })
+  it.only('getOSXNetworkService', function () {
+    return vrouter.getOSXNetworkService('en0')
+      .then((output) => {
+        expect(output).to.equal('Wi-Fi')
+      })
   })
-  it('buildVM', function () {
-    return vrouter.buildVM(null, true)
+  it.only('changeRouteTo vrouter', function () {
+    // return vrouter.changeRouteTo()
+    return vrouter.changeRouteTo('vrouter')
       .then(() => {
-        return vrouter.wait(5000)
+        return vrouter.getCurrentGateway()
+          .then((output) => {
+            expect(output).to.be.deep.equal([
+              vrouter.config.vrouter.ip,
+              vrouter.config.vrouter.ip
+            ])
+          })
       })
+  })
+
+  it('changeRouteTo wifi', function () {
+    const ip = '192.168.1.1'
+    return vrouter.changeRouteTo('wifi')
       .then(() => {
-        return vrouter.startVM()
+        return vrouter.getCurrentGateway()
+          .then((output) => {
+            expect(output).to.be.deep.equal([ip, ip])
+          })
       })
-      .then(() => {
-        return vrouter.wait(30000)
-      })
+  })
+
+  it('process buildVM', function () {
+    return expect(vrouter.buildVM(null, true))
+      .to.eventually.fulfilled
+  })
+  it('test builded VM', function () {
+    return vrouter.startVM('headless', 30000)
       .then(() => {
         return vrouter.connect()
       })
@@ -66,21 +92,12 @@ describe.only('Test ability of building VM', function () {
         console.log(err)
       })
   })
-  it('test serialExec.', function () {
-    // return vrouter.serialExec('touch /serialExec')
-    return vrouter.serialExec('echo `date` > /`date "+%H%M%S"`', 'test')
-  })
-  it('scp', function () {
-    const src = path.join(__dirname, '..', 'third_party')
-    const dst = vrouter.config.vrouter.configDir + '/third_party/'
-    return vrouter.scp(src, dst)
-  })
 })
 
 describe('Test ability of manage vm', function () {
   this.slow(1000)
   let vrouter
-  let isImportByTest = false
+  let buildByTest = false
   before('buildvm is necessary', function () {
     return fs.readJson(configFile)
       .then((obj) => {
@@ -93,13 +110,13 @@ describe('Test ability of manage vm', function () {
         console.log(err)
         return vrouter.buildVM()
           .then(() => {
-            isImportByTest = true
+            buildByTest = true
           })
       })
   })
 
   after('remove test-vm', function () {
-    if (isImportByTest) {
+    if (buildByTest) {
       return vrouter.deleteVM(true)
     }
   })
@@ -108,25 +125,43 @@ describe('Test ability of manage vm', function () {
     return expect(vrouter.localExec('echo hello'))
       .to.eventually.equal('hello\n')
   })
-  it('wait(500) should return after 500ms', function () {
+  it('sendKeystrokes')
+  it('test serialExec.', function () {
+    this.timeout(50000)
+    const content = `${Date.now()}+test`
+    return vrouter.serialExec(`echo '${content}' > /${content}`)
+      .then(() => {
+        return vrouter.connect()
+      })
+      .then((remote) => {
+        return remote.remoteExec(`cat /${content}`)
+          .then((output) => {
+            expect(output).to.be.equal(content)
+          })
+          .then(() => {
+            return remote.remoteExec(`rm /${content}`)
+          })
+      })
+  })
+  it('wait(100) should return after 100ms', function () {
+    const waitTime = 100
     const promise = Promise.resolve()
       .then(() => Date.now())
       .then((startT) => {
-        return vrouter.wait(500)
+        return vrouter.wait(waitTime)
           .then(() => Date.now() - startT)
       })
-    return expect(promise).to.eventually.within(500, 510)
+    return expect(promise).to.eventually.within(waitTime, waitTime + 50)
   })
-  it('startVM/stopVM should be able start/stop a vm', function () {
-  })
+  it('importVM')
+  it('exportVM')
+  it('deleteVM')
+  it('startVM/stopVM should be able start/stop a vm')
 
-  it('isVBInstalled should be fulfilled when VBoxManage cmd exist, and should be rejected when VBoxManage absence.', function () {
+  it('isVBInstalled should be fulfilled true', function () {
     return vrouter.localExec('VBoxManage')
-      .catch(() => {
-        return expect(vrouter.isVBInstalled()).to.be.rejected
-      })
       .then(() => {
-        return expect(vrouter.isVBInstalled()).to.be.fulfilled
+        return expect(vrouter.isVBInstalled()).to.eventually.be.true
       })
   })
 
@@ -152,6 +187,9 @@ describe('Test ability of manage vm', function () {
         } else if (output.indexOf('poweroff') >= 0) {
           return expect(vrouter.getVMState())
             .to.eventually.equal('poweroff')
+        } else if (output.indexOf('saved') >= 0) {
+          return expect(vrouter.getVMState())
+            .to.eventually.equal('saved')
         }
       })
   })
@@ -161,23 +199,16 @@ describe('Test ability of manage vm', function () {
   it('benchmark isVRouterRunning', function () {
     return vrouter.isVRouterRunning().catch(() => {})
   })
-  it.skip('isVRouterRunning should works well(toooooo slow)', function () {
-    this.timeout(20000)
-    return vrouter.stopVM()
-      .then(() => {
-        return expect(vrouter.isVRouterRunning()).to.be.rejectedWith(Error, 'vm not running')
-      })
-      .then(() => {
-        return vrouter.startVM()
-      })
-      .then(() => {
-        return vrouter.wait(15000)
-      })
-      .then(() => {
-        return expect(vrouter.isVRouterRunning()).to.be.fulfilled
-      })
-      .then(() => {
-        return vrouter.stopVM()
+  it('isVRouterRunning should works well', function () {
+    return vrouter.getVMState()
+      .then((state) => {
+        if (state === 'running') {
+          return expect(vrouter.isVRouterRunning())
+            .to.eventually.be.true
+        } else {
+          return expect(vrouter.isVRouterRunning())
+            .to.eventually.be.false
+        }
       })
   })
 
@@ -220,14 +251,107 @@ describe('Test ability of manage vm', function () {
       })
   })
   it('configHostonlyInf should modify correspondingInf to hostIP', function () {
+    const originIP = vrouter.config.host.ip
+    vrouter.config.host.ip = '7.7.7.7'
     return vrouter.configHostonlyInf()
       .then((inf) => {
-        return expect(vrouter.getInfIP(inf)).to.eventually.equal(vrouter.config.host.ip)
+        return expect(vrouter.getInfIP(inf)).to.eventually.equal('7.7.7.7.7')
+      })
+      .then(() => {
+        vrouter.config.host.ip = originIP
+      })
+      .catch(() => {
+        vrouter.config.host.ip = originIP
       })
   })
 
   it('test getActiveAdapter should return an array', function () {
-    return expect(vrouter.getActiveAdapter()).to.eventually.be.array
+    const promise = vrouter.getActiveAdapter()
+    return promise.then(async (output) => {
+      for (let i = 0; i < output.length; i += 1) {
+        const inf = output[i].split(':')[0].trim()
+        await vrouter.getInfIP(inf)
+          .then((ip) => {
+            expect(ip).to.not.be.empty
+          })
+      }
+    })
+  })
+  it('scp', function () {
+    const tempName = `${Date.now()}`
+    const tempFile = path.join(os.tmpdir(), tempName)
+    return fs.outputFile(tempFile, tempName)
+      .then(() => {
+        return vrouter.scp(tempFile, '/')
+      })
+      .then(() => {
+        return vrouter.connect()
+      })
+      .then((remote) => {
+        return remote.remoteExec(`cat /${tempName}`)
+          .then((output) => {
+            expect(output).to.be.equal(tempName)
+          })
+          .then(() => {
+            return remote.remoteExec(`rm /${tempName}`)
+          })
+      })
+  })
+  it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
+    // need fixed
+    // When test alone, it pass test
+    // When test togeter, Uncaught Error: read ECONNRESET
+    this.timeout(50000)
+    // configVMLanIP will handle stopVM
+    // const promise = Promise.resolve()
+    const promise = vrouter.configVMLanIP()
+      .then(() => {
+        return vrouter.wait(8000)
+      })
+      .catch((err) => {
+        console.log('error when configVMLanIP. try again')
+        console.log(err)
+        return vrouter.configVMLanIP()
+          .then(() => {
+            return vrouter.wait(8000)
+          })
+      })
+      .then(() => {
+        const cmd = `ping -c 1 -t 5 ${vrouter.config.vrouter.ip}`
+        // const cmd = `ping -c 20 ${vrouter.config.vrouter.ip}`
+        return vrouter.localExec(cmd)
+          .catch((err) => {
+            console.log('error when ping')
+            console.log(err)
+            return Promise.reject(err)
+          })
+      })
+    return expect(promise).to.be.fulfilled
+  })
+  it('scpConfig', function () {
+    const file = '/etc' +
+      '/' + vrouter.config.firewall.firewallFile
+    return vrouter.connect()
+      .then((remote) => {
+        return remote.remoteExec(`mv ${file} ${file}+backup`)
+          .then(() => {
+            return expect(remote.remoteExec(`cat ${file}`))
+              .to.eventually.be.empty
+          })
+          .then(() => {
+            return vrouter.scpConfig('firewall')
+          })
+          .then(() => {
+            return expect(remote.remoteExec(`cat ${file}`))
+              .to.eventually.not.be.empty
+          })
+          .then(() => {
+            return remote.remoteExec(`mv ${file}+backup ${file}`)
+          })
+          .catch(() => {
+            return remote.remoteExec(`mv ${file}+backup ${file}`)
+          })
+      })
   })
 })
 
@@ -255,6 +379,7 @@ describe('Test ability of modify vm', function () {
         return vrouter.hideVM(false)
       })
   })
+  it('lockGUIConfig')
   it('specifyHostonlyAdapter(inf, nic) should change vm\'s adapter', function () {
     this.timeout(10000)
     let currentInf = ''
@@ -423,48 +548,21 @@ describe('Test ability of modify vm', function () {
       })
     return expect(promise).to.eventually.equal('uart1="off"\n')
   })
-  it("configVMLanIP should config vm's br-lan with vrouter.ip", function () {
-    // need fixed
-    // When test alone, it pass test
-    // When test togeter, Uncaught Error: read ECONNRESET
-    this.timeout(50000)
-    // configVMLanIP will handle stopVM
-    // const promise = Promise.resolve()
-    const promise = vrouter.configVMLanIP()
-      .then(() => {
-        return vrouter.wait(8000)
-      })
-      .catch((err) => {
-        console.log('error when configVMLanIP. try again')
-        console.log(err)
-        return vrouter.configVMLanIP()
-          .then(() => {
-            return vrouter.wait(8000)
-          })
-      })
-      .then(() => {
-        const cmd = `ping -c 1 -t 5 ${vrouter.config.vrouter.ip}`
-        // const cmd = `ping -c 20 ${vrouter.config.vrouter.ip}`
-        return vrouter.localExec(cmd)
-          .catch((err) => {
-            console.log('error when ping')
-            console.log(err)
-            return Promise.reject(err)
-          })
-      })
-    return expect(promise).to.be.fulfilled
-  })
-  it.skip('isSerialPortOn should fulfilled with true after toggleSerialPort', function () {
+  it('isSerialPortOn should fulfilled with true after toggleSerialPort', function () {
     this.timeout(10000)
-    const promise = vrouter.stopVM('poweroff', 8000)
-      .then(() => {
-        return vrouter.toggleSerialPort('on')
-      })
+    const promise = vrouter.toggleSerialPort('on')
       .then(() => {
         return vrouter.isSerialPortOn()
       })
     return expect(promise).to.eventually.be.true
   })
+
+  it('changeDnsmasq')
+  it('enableService')
+  it('changeVMTZ')
+  it('changeVMPasswd')
+  it('serialLog')
+  it('installPackage')
 })
 
 describe('Test ability of manage file', function () {
@@ -583,7 +681,11 @@ describe('Test ability of manage file', function () {
       })
   })
   it('generateFWRules should redirect only lan traffic in "none" mode', function () {
-    return vrouter.generateFWRules('kcptun', 'none')
+    const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.firewallFile)
+    const originIP = vrouter.config.server.ip
+    let originRules = ''
+    vrouter.config.server.ip = '1.2.3.4'
+    return vrouter.generateFWRules('none', 'kcptun', true)
       .then(() => {
         const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.firewallFile)
         return fs.readFile(cfgPath, 'utf8')
@@ -596,8 +698,21 @@ ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
 ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
 ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
 /usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
+# speedup ssh connection if current protocol is kcptun
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -p tcp --dport 22 -j REDIRECT --to-port 1090
+iptables -t nat -A OUTPUT -d 1.2.3.4 -p tcp --dport 22 -j REDIRECT --to-port 1090
+# bypass server ip
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
+iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
+# bypass lan networks
+iptables -t nat -A PREROUTING -d -m set --match-set LAN dst -j RETURN
+iptables -t nat -A OUTPUT -m set --match-set LAN dst -j RETURN
 `
         return expect(data.trim()).to.equal(expectContent.trim())
+      })
+      .then(() => {
+        vrouter.config.server.ip = originIP
+        return fs.outputFile(cfgPath, originRules)
       })
   })
   it('generateFWRules should works fine with kt+global mode', function () {
@@ -610,7 +725,7 @@ ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
         originRules = data || ''
       })
       .then(() => {
-        return vrouter.generateFWRules('kcptun', 'global')
+        return vrouter.generateFWRules('global', 'kcptun', true)
       })
       .then(() => {
         return fs.readFile(cfgPath, 'utf8')
@@ -623,6 +738,9 @@ ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
 ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
 ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
 /usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
+# speedup ssh connection if current protocol is kcptun
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -p tcp --dport 22 -j REDIRECT --to-port 1090
+iptables -t nat -A OUTPUT -d 1.2.3.4 -p tcp --dport 22 -j REDIRECT --to-port 1090
 # bypass server ip
 iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
 iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
@@ -649,7 +767,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
         originRules = data
       })
       .then(() => {
-        return vrouter.generateFWRules('kcptun', 'whitelist')
+        return vrouter.generateFWRules('whitelist', 'kcptun', true)
       })
       .then(() => {
         return fs.readFile(cfgPath, 'utf8')
@@ -662,6 +780,9 @@ ipset create LAN   hash:net family inet hashsize 1024 maxelem 65536 -exist
 ipset create WHITELIST hash:net family inet hashsize 1024 maxelem 65536 -exist
 ipset create BLACKLIST hash:net family inet hashsize 1024 maxelem 65536 -exist
 /usr/sbin/ipset restore -exist -file /etc/com.icymind.vrouter/custom.ipset &> /dev/null
+# speedup ssh connection if current protocol is kcptun
+iptables -t nat -A PREROUTING -d -d 1.2.3.4 -p tcp --dport 22 -j REDIRECT --to-port 1090
+iptables -t nat -A OUTPUT -d 1.2.3.4 -p tcp --dport 22 -j REDIRECT --to-port 1090
 # bypass server ip
 iptables -t nat -A PREROUTING -d -d 1.2.3.4 -j RETURN
 iptables -t nat -A OUTPUT -d 1.2.3.4 -j RETURN
@@ -691,7 +812,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1090`
         originRules = data | ''
       })
       .then(() => {
-        return vrouter.generateFWRules('shadowsocks', 'blacklist')
+        return vrouter.generateFWRules('blacklist', 'shadowsocks', true)
       })
       .then(() => {
         return fs.readFile(cfgPath, 'utf8')
@@ -730,7 +851,7 @@ iptables -t nat -A OUTPUT -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --
         originRules = data || ''
       })
       .then(() => {
-        return vrouter.generateFWRules('shadowsocks', 'whitelist')
+        return vrouter.generateFWRules('whitelist', 'shadowsocks', true)
       })
       .then(() => {
         return fs.readFile(cfgPath, 'utf8')
@@ -776,7 +897,7 @@ iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 1080`
         originContent = data || ''
       })
       .then(() => {
-        return vrouter.generateDnsmasqCf('blacklist')
+        return vrouter.generateDnsmasqCf('blacklist', true)
       })
       .then(() => {
         return fs.readFile(cfgPath, 'utf8')
@@ -1031,12 +1152,11 @@ stop() {
       })
   })
 
-  it('scpAll need test!!!')
-  it.skip('downloadFile should be able download a complete file', function () {
+  it.skip('test download and hashFIle', function () {
     this.timeout(50000)
-    const url = 'http://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz'
+    const url = vrouter.config.vrouter.imageUrl
     const dest = path.join(os.tmpdir(), path.basename(url))
-    const sha = '3f3d92a088b24e6aa4ae856270ffcd714efb1be8867ceef4cf619abf1ad09bfc'
+    const sha = vrouter.config.vrouter.imageSha256
     return vrouter.downloadFile(url, dest)
       .then(() => {
         return fs.readFile(dest)
@@ -1047,5 +1167,31 @@ stop() {
       .then(() => {
         return fs.remove(dest)
       })
+  })
+  it('copyTemplate', function () {
+    const cfgName = vrouter.config.firewall.ipsetsFile
+    const cfgPath = path.join(vrouter.config.host.configDir, cfgName)
+    return fs.move(cfgPath, cfgPath + 'backup')
+      .then(() => {
+        return expect(fs.readFile(cfgPath))
+          .to.eventually.be.empty
+      })
+      .then(() => {
+        return vrouter.copyTemplate(cfgName)
+      })
+      .then(() => {
+        return expect(fs.readFile(cfgPath))
+          .to.eventually.not.be.empty
+      })
+      .then(() => {
+        return fs.move(cfgPath + 'backup', cfgPath)
+      })
+      .catch(() => {
+        return fs.move(cfgPath + 'backup', cfgPath).catch(() => {})
+      })
+  })
+  it('scpConfigAll')
+  it('saveConfig', function () {
+    return vrouter.saveConfig()
   })
 })

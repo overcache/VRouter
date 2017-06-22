@@ -11,6 +11,7 @@ const { getAppDir } = require('./helper.js')
 const packageJson = require('../package.json')
 const dns = require('dns')
 const crypto = require('crypto')
+const sudo = require('sudo-prompt')
 
 class VRouter {
   constructor (config) {
@@ -22,6 +23,22 @@ class VRouter {
 
   wait (time) {
     return new Promise(resolve => setTimeout(resolve, time))
+  }
+  sudoExec (cmd) {
+    const option = {
+      name: 'VRouter'
+    }
+    return new Promise((resolve, reject) => {
+      sudo.exec(cmd, option, (err, stdout, stderr) => {
+        if (err) {
+          // console.log(err)
+          reject(err)
+        } else {
+          // stderr && console.log(stderr)
+          resolve(stdout || stderr)
+        }
+      })
+    })
   }
   localExec (cmd) {
     // const specialCmd = [
@@ -38,7 +55,7 @@ class VRouter {
           reject(err)
         } else {
           // stderr && console.log(stderr)
-          resolve(stdout)
+          resolve(stdout || stderr)
         }
       })
     })
@@ -92,6 +109,75 @@ class VRouter {
       })
   }
 
+  async getOSXNetworkService (inf) {
+    const cmd = `networksetup -listnetworkserviceorder`
+    return this.localExec(cmd)
+      .then((output) => {
+        const reg = /\(\d+\) (.*)\n\(Hardware Port: .*?, Device: (.*)\)/g
+        while (true) {
+          const match = reg.exec(output)
+          if (!match) break
+          if (match[2] === inf) {
+            return Promise.resolve(match[1])
+          }
+        }
+        return Promise.reject(Error(`can not find NetworkService match ${inf}`))
+      })
+  }
+  async getCurrentGateway () {
+    let networkService
+
+    const inf = await this.getActiveAdapter()
+    if (inf.length > 1) {
+      return Promise.reject(Error('more than one active adapter'))
+    }
+    if (inf.length === 0) {
+      networkService = 'Wi-Fi'
+    } else {
+      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
+    }
+
+    const cmd1 = "/usr/sbin/netstat -nr | grep default | awk '{print $2}'"
+    const cmd2 = `/usr/sbin/networksetup -getdnsservers ${networkService}`
+
+    return Promise.all([
+      this.localExec(cmd1).then((output) => {
+        return Promise.resolve((output && output.trim()) || '')
+      }),
+      this.localExec(cmd2).then((output) => {
+        return Promise.resolve((output && output.trim()) || '')
+      })
+    ])
+  }
+
+  async changeRouteTo (dst = 'vrouter') {
+    let ip
+    let networkService
+    const inf = await this.getActiveAdapter()
+    if (inf.length > 1) {
+      return Promise.reject(Error('more than one active adapter'))
+    }
+    if (inf.length === 0) {
+      networkService = 'Wi-Fi'
+    } else {
+      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
+    }
+    if (dst === 'vrouter') {
+      ip = this.config.vrouter.ip
+    } else {
+      const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router | awk -F ": " '{print $2}'`
+      ip = await this.localExec(subCmd).then(ip => ip.trim())
+    }
+    // const cmd = `sudo /sbin/route change default "${ip}"` +
+      // ' && ' + `sudo /usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
+    // return this.localExec(cmd)
+    // const cmd = `/sbin/route change default "${ip}"` +
+      // ' && ' + `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
+    const cmd1 = `/sbin/route change default ${ip}`
+    const cmd2 = `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
+    // https://askubuntu.com/questions/634620/when-using-and-sudo-on-the-first-command-is-the-second-command-run-as-sudo-t
+    return this.sudoExec(`bash -c "${cmd1} && ${cmd2}"`)
+  }
   async buildVM (imagePath, deleteFirst = false) {
     let image = imagePath
     if (!image) {
@@ -117,7 +203,10 @@ class VRouter {
       throw Error('vrouter already existed')
     }
     if (existed) {
-      await this.deleteVM(true)
+      if (this.config.debug) {
+        console.log('vm existed. delete it now.')
+        await this.deleteVM(true)
+      }
     }
     // specify size: 64M
     const vdiSize = 67108864
@@ -149,7 +238,7 @@ class VRouter {
       .then(() => {
         return this.configVMNetwork()
           .catch((err) => {
-            console.log('error when configVMNetwork')
+            console.log('error when configVMNetwork. continue follow steps')
             console.log(err)
           })
       })
@@ -251,31 +340,22 @@ class VRouter {
       .then(() => {
         return this.wait(10000)
       })
-  }
-
-  initVM () {
-    /*
-     * 0. copy files to vm, save to right dir
-     * 1. remove dnsmasq && install dnsmasq-full
-     * 2. install ipset
-     * 3. install kcptun
-     * 4. install shadowsocks
-     * 5. exec watchdog by crontab
-     * 5. enable kcptun/shadowsocks/crontab service
-     * 6. restart kcptun/shadowsocks/dnsmasq/firewall
-     */
-    const src = path.join(this.config.host.configDir, 'third_party')
-    const dst = this.config.vrouter.configDir
-    return this.scp(src, dst)
-      .then(() => {
+      .catch((err) => {
+        console.log(err)
+        return Promise.reject(err)
       })
   }
+
   importVM (vmFile) {
     const cmd = `VBoxManage import ${vmFile}`
     return this.localExec(cmd)
   }
   async deleteVM (stopFirst = false) {
     const cmd = `VBoxManage unregistervm ${this.config.vrouter.name} --delete`
+    const existed = await this.isVRouterExisted()
+    if (!existed) {
+      return
+    }
     const state = await this.getVMState()
     if (state === 'running' && !stopFirst) {
       throw Error('vm must be stopped before delete')
@@ -283,7 +363,7 @@ class VRouter {
     await this.stopVM('poweroff', 8000)
     return this.localExec(cmd)
   }
-  async startVM (type = 'headless') {
+  async startVM (type = 'headless', waitTime = 100) {
     const state = await this.getVMState()
     if (state !== 'running') {
       const cmd = `VBoxManage startvm --type ${type} ${this.config.vrouter.name}`
@@ -300,6 +380,9 @@ class VRouter {
                 return this.sendKeystrokes()
               })
           })
+        .then(() => {
+          return this.wait(waitTime)
+        })
     }
   }
   async stopVM (action = 'savestate', waitTime = 100) {
@@ -339,15 +422,24 @@ class VRouter {
   isVBInstalled () {
     const cmd = 'VBoxManage --version'
     return this.localExec(cmd)
+      .then(() => {
+        return Promise.resolve(true)
+      })
+      .catch(() => {
+        return Promise.resolve(false)
+      })
   }
   isVRouterExisted () {
     const cmd = 'VBoxManage list vms'
     return this.localExec(cmd)
       .then((stdout) => {
-        if (stdout.indexOf(this.config.vrouter.name) < 0) {
-          return false
+        const vms = stdout
+          .trim().split('\n')
+          .map(e => e.split(' ')[0].trim().replace(/"/g, ''))
+        if (vms.includes(this.config.vrouter.name)) {
+          return Promise.resolve(true)
         } else {
-          return true
+          return Promise.resolve(false)
         }
       })
   }
@@ -367,8 +459,13 @@ class VRouter {
     const cmd = 'VBoxManage list runningvms'
     return this.localExec(cmd)
       .then((stdout) => {
-        if (stdout.indexOf(this.config.vrouter.name) < 0) {
-          return Promise.reject(Error('vm not running'))
+        const vms = stdout
+          .trim().split('\n')
+          .map(e => e.split(' ')[0].trim().replace(/"/g, ''))
+        if (vms.includes(this.config.vrouter.name)) {
+          return Promise.resolve(true)
+        } else {
+          return Promise.resolve(false)
         }
       })
   }
@@ -616,6 +713,17 @@ class VRouter {
     }
     await this.localExec(cmd)
   }
+  async configVMLanIP () {
+    // execute cmd
+    const subCmds = []
+    subCmds.push(`uci set network.lan.ipaddr='${this.config.vrouter.ip}'`)
+    subCmds.push('uci commit network')
+    subCmds.push('/etc/init.d/network restart')
+    return this.serialExec(subCmds.join(' && '), 'config lan ipaddr')
+      .then(() => {
+        return this.serialLog('done: configVMLanIP')
+      })
+  }
 
   changeDnsmasq () {
     const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.conf"
@@ -654,7 +762,7 @@ class VRouter {
   }
   serialLog (msg) {
     const cmd = `echo '${msg}' >> /vrouter.log`
-    return this.serialExec(cmd)
+    return this.serialExec(cmd, 'log to file')
   }
   async installPackage () {
     const subCmds = []
@@ -668,21 +776,32 @@ class VRouter {
       })
   }
 
-  async configVMLanIP () {
-    // execute cmd
-    const subCmds = []
-    subCmds.push(`uci set network.lan.ipaddr='${this.config.vrouter.ip}'`)
-    subCmds.push('uci commit network')
-    subCmds.push('/etc/init.d/network restart')
-    return this.serialExec(subCmds.join(' && '), 'config lan ipaddr')
-      .then(() => {
-        return this.serialLog('done: configVMLanIP')
+  deleteCfgFile (fileName) {
+    const filePath = path.join(this.config.host.configDir, fileName)
+    return fs.remove(filePath)
+      .catch(() => {
+        // don't panic. that's unnecessary to delete a non existed file.
       })
   }
-
+  getCfgContent (fileName) {
+    const filePath = path.join(this.config.host.configDir, fileName)
+    return fs.readFile(filePath, 'utf8')
+      .catch(() => {
+        const template = path.join(__dirname, '../config', fileName)
+        return fs.copy(template, filePath)
+          .then(() => {
+            return fs.readFile(filePath, 'utf8')
+          })
+      })
+  }
   // need fixed. think about global mode.
-  async generateIPsets () {
+  async generateIPsets (overwrite = false) {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.ipsetsFile)
+    const stats = await fs.stat(cfgPath)
+      .catch(() => null)
+    if (stats && stats.isFile() && !overwrite) {
+      return Promise.resolve(cfgPath)
+    }
     const ws = fs.createWriteStream(cfgPath)
     const promise = new Promise((resolve, reject) => {
       ws.on('finish', () => {
@@ -723,26 +842,19 @@ class VRouter {
     return promise
   }
 
-  deleteCfgFile (fileName) {
-    const filePath = path.join(this.config.host.configDir, fileName)
-    return fs.remove(filePath)
-      .catch(() => {
-        // don't panic. that's unnecessary to delete a non existed file.
+  getServerIP (protocol = 'shadowsocks') {
+    const cfg = this.config[protocol]
+    if (cfg.ip) {
+      return Promise.resolve(cfg.ip)
+    }
+    if (cfg.domain) {
+      return new Promise((resolve, reject) => {
+        dns.lookup(cfg.domain, { family: 4 }, (err, address, family) => {
+          if (err) reject(err)
+          resolve(address)
+        })
       })
-  }
-  getCfgContent (fileName) {
-    const filePath = path.join(this.config.host.configDir, fileName)
-    return fs.readFile(filePath, 'utf8')
-      .catch(() => {
-        const template = path.join(__dirname, '../config', fileName)
-        return fs.copy(template, filePath)
-          .then(() => {
-            return fs.readFile(filePath, 'utf8')
-          })
-      })
-  }
-
-  getServerIP () {
+    }
     if (this.config.server.ip) {
       return Promise.resolve(this.config.server.ip)
     }
@@ -760,9 +872,18 @@ class VRouter {
     return `iptables -t nat -A PREROUTING -d ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
 
-  async generateFWRules (protocol = 'shadowsocks', mode = 'whitelist') {
+  async generateFWRules (m, p, overwrite = false) {
     // whitelist/blacklist/global/none
+    const protocol = p || this.config.firewall.currentProtocol
+    const mode = m || this.config.firewall.currentMode
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.firewallFile)
+
+    const stats = await fs.stat(cfgPath)
+      .catch(() => null)
+    if (stats && stats.isFile() && !overwrite) {
+      return Promise.resolve(cfgPath)
+    }
+
     const ws = fs.createWriteStream(cfgPath)
     const promise = new Promise((resolve, reject) => {
       ws.on('finish', () => {
@@ -837,9 +958,17 @@ class VRouter {
       `127.0.0.1#${this.config.shadowsocks.dnsPort}`
     ]
   }
-  async generateDnsmasqCf (mode = 'none') {
+  async generateDnsmasqCf (m, overwrite = false) {
+    const mode = m || this.config.firewall.currentMode
     const DNSs = this.getDNSServer()
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile)
+
+    const stats = await fs.stat(cfgPath)
+      .catch(() => null)
+    if (stats && stats.isFile() && !overwrite) {
+      return Promise.resolve(cfgPath)
+    }
+
     const ws = fs.createWriteStream(cfgPath)
     const promise = new Promise((resolve, reject) => {
       ws.on('finish', () => {
@@ -1071,6 +1200,10 @@ stop() {
     })
   }
 
+  saveConfig () {
+    const cfgPath = path.join(this.config.host.configDir, 'config.json')
+    return fs.writeJson(cfgPath, this.config)
+  }
   scp (src, dst) {
     let dest = dst || this.config.vrouter.configDir
     const opt = {
@@ -1101,52 +1234,6 @@ stop() {
           .then(() => {
             return Promise.resolve(dest)
           })
-      })
-  }
-  async scpConfigAll () {
-    await this.generateService('shadowsocks')
-      .then((p) => {
-        return this.scp(p, '/etc/init.d/')
-      })
-    await this.generateService('kcptun')
-      .then((p) => {
-        return this.scp(p, '/etc/init.d/')
-      })
-    await this.copyTemplate(this.config.shadowsocks.client)
-      .then((p) => {
-        return this.scp(p, this.config.vrouter.configDir)
-      })
-    await this.copyTemplate(this.config.shadowsocks.dns)
-      .then((p) => {
-        return this.scp(p, this.config.vrouter.configDir)
-      })
-    await this.copyTemplate(this.config.shadowsocks.overKt)
-      .then((p) => {
-        return this.scp(p, this.config.vrouter.configDir)
-      })
-    await this.copyTemplate(this.config.kcptun.client)
-      .then((p) => {
-        return this.scp(p, this.config.vrouter.configDir)
-      })
-    await this.generateDnsmasqCf()
-      .then((p) => {
-        return this.scp(p, '/etc/dnsmasq.d/')
-      })
-    await this.generateIPsets()
-      .then((p) => {
-        return this.scp(p, this.config.vrouter.configDir)
-      })
-    await this.generateFWRules()
-      .then((p) => {
-        return this.scp(p, '/etc/')
-      })
-    await this.generateWatchdog()
-      .then((p) => {
-        return this.scp(p, this.config.vrouter.configDir)
-      })
-    await this.generateCronJob()
-      .then((p) => {
-        return this.scp(p, this.config.vrouter.configDir)
       })
   }
   async scpConfig (type = 'shadowsocks') {
@@ -1215,7 +1302,22 @@ stop() {
         break
     }
   }
-
+  async scpConfigAll () {
+    const types = [
+      'ssService',
+      'ktService',
+      'shadowsocks',
+      'kcptun',
+      'dnsmasq',
+      'ipset',
+      'firewall',
+      'watchdog',
+      'cron'
+    ]
+    for (let i = 0; i < types.length; i += 1) {
+      await this.scpConfig(types[i])
+    }
+  }
   connect (startFirst) {
     return this.getVMState()
       .then((state) => {
