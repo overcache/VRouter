@@ -2,37 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="../../node_modules/semantic/dist/semantic.min.css">
+  <link rel="stylesheet" href="../node_modules/semantic-ui/dist/semantic.min.css">
   <link rel="stylesheet" href="../style/custom.css">
   <title>VRouter</title>
 </head>
 <body>
-  <div class="ui installVB small modal">
-    <h4 class="ui header">没有检测到Virtualbox</h4>
-    <p>请确认已安装Virtualbox</p>
-    <button class="ui button teal">重试</button>
-    <button class="ui button teal">退出</button>
+  <div id="app">
+    <ui-modal v-bind:data="data"></ui-modal>
   </div>
-  <div class="ui importVM small modal">
-    <h4 class="ui header">VRouter虚拟机没有导入</h4>
-    <p>VRouter需要在后台运行一个openwrt的虚拟机实例, 是否需要导入VRouter虚拟机</p>
-    <button class="ui button teal">导入并启动</button>
-    <button class="ui button teal">退出</button>
-  </div>
-  <div class="ui startVM basic modal">
-    <h4 class="ui header">VRouter虚拟机没有运行</h4>
-    <p>VRouter需要在后台运行一个openwrt的虚拟机实例, 是否需要启动VRouter虚拟机</p>
-    <button class="ui button teal action">启动</button>
-    <button class="ui button teal exit">退出</button>
-  </div>
-  <div class="ui configNetwork small modal">
-    <h4 class="ui header">没有检测到Host-only网络</h4>
-    <p>VRouter需要一个Host-only网络来接管宿主流量, 是否设置Host-only网络?</p>
-    <button class="ui button teal">设置</button>
-    <button class="ui button teal">退出</button>
-  </div>
-  <script>window.$ = window.jQuery = require("../../node_modules/jquery/dist/jquery.min.js")</script>
-  <script src="../../node_modules/semantic/dist/semantic.min.js"></script>
+  <script>window.$ = window.jQuery = require("../node_modules/jquery/dist/jquery.min.js")</script>
+  <script src="../node_modules/semantic-ui/dist/semantic.min.js"></script>
+  <script src="../node_modules/vue/dist/vue.min.js" charset="utf-8"></script>
   <script src="../js/prepare.js"></script>
 </body>
 </html>

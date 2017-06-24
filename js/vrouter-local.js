@@ -12,6 +12,7 @@ const packageJson = require('../package.json')
 const dns = require('dns')
 const crypto = require('crypto')
 const sudo = require('sudo-prompt')
+const { EventEmitter } = require('events')
 
 class VRouter {
   constructor (config) {
@@ -19,6 +20,7 @@ class VRouter {
       config.host.configDir = path.join(getAppDir(), packageJson.name)
     }
     this.config = config
+    this.process = new EventEmitter()
   }
 
   wait (time) {
@@ -178,7 +180,7 @@ class VRouter {
     // https://askubuntu.com/questions/634620/when-using-and-sudo-on-the-first-command-is-the-second-command-run-as-sudo-t
     return this.sudoExec(`bash -c "${cmd1} && ${cmd2}"`)
   }
-  async buildVM (imagePath, deleteFirst = false) {
+  async buildVM (imagePath, deleteFirst = true) {
     let image = imagePath
     if (!image) {
       // download
@@ -186,13 +188,16 @@ class VRouter {
       const hashValue = await this.hashFile(oldImage)
       if (hashValue === this.config.vrouter.imageSha256) {
         image = oldImage
+        this.process.emit('build', '使用缓存镜像')
       } else {
         try {
           image = await this.downloadFile(this.config.vrouter.imageUrl)
+          this.process.emit('build', '下载镜像')
           console.log('download image sucess.')
           // console.log(image)
         } catch (err) {
           console.log(err)
+          this.process.emit('build', '下载失败')
           throw Error('download failed')
         }
       }
@@ -204,8 +209,9 @@ class VRouter {
     }
     if (existed) {
       if (this.config.debug) {
-        console.log('vm existed. delete it now.')
+        // console.log('vm existed. delete it now.')
         await this.deleteVM(true)
+        this.process.emit('build', '删除原有虚拟机')
       }
     }
     // specify size: 64M
@@ -234,10 +240,17 @@ class VRouter {
     return this.localExec(subCmds.join(' && '))
       .then(() => {
         return this.toggleSerialPort('on')
+          .then(() => {
+            this.process.emit('build', '配置虚拟机串口')
+          })
       })
       .then(() => {
         return this.configVMNetwork()
+          .then(() => {
+            this.process.emit('build', '配置虚拟机网络')
+          })
           .catch((err) => {
+            this.process.emit('err', '配置虚拟机网络失败')
             console.log('error when configVMNetwork. continue follow steps')
             console.log(err)
           })
@@ -246,28 +259,46 @@ class VRouter {
         return this.lockGUIConfig()
       })
       .then(() => {
-        return this.startVM('gui')
+        return this.startVM()
+          .then(() => {
+            this.process.emit('build', '开始启动虚拟机...请稍候')
+          })
           .then(() => {
             return this.wait(30000)
           })
       })
       .then(() => {
         return this.changeVMPasswd()
+          .then(() => {
+            this.process.emit('build', '修改虚拟机密码')
+          })
       })
       .then(() => {
         return this.changeDnsmasq()
+          .then(() => {
+            this.process.emit('build', '配置Dnsmasq')
+          })
       })
       .then(() => {
         return this.changeVMTZ()
+          .then(() => {
+            this.process.emit('build', '修改虚拟机时区')
+          })
       })
       .then(() => {
         return this.configVMLanIP()
+          .then(() => {
+            this.process.emit('build', '配置虚拟机网络地址, 请稍候')
+          })
           .then(() => {
             return this.wait(10000)
           })
       })
       .then(() => {
         return this.installPackage()
+          .then(() => {
+            this.process.emit('build', '安装 dnsmasq-full 以及 ipset')
+          })
           .then(() => {
             return this.wait(30000)
           })
@@ -277,17 +308,27 @@ class VRouter {
         const dst = this.config.vrouter.configDir + '/third_party/'
         return this.scp(src, dst)
           .then(() => {
+            this.process.emit('build', '拷贝 shadowsocks 以及 kcptun 到虚拟机')
+          })
+          .then(() => {
             return this.serialLog('done: scp third_party')
           })
       })
       .then(() => {
         return this.scpConfigAll()
           .then(() => {
+            this.process.emit('build', '拷贝配置文件到虚拟机')
+          })
+          .then(() => {
             return this.serialLog('done: scpConfigAll')
           })
       })
       .then(() => {
         return this.connect()
+          .then((remote) => {
+            this.process.emit('build', '登录虚拟机')
+            return Promise.resolve(remote)
+          })
       })
       .then((remote) => {
         return this.serialLog('done: connect to vm')
@@ -296,9 +337,15 @@ class VRouter {
           })
           .then(() => {
             return this.serialLog('done: installKt')
+              .then(() => {
+                this.process.emit('build', '安装 kcptun')
+              })
           })
           .then(() => {
             return this.enableService('kcptun')
+              .then(() => {
+                this.process.emit('build', '设置 kcptun 随虚拟机启动')
+              })
               .then(() => {
                 return this.serialLog('done: enable kcptun')
               })
@@ -306,11 +353,17 @@ class VRouter {
           .then(() => {
             return remote.installSS()
               .then(() => {
+                this.process.emit('build', '安装 shadowsocks')
+              })
+              .then(() => {
                 return this.serialLog('done: install SS')
               })
           })
           .then(() => {
             return this.enableService('shadowsocks')
+              .then(() => {
+                this.process.emit('build', '设置 shadowsocks 随虚拟机启动')
+              })
               .then(() => {
                 return this.serialLog('done: enable SS')
               })
@@ -318,17 +371,26 @@ class VRouter {
           .then(() => {
             return this.enableService('cron')
               .then(() => {
+                this.process.emit('build', '启用 cron 服务')
+              })
+              .then(() => {
                 return this.serialLog('done: enable cron')
               })
           })
           .then(() => {
             return this.configWatchdog()
               .then(() => {
+                this.process.emit('build', '安装守护脚本')
+              })
+              .then(() => {
                 return this.serialLog('done: install watchdog')
               })
           })
           .then(() => {
             return this.serialLog('done: shutting down')
+              .then(() => {
+                this.process.emit('build', '保存设置, 关闭虚拟机...')
+              })
               .then(() => {
                 return remote.shutdown()
               })
@@ -360,7 +422,7 @@ class VRouter {
     if (state === 'running' && !stopFirst) {
       throw Error('vm must be stopped before delete')
     }
-    await this.stopVM('poweroff', 8000)
+    await this.stopVM('force', 3000)
     return this.localExec(cmd)
   }
   async startVM (type = 'headless', waitTime = 100) {
@@ -388,7 +450,7 @@ class VRouter {
   async stopVM (action = 'savestate', waitTime = 100) {
     const serialPortState = await this.isSerialPortOn()
     const vmState = await this.getVMState()
-    if (serialPortState && vmState === 'running') {
+    if (serialPortState && vmState === 'running' && action !== 'force') {
       console.log('turn off vm by serialExec')
       return this.serialExec('poweroff', 'poweroff')
         .then(() => {
@@ -401,7 +463,7 @@ class VRouter {
           return this.wait(5000)
         })
     }
-    const cmd = `VBoxManage controlvm ${this.config.vrouter.name} ${action}`
+    const cmd = `VBoxManage controlvm ${this.config.vrouter.name} poweroff`
     if (vmState === 'running') {
       return this.localExec(cmd)
         .then(() => {

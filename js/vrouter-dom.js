@@ -1,6 +1,4 @@
-/* eslint env:"module" */
-
-const vrouter = require("./vrouter.js")
+const { VRouter } = require('../js/vrouter-local.js')
 let intervals = exports.intervals = []
 
 const fillElement = exports.fillElement = function (selector, content) {

@@ -1,8 +1,11 @@
 /* eslint-env jquery */
+/* global Vue */
+const { app, getCurrentWindow } = require('electron').remote
 const path = require('path')
+const fs = require('fs-extra')
 const url = require('url')
-const VRouter = require('../js/vrouter.js')
-const { getConfig } = require('../js/helper.js')
+const { VRouter } = require('../js/vrouter-local.js')
+// const { getConfig } = require('./helper.js')
 
 function redirect () {
   window.location.replace(url.format({
@@ -11,47 +14,172 @@ function redirect () {
     slashes: true
   }))
 }
-
-function toggleModal (cla, toggle) {
-  $(`.ui.${cla}.modal`)
-    .modal({
-      dimmerSettings: {
-        opacity: 0.2
-      },
-      closable: false
-    })
-    .modal(toggle)
+function adjustModal () {
+  const win = getCurrentWindow()
+  const size = win.getSize()
+  win.setSize(size[0], size[1] + 1)
+  win.setSize(size[0], size[1])
 }
-async function checkRequirement (config) {
-  let ret = await VRouter.isVBInstalled()
-  if (ret[0]) {
-    toggleModal('installVB', 'show')
+
+function buildVmListener (msg) {
+  vue.data.content += `<li class="ui">${msg}</li>`
+  adjustModal()
+}
+async function buildVmHandler (vrouter) {
+  vue.data.buttons = [{
+    label: '终止并退出',
+    async handler () {
+      await vrouter.deleteVM(true)
+      app.quit()
+    }
+  }]
+  vrouter.process.on('build', buildVmListener)
+  vue.data.header = '构建虚拟机'
+  vue.data.content = ''
+  try {
+    await vrouter.buildVM()
+    vue.data.content += `<li class="ui">等待虚拟机重新启动</li>`
+    await vrouter.startVM('headless', 30000)
+    vue.hide()
+    return checkRequirement(vrouter)
+  } catch (err) {
+    vue.data.content += `<br>${err}`
+    vue.data.buttons = [
+      {
+        label: '重试',
+        async handler () {
+          vrouter.process.removeListener('build', buildVmListener)
+          return buildVmHandler(vrouter)
+        }
+      },
+      {
+        label: '退出',
+        async handler () {
+          await vrouter.deleteVM(true)
+          app.quit()
+        }
+      }
+    ]
+  }
+}
+
+Vue.component('ui-modal', {
+  props: ['data'],
+  template: String.raw`
+  <div class="ui long small modal" id="modal">
+  <h4 class="ui header">{{ data.header }}</h4>
+    <p v-html="data.content"></p>
+    <button class="ui button teal" v-for="button in data.buttons" v-on:click="button.handler">
+      {{ button.label }}
+    </button>
+  </div>
+  `
+})
+
+const vue = new Vue({
+  el: '#app',
+  data: {
+    data: {
+      header: '',
+      content: '',
+      buttons: [],
+      closable: false
+    }
+  },
+  methods: {
+    show () {
+      $(`#${this.$el.id} .ui.modal`)
+      .modal({
+        dimmerSettings: {
+          opacity: 0.2
+        },
+        closable: this.$data.data.closable,
+        detachable: false
+      })
+      .modal('show')
+    },
+    hide () {
+      $(`#${this.$el.id} .ui.modal`)
+        .modal('hide')
+    }
+  }
+})
+
+async function checkRequirement (vrouter) {
+  let ret = await vrouter.isVBInstalled()
+  if (!ret) {
+    vue.data = {
+      header: '检测 VirtualBox',
+      content: '没有检测到 Virtualbox, 请前往<a href="https://www.virtualbox.org/"> Virtualbox 官网 </a>下载安装.',
+      buttons: [
+        {
+          label: '重新检测',
+          handler () {
+            vue.hide()
+            return checkRequirement(vrouter)
+          }
+        },
+        {
+          label: '退出',
+          handler () {
+            app.quit()
+          }
+        }
+      ],
+      closable: false
+    }
+    vue.show()
     return false
   }
-  ret = await VRouter.isBridgeExisted(config.vrouter.ip)
-  if (ret[0]) {
-    throw new Error(ret[0])
-  }
-  ret = await VRouter.isVRouterExisted()
-  if (ret[0]) {
-    throw new Error(ret[0])
-  }
-  ret = await VRouter.isVRouterRunning()
-  if (ret[0]) {
-    toggleModal('startVM', 'show')
+  ret = await vrouter.isVRouterExisted()
+  if (!ret) {
+  // if (true) {
+    vue.data = {
+      header: '检测虚拟机',
+      content: '没有检测到 VRouter 虚拟机, 需要下载 openwrt 官方镜像(5MB)进行构建.',
+      buttons: [
+        {
+          label: '下载并构建',
+          async handler () {
+            await buildVmHandler(vrouter)
+          }
+        },
+        {
+          label: '退出',
+          handler () {
+            app.quit()
+          }
+        }
+      ],
+      closable: false
+    }
+    vue.show()
     return false
   }
+  ret = await vrouter.isVRouterRunning()
+  if (!ret) {
+    vue.data = {
+      header: '启动虚拟机',
+      content: '正在启动虚拟机, 请稍候',
+      buttons: [],
+      closable: false
+    }
+    vue.show()
+    let countdown = 30
+    const interval = setInterval(() => {
+      let time = countdown > 0 ? --countdown : 0
+      vue.data.content = `正在启动虚拟机, 请稍候...${time}`
+    }, 1000)
+    await vrouter.startVM('headless', 30000)
+    clearInterval(interval)
+    vue.hide()
+  }
+  console.log('ss')
   redirect()
+  console.log('after redire')
 }
 document.addEventListener('DOMContentLoaded', async () => {
-  const config = await getConfig()
-  document.querySelector('.ui.startVM.modal .action').addEventListener('click', async () => {
-    let [err, result] = await VRouter.startVM()
-    if (err) return
-    console.log(result)
-    toggleModal('startVM', 'hide')
-    console.log('hided')
-    await checkRequirement(config)
-  })
-  checkRequirement(config)
+  const cfgPath = path.join(__dirname, '..', 'config', 'config.json')
+  const vrouter = new VRouter(fs.readJsonSync(cfgPath))
+  checkRequirement(vrouter)
 })

@@ -1,8 +1,9 @@
 /* eslint-env jquery */
-'use strict'
 
-const vrouter = require('../js/vrouter.js')
-const dom = require('../js/vrouter-dom.js')
+const fs = require('fs-extra')
+const path = require('path')
+const { VRouter } = require('../js/vrouter-local.js')
+// const dom = require('../js/vrouter-dom.js')
 
 // TODO: mem leak
 // TODO: vm pulse
@@ -10,19 +11,22 @@ const dom = require('../js/vrouter-dom.js')
 document.addEventListener('DOMContentLoaded', () => {
   // dom.checkTrafficStatus()
 
+  const cfgPath = path.join(__dirname, '..', 'config', 'config.json')
+  const vrouter = new VRouter(fs.readJsonSync(cfgPath))
   document.getElementById('toggle-gateway').addEventListener('click', () => {
     $('.ui.basic.modal').modal('show')
-    dom.toggleGateway()
+    // dom.toggleGateway()
+    return vrouter.changeRouteTo('wifi')
   })
   document.getElementById('shutdown-vrouter').addEventListener('click', () => {
-    vrouter.shutdown()
+    return vrouter.stopVM()
   })
   document.getElementById('password-icon').addEventListener('click', (event) => {
-    dom.togglePassword(event.target)
+    // dom.togglePassword(event.target)
   })
 
   document.getElementById('edit-form').addEventListener('click', (event) => {
-    dom.toggleEditForm(event.target)
+    // dom.toggleEditForm(event.target)
   })
 
   // vrouter.vrouterBrlan()

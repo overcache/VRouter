@@ -14,12 +14,21 @@ function createWindow () {
     minHeight: 650
   })
   win.loadURL(url.format({
-    pathname: path.join(__dirname, 'src', 'html', 'prepare.html'),
+    pathname: path.join(__dirname, 'html', 'prepare.html'),
     protocol: 'file',
     slashes: true
   }))
 
   win.webContents.openDevTools()
+  var handleRedirect = (event, url) => {
+    if (['http', 'https'].includes(path.basename(url))) {
+      event.preventDefault()
+      require('electron').shell.openExternal(url)
+    }
+  }
+
+  win.webContents.on('will-navigate', handleRedirect)
+  win.webContents.on('new-window', handleRedirect)
 
   win.on('closed', () => {
     win = null
