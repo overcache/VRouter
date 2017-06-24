@@ -5,7 +5,6 @@ const path = require('path')
 const fs = require('fs-extra')
 const url = require('url')
 const { VRouter } = require('../js/vrouter-local.js')
-// const { getConfig } = require('./helper.js')
 
 function redirect () {
   window.location.replace(url.format({
@@ -156,8 +155,10 @@ async function checkRequirement (vrouter) {
     vue.show()
     return false
   }
-  ret = await vrouter.isVRouterRunning()
-  if (!ret) {
+  ret = await vrouter.getVMState()
+  if (ret !== 'running') {
+    const waitTime = ret === 'poweroff' ? 30 : 10
+    let countdown = waitTime
     vue.data = {
       header: '启动虚拟机',
       content: '正在启动虚拟机, 请稍候',
@@ -165,12 +166,11 @@ async function checkRequirement (vrouter) {
       closable: false
     }
     vue.show()
-    let countdown = 30
     const interval = setInterval(() => {
       let time = countdown > 0 ? --countdown : 0
       vue.data.content = `正在启动虚拟机, 请稍候...${time}`
     }, 1000)
-    await vrouter.startVM('headless', 30000)
+    await vrouter.startVM('headless', waitTime * 1000)
     clearInterval(interval)
     vue.hide()
   }

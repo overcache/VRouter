@@ -450,11 +450,18 @@ class VRouter {
   async stopVM (action = 'savestate', waitTime = 100) {
     const serialPortState = await this.isSerialPortOn()
     const vmState = await this.getVMState()
-    if (serialPortState && vmState === 'running' && action !== 'force') {
+    if (serialPortState && vmState === 'running' && action === 'poweroff') {
       console.log('turn off vm by serialExec')
       return this.serialExec('poweroff', 'poweroff')
         .then(() => {
           return this.wait(8000)
+        })
+    }
+    if (action === 'savestate') {
+      const cmd = `VBoxManage controlvm ${this.config.vrouter.name} savestate`
+      return this.localExec(cmd)
+        .then(() => {
+          return this.wait(waitTime)
         })
     }
     if (vmState === 'saved' && action === 'poweroff') {
@@ -463,8 +470,8 @@ class VRouter {
           return this.wait(5000)
         })
     }
-    const cmd = `VBoxManage controlvm ${this.config.vrouter.name} poweroff`
     if (vmState === 'running') {
+      const cmd = `VBoxManage controlvm ${this.config.vrouter.name} poweroff`
       return this.localExec(cmd)
         .then(() => {
           return this.wait(waitTime)
