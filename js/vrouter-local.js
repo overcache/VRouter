@@ -27,6 +27,7 @@ class VRouter {
     }
     this.config = config
     this.process = new EventEmitter()
+    this.remote = null
   }
 
   wait (time) {
@@ -348,13 +349,15 @@ class VRouter {
               })
           })
           .then(() => {
-            return this.enableService('kcptun')
+            if (this.config.firewall.currentProtocol === 'kcptun') {
+              return this.enableService('kcptun')
               .then(() => {
                 this.process.emit('build', '设置 kcptun 随虚拟机启动')
               })
               .then(() => {
                 return this.serialLog('done: enable kcptun')
               })
+            }
           })
           .then(() => {
             return remote.installSS()
@@ -1318,6 +1321,7 @@ stop() {
         return Promise.resolve(dest)
       })
       .catch(() => {
+        console.log(`${dest} not exist, copy template to it.`)
         return fs.copy(template, dest)
           .then(() => {
             return Promise.resolve(dest)

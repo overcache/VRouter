@@ -26,7 +26,7 @@ function buildVmListener (msg) {
 }
 async function buildVmHandler (vrouter) {
   vue.data.buttons = [{
-    label: '终止并退出',
+    label: '终止',
     async handler () {
       await vrouter.deleteVM(true)
       app.quit()

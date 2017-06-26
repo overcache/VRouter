@@ -179,7 +179,7 @@ const proxyTab = new Vue({
             .catch(e => console.log(e))
         }
 
-        await vrouter.restartCrontab ()
+        await vrouter.restartCrontab()
 
         await vrouter.generateFWRules(null, null, true)
         await vrouter.scpConfig('firewall')
@@ -265,14 +265,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#bypass-mode').dropdown()
   $('.help.circle.link.icon').popup()
   $('.ui.button').popup()
-  const interval = setInterval(async () => {
-    const state = vrouter.getVMState()
-    if (state !== 'running') {
-      const [gw] = await vrouter.getCurrentGateway()
-      if (gw === vrouter.config.vrouter.ip) {
-        await vrouter.changeRouteTo('wifi')
-      }
-    }
-    statusTab.checkTrafficStatus()
-  }, 60000)
+  // const interval = setInterval(async () => {
+  //   const state = vrouter.getVMState()
+  //   if (state !== 'running') {
+  //     const [gw] = await vrouter.getCurrentGateway()
+  //     if (gw === vrouter.config.vrouter.ip) {
+  //       await vrouter.changeRouteTo('wifi')
+  //     }
+  //   }
+  //   statusTab.checkTrafficStatus()
+  // }, 60000)
 })
