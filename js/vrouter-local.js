@@ -811,7 +811,7 @@ class VRouter {
       })
   }
   enableService (service) {
-    const cmd = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} enable && /etc/init.d/${service} restart`
+    const cmd = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} restart && /etc/init.d/${service} enable`
     return this.serialExec(cmd, `enable ${service}`)
   }
   disabledService (service) {

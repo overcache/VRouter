@@ -144,6 +144,10 @@ class VRouterRemote {
     const cmd = '/etc/init.d/kcptun restart'
     return this.remoteExec(cmd)
   }
+  enableService (service) {
+    const cmd = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} enable && /etc/init.d/${service} restart`
+    return this.remoteExec(cmd)
+  }
   stopKcptun () {
     const cmd = '/etc/init.d/kcptun stop'
     return this.remoteExec(cmd)

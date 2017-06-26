@@ -36,6 +36,16 @@ const myApp = new Vue({
     currentProtocolText () {
       const isSS = this.firewall.currentProtocol === 'shadowsocks'
       return isSS ? 'Shadowsocks only' : 'Shadowsocks over kcptun'
+    },
+    ktOthers () {
+      let ktKeys = ['address', 'port', 'key', 'crypt', 'mode']
+      let others = []
+      Object.keys(this.kcptun).forEach((key) => {
+        if (!ktKeys.includes(key)) {
+          others.push(`${key}=${this.kcptun[key]}`)
+        }
+      })
+      return others.join(';')
     }
   },
   methods: {
@@ -71,7 +81,7 @@ const myApp = new Vue({
         })
       } else {
         this.blinkIntervals.forEach(intrvl => clearInterval(intrvl))
-        this.intervals.length = 0
+        this.blinkIntervals.length = 0
         setTimeout(() => {
           icons.forEach((icon) => {
             icon.classList.remove('green')
@@ -200,14 +210,14 @@ const myApp = new Vue({
 
         newKt[ktKeys[i]] = this.$refs[refKey].value.trim()
       }
-      if (Object.keys(this.kcptun.server).length !== Object.keys(newKt).length) {
+      if (Object.keys(this.kcptun).length !== Object.keys(newKt).length) {
         kcptunChanged = true
       } else {
         Object.keys(newKt).forEach((key) => {
           if (!kcptunChanged) {
-            kcptunChanged = newKt[key] !== this.kcptun.server[key]
+            kcptunChanged = newKt[key] !== this.kcptun[key]
           }
-          this.kcptun.server[key] = newKt[key]
+          this.kcptun[key] = newKt[key]
         })
       }
       return { protocolChanged, shadowsocksChanged, kcptunChanged }

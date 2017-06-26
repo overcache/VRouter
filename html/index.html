@@ -46,7 +46,7 @@
           <i class="ui huge wifi icon"></i>
         </div>
         <div>
-          VRouter代理链: {{ firewall.currentProtocol }}
+          VRouter代理链: {{ currentProtocolText }}
         </div>
         <div>
           VRouter模式: {{ firewall.currentMode }}
@@ -152,7 +152,7 @@
           <label>Others<i class="help circle link icon" data-content="kcptun的其他参数, 格式'key1=value1;key2=value2', 如sndwnd=256;rcvwnd=2048;nocomp=true"></i></label>
           <input v-bind:disabled="ktDisabled" ref="ktOthers" v-bind:value="ktOthers">
         </div>
-        <button id="edit-form" type="button" v-bind:class="{ui:true, negative:!ssDisabled, teal:true, button:true}" v-on:click="btnEditHandler">{{ disabled ? 'Edit' : 'Discard' }}</button>
+        <button id="edit-form" type="button" v-bind:class="{ui:true, negative:!ssDisabled, teal:true, button:true}" v-on:click="btnEditHandler">{{ ssDisabled ? 'Edit' : 'Discard' }}</button>
         <button id="save-apply" type="button" class="ui teal button " v-on:click="saveHandler" v-if="!ssDisabled">Save and Apply</button>
       </form>
     </div>
