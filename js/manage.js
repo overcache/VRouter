@@ -1,33 +1,32 @@
 /* eslint-env jquery */
+/* global Vue */
 
-// const fs = require('fs-extra')
-// const path = require('path')
 const { VRouter } = require('../js/vrouter-local.js')
 const { app } = require('electron').remote
-// const dom = require('../js/vrouter-dom.js')
 
-// const cfgPath = path.join(__dirname, '..', 'config', 'config.json')
-// const vrouter = new VRouter(fs.readJsonSync(cfgPath))
 let vrouter = new VRouter()
 let remote = null
 ;(async function () {
   remote = await vrouter.connect()
 })()
 
-// TODO: mem leak
-// TODO: vm pulse
-
-const statusTab = new Vue({
-  el: '#status-tab',
+const myApp = new Vue({
+  el: '#app',
   data: {
-    intervals: [],
+    blinkIntervals: [],
     currentGW: '',
-    toggleRouterMsg: '',
-    toggleRouterLabel: '启用VRouter网关',
-    firewall: vrouter.config.firewall
+    shadowsocks: vrouter.config.shadowsocks.server,
+    kcptun: vrouter.config.kcptun.server,
+    firewall: vrouter.config.firewall,
+    hideSSPassword: true,
+    hideKtPassword: true,
+    ssDisabled: true,
+    ktDisabled: true,
+    btnToggleRouterPopup: '',
+    btnToggleRouterText: '启用VRouter网关'
   },
   computed: {
-    toggleRouterClass () {
+    btnToggleRouterIcon () {
       return {
         pause: this.currentGW === 'vrouter',
         play: this.currentGW !== 'vrouter',
@@ -35,27 +34,28 @@ const statusTab = new Vue({
       }
     },
     currentProtocolText () {
-      return this.firewall.currentProtocol === 'shadowsocks' ? 'Shadowsocks only' : 'Shadowsocks over kcptun'
+      const isSS = this.firewall.currentProtocol === 'shadowsocks'
+      return isSS ? 'Shadowsocks only' : 'Shadowsocks over kcptun'
     }
   },
   methods: {
-    async toggleRouterHandler () {
+    async btnToggleRouterHandler () {
       const to = this.currentGW === 'vrouter'
-        ? 'wifi' : 'vrouter'
+      ? 'wifi' : 'vrouter'
       return vrouter.changeRouteTo(to)
-        .then(() => {
-          this.currentGW = to
-          return this.checkTrafficStatus(to)
-        })
+      .then(() => {
+        this.currentGW = to
+        return this.checkTrafficStatus(to)
+      })
     },
-    shutdownHandler () {
+    btnShutdownHandler () {
       return vrouter.changeRouteTo('wifi')
-        .then(() => {
-          return vrouter.stopVM('savestate')
-        })
-        .then(() => {
-          app.quit()
-        })
+      .then(() => {
+        return vrouter.stopVM('savestate')
+      })
+      .then(() => {
+        app.quit()
+      })
     },
     async toggleBlink (blink) {
       const icons = [...this.$el.querySelectorAll('.ui.circle.icon')]
@@ -67,10 +67,10 @@ const statusTab = new Vue({
               icon.classList.toggle('green')
             }, Math.random() * 1400)
           }, 1500)
-          this.intervals.push(interval)
+          this.blinkIntervals.push(interval)
         })
       } else {
-        this.intervals.forEach(intrvl => clearInterval(intrvl))
+        this.blinkIntervals.forEach(intrvl => clearInterval(intrvl))
         this.intervals.length = 0
         setTimeout(() => {
           icons.forEach((icon) => {
@@ -80,77 +80,34 @@ const statusTab = new Vue({
       }
     },
     async checkTrafficStatus (gateway) {
-      // let current = this.currentGW
       if (!gateway || !this.currentGW) {
         const [gw] = await vrouter.getCurrentGateway()
-        // if (gateway === vrouter.config.vrouter.ip) {
         if (gw === vrouter.config.vrouter.ip) {
           this.currentGW = 'vrouter'
         } else {
           this.currentGW = 'wifi'
         }
       }
-      let blink = this.currentGW === 'vrouter'
-      this.toggleRouterMsg = blink ? '停止接管流量' : '开始接管流量'
-      this.toggleRouterLabel = blink ? '恢复系统网关' : '启用VRouter网关'
-      this.toggleBlink(blink)
-    }
-  },
-  mounted () {
-    this.checkTrafficStatus()
-  }
-})
-const proxyTab = new Vue({
-  el: '#proxy-tab',
-  data: {
-    shadowsocks: vrouter.config.shadowsocks,
-    kcptun: vrouter.config.kcptun,
-    firewall: vrouter.config.firewall,
-    hideSSPassword: true,
-    hideKtPassword: true,
-    disabled: true,
-    ktDisabled: true
-  },
-  computed: {
-    currentProtocolText () {
-      return this.firewall.currentProtocol === 'shadowsocks' ? 'Shadowsocks only' : 'Shadowsocks over kcptun'
+      const isGWVRouter = this.currentGW === 'vrouter'
+      this.btnToggleRouterPopup = isGWVRouter ? '停止接管流量' : '开始接管流量'
+      this.btnToggleRouterText = isGWVRouter ? '恢复系统网关' : '启用VRouter网关'
+      this.toggleBlink(isGWVRouter)
     },
-    ktOthers () {
-      let ktKeys = ['address', 'port', 'key', 'crypt', 'mode']
-      let others = []
-      Object.keys(this.kcptun.server).forEach((key) => {
-        if (!ktKeys.includes(key)) {
-          others.push(`${key}=${this.kcptun.server[key]}`)
-        }
-      })
-      return others.join(';')
-    }
-  },
-  methods: {
-    editHandler () {
-      if (this.disabled) {
-        this.hideSSPassword = false
-        this.disabled = false
-        if (this.firewall.currentProtocol === 'kcptun') {
-          this.ktDisabled = false
-          this.hideKtPassword = false
-        }
-      } else {
-        this.resetDropdown()
-        this.disabled = true
-        this.ktDisabled = true
-        this.hideKtPassword = true
-        this.hideSSPassword = true
+    btnEditHandler () {
+      this.ssDisabled = !this.ssDisabled
+      this.hideSSPassword = this.ssDisabled
+
+      if (this.firewall.currentProtocol === 'kcptun') {
+        this.ktDisabled = !this.ktDisabled
+        this.hideKtPassword = this.ktDisabled
       }
     },
     async saveHandler () {
-      this.disabled = true
+      this.ssDisabled = true
       this.ktDisabled = true
       this.hideKtPassword = true
       this.hideSSPassword = true
-      // TODO: take care of kcptun
-      // TODO: unneccissary restart
-      // TODO: unneccissary watchdog
+
       const changed = this.syncFileds()
       if (!changed.shadowsocksChanged && !changed.kcptunChanged && !changed.protocolChanged) {
         return
@@ -187,20 +144,18 @@ const proxyTab = new Vue({
         await remote.restartFirewall()
       }
     },
+
     toggleSSPassword () {
       this.hideSSPassword = !this.hideSSPassword
     },
     toggleKtPassword () {
       this.hideKtPassword = !this.hideKtPassword
     },
-    resetDropdown () {
-      // const text = this.$el.querySelector('div.text')
-      // text.innerHTML = this.currentProtocol
-      this.$refs.protocolText.innerHTML = this.firewall.currentProtocol === 'shadowsocks' ? 'Shadowsocks only' : 'Shadowsocks over kcptun'
-
+    resetProxyChain () {
+      const isSS = this.firewall.currentProtocol === 'shadowsocks'
+      this.$refs.protocolText.innerHTML = isSS ? 'Shadowsocks only' : 'Shadowsocks over kcptun'
     },
-    changeProtocolText (event) {
-      // const pre = this.$refs.protocolText.innerHTML
+    protocolDropdownHandler (event) {
       const selectedText = event.target.innerHTML.trim()
       if (selectedText === 'Shadowsocks only') {
         this.ktDisabled = true
@@ -215,13 +170,13 @@ const proxyTab = new Vue({
       let shadowsocksChanged = false
       let kcptunChanged = false
 
-      let pre = vrouter.config.firewall.currentProtocol
+      let pre = this.firewall.currentProtocol
       if (this.$refs.protocolText.innerHTML === 'Shadowsocks only') {
-        vrouter.config.firewall.currentProtocol = 'shadowsocks'
+        this.firewall.currentProtocol = 'shadowsocks'
       } else {
-        vrouter.config.firewall.currentProtocol = 'kcptun'
+        this.firewall.currentProtocol = 'kcptun'
       }
-      protocolChanged = pre !== vrouter.config.firewall.currentProtocol
+      protocolChanged = pre !== this.firewall.currentProtocol
 
       let SSKeys = ['address', 'port', 'password', 'timeout', 'method', 'fastOpen']
       for (let i = 0; i < SSKeys.length; i++) {
@@ -257,14 +212,19 @@ const proxyTab = new Vue({
       }
       return { protocolChanged, shadowsocksChanged, kcptunChanged }
     }
+  },
+  mounted () {
+    this.checkTrafficStatus()
   }
 })
+
 document.addEventListener('DOMContentLoaded', async () => {
   $('.tabular.menu .item').tab()
   $('#proxy-chains').dropdown()
   $('#bypass-mode').dropdown()
   $('.help.circle.link.icon').popup()
   $('.ui.button').popup()
+  console.log(myApp)
   // const interval = setInterval(async () => {
   //   const state = vrouter.getVMState()
   //   if (state !== 'running') {
