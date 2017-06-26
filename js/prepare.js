@@ -174,10 +174,9 @@ async function checkRequirement (vrouter) {
     clearInterval(interval)
     vue.hide()
   }
-  console.log('ss')
   redirect()
-  console.log('after redire')
 }
+
 document.addEventListener('DOMContentLoaded', async () => {
   const cfgPath = path.join(__dirname, '..', 'config', 'config.json')
   const vrouter = new VRouter(fs.readJsonSync(cfgPath))

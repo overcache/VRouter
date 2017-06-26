@@ -22,9 +22,8 @@
     },
     "shadowsocks": {
         "server": {
-            "ip": "",
-            "domain": "",
-            "port": "111",
+            "address": "123.123.123.123",
+            "port": "4321",
             "password": "demo-paswd",
             "timeout": 300,
             "method": "chacha20",
@@ -42,12 +41,11 @@
     },
     "kcptun": {
         "server": {
-            "ip": "",
-            "domain": "",
-            "port": "832",
-            "key": "secret",
-            "crypt": "md5",
-            "mode": "fast3",
+            "address": "123.123.123.123",
+            "port": "5555",
+            "key": "demo-secret",
+            "crypt": "aes-128",
+            "mode": "fast2",
             "sndwnd": "256",
             "rcvwnd": "2048",
             "nocomp": "true"

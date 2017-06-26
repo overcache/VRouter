@@ -44,6 +44,10 @@ class VRouterRemote {
       .then(() => {
       })
   }
+  makeExecutable (file) {
+    const cmd = `chmod +x ${file}`
+    return this.remoteExec(cmd)
+  }
   installKt () {
     const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
       ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
@@ -124,18 +128,35 @@ class VRouterRemote {
     return this.getFile(`/etc/${this.config.firewall.firewallFile}`)
   }
 
-  async restartFirewall () {
+  restartFirewall () {
     const cmd = `/etc/init.d/firewall restart`
     return this.remoteExec(cmd)
   }
-  async restartDnsmasq () {
+  restartDnsmasq () {
     const cmd = `/etc/init.d/dnsmasq restart`
     return this.remoteExec(cmd)
   }
-  async changeProtocol (protocol, m) {
+  restartShadowsocks () {
+    const cmd = '/etc/init.d/shadowsocks restart'
+    return this.remoteExec(cmd)
+  }
+  restartKcptun () {
+    const cmd = '/etc/init.d/kcptun restart'
+    return this.remoteExec(cmd)
+  }
+  stopKcptun () {
+    const cmd = '/etc/init.d/kcptun stop'
+    return this.remoteExec(cmd)
+  }
+  async changeProtocol (p, m) {
+    // TODO: must restart shadowsocks or kt
+    const protocol = p || this.config.firewall.currentProtocol
     const mode = m || this.config.firewall.currentMode
+    await this.local.generateConfig(protocol)
     await this.local.generateFWRules(mode, protocol, true)
+    await this.local.scpConfig('shadowsocks')
     await this.local.scpConfig('firewall')
+    await this.restartShadowsocks()
     await this.restartFirewall()
   }
 

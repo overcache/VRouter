@@ -9,9 +9,9 @@ let win
 function createWindow () {
   win = new BrowserWindow({
     width: 569,
-    height: 650,
+    height: 750,
     minWidth: 569,
-    minHeight: 650
+    minHeight: 750
   })
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'html', 'prepare.html'),
@@ -20,15 +20,6 @@ function createWindow () {
   }))
 
   win.webContents.openDevTools()
-  var handleRedirect = (event, url) => {
-    if (['http', 'https'].includes(path.basename(url))) {
-      event.preventDefault()
-      require('electron').shell.openExternal(url)
-    }
-  }
-
-  win.webContents.on('will-navigate', handleRedirect)
-  win.webContents.on('new-window', handleRedirect)
 
   win.on('closed', () => {
     win = null

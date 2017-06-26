@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../style/custom.css">
 </head>
 <body>
-  <div class="ui top attached tabular menu">
+  <div class="ui four item top attached tabular menu">
     <a class="item active" data-tab="status">
       <i class="dashboard icon"></i>
       Status
@@ -43,81 +43,121 @@
         <i class="ui circle icon"></i>
         <i class="ui huge wifi icon"></i>
       </div>
+      <div>
+        VRouter代理链: {{ currentProtocolText }}
+      <div>
+        VRouter模式: {{ firewall.currentMode }}
+      </div>
+      </div>
     </div>
-    <div class="ui buttons">
-      <button id="toggle-gateway" class="ui teal button" data-content="">
-        <i id="toggle-gateway-icon" class="pause icon"></i>
-      </button>
-      <div class="or"></div>
-      <button id="shutdown-vrouter" class="ui negative button" data-content="停止接管网络数据, 并关闭虚拟机">
-        <i id="shutdown-vrouter-icon" class="power icon"></i>
-      </button>
-    </div>
+    <button class="ui teal labeled icon button" v-bind:data-content="toggleRouterMsg" v-on:click="toggleRouterHandler">
+      <i v-bind:class="toggleRouterClass"></i>
+      {{ toggleRouterLabel }}
+    </button>
+    <button class="ui negative labeled icon button" data-content="停止接管流量, 并关闭虚拟机" v-on:click="shutdownHandler">
+      <i id="shutdown-vrouter-icon" class="power icon"></i>
+      关闭VRouter
+    </button>
   </div>
-  <div class="ui bottom attached tab segment" data-tab="proxy">
-    <!-- <h2 class="ui blue header">Proxy Chains</h2> -->
-    <!-- <div class="ui divider"></div> -->
-    <form id="vrouter-mode-form" class="ui form">
-      <!-- <fieldset id="vrouter-mode" disabled> -->
+
+  <div id="proxy-tab" class="ui bottom attached tab segment" data-tab="proxy">
+        <form id="vrouter-mode-form" class="ui form">
         <div class="field">
           <label>Proxy Chains</label>
-          <div id="proxy-chains" class="ui selection dropdown">
+          <div id="proxy-chains" v-bind:class="{ui:true, selection:true, dropdown:true, disabled:disabled}">
             <input type="hidden" name="proxy-chains">
             <i class="dropdown icon"></i>
-            <div class="default text">Choose Proxy Chains</div>
+            <div class="text" ref="protocolText" v-text="currentProtocolText"></div>
             <div class="menu">
-              <div class="item" data-value="shadowsocks-only">
+              <div class="item" data-value="shadowsocks-only" v-on:click="changeProtocolText">
                 Shadowsocks only
               </div>
-              <div class="item" data-value="shadowsocks-kcptun">
-                Shadowsocks + Kcptun
+              <div class="item" data-value="shadowsocks-kcptun" v-on:click="changeProtocolText">
+                Shadowsocks over Kcptun
               </div>
             </div>
           </div>
         </div>
-        <!-- <div class="fields"> -->
-          <div class="six wide field">
-            <label for="server">Server</label>
-            <input id="server" name="server" type="text">
-          </div>
-          <div class="six wide field">
-            <label for="server-port">Server Port</label>
-            <input id="server-port" name="server-port" type="text">
-          </div>
-          <div class="six wide field">
-            <label for="encrypt">Encrypt Method</label>
-            <input id="encrypt" name="encryp" type="text">
-          </div>
-          <div class="six wide icon field">
-            <label for="password">Password</label>
-            <div class="ui icon input">
-              <input id="password" name="password" type="password">
-              <i id="password-icon" class="unhide link icon"></i>
+          <!-- <div class="ui divider hidden"></div> -->
+          <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocks/shadowsocks-libev#usage">Shadowsocks<i class="small icon external square"></i></a></h4>
+          <div class="field">
+            <div class="three fields">
+                <div class="eight wide field">
+                  <label for="server">Server</label>
+                  <input v-bind:value="shadowsocks.server.address" v-bind:disabled="disabled" ref="address">
+                </div>
+                <div class="four wide field">
+                  <label for="server-port">Server Port</label>
+                  <input v-bind:value="shadowsocks.server.port" v-bind:disabled="disabled" ref="port">
+                </div>
+                <div class="four wide field">
+                  <label for="fast-open">Fast Open</label>
+                  <input v-bind:disabled="disabled" v-bind:value="shadowsocks.server.fastOpen" ref="fastOpen">
+                </div>
             </div>
           </div>
-          <div class="six wide field">
-            <label for="fast-open">Fast Open</label>
-            <input id="fast-open" name="fast-open" type="text">
+          <div class="field">
+            <div class="three fields">
+              <div class="eight wide icon field">
+                <label for="password">Password</label>
+                <div class="ui icon input">
+                  <input v-bind:value="shadowsocks.server.password" v-bind:type="hideSSPassword ? 'password' : 'text'" v-bind:disabled="disabled" ref="password">
+                  <i id="password-icon" class="link icon" v-bind:class="hideSSPassword ? 'unhide' : 'hide'" v-on:click="toggleSSPassword"></i>
+                </div>
+              </div>
+              <div class="four wide field">
+                <label for="encrypt">Encrypt Method</label>
+                <input v-bind:disabled="disabled" v-bind:value="shadowsocks.server.method" ref="method">
+              </div>
+              <div class="four wide field">
+                <label for="timeout">Timeout</label>
+                <input v-bind:disabled="disabled" v-bind:value="shadowsocks.server.timeout" ref="timeout">
+              </div>
+            </div>
           </div>
-          <div class="six wide field">
-            <label for="timeout">Timeout</label>
-            <input id="timeout" name="timeout" type="text">
+          <h4 class="ui header dividing teal"><a href="https://github.com/xtaci/kcptun#usage">Kcptun<i class="small icon external square"></i></a></h4>
+          <!-- <h4 class="ui header dividing teal">Kcptun<i class="upper link icon external square"></i></h4> -->
+          <div class="field">
+            <div class="three fields">
+                <div class="eight wide field">
+                  <label for="server">Server</label>
+                  <input v-bind:value="kcptun.server.address" v-bind:disabled="ktDisabled" ref="ktAddress">
+                </div>
+                <div class="four wide field">
+                  <label for="server-port">Server Port</label>
+                  <input v-bind:value="kcptun.server.port" v-bind:disabled="ktDisabled" ref="ktPort">
+                </div>
+                <div class="four wide field">
+                  <label for="fast-open">Mode</label>
+                  <input v-bind:disabled="ktDisabled" v-bind:value="kcptun.server.mode" ref="ktMode">
+                </div>
+            </div>
           </div>
           <div class="field">
-            <label for="kcptun">Kcptun Options</label>
-            <input id="kcptun" name="kcptun" type="text">
+            <div class="two fields">
+              <div class="eight wide icon field">
+                <label for="password">Key</label>
+                <div class="ui icon input">
+                  <input v-bind:value="kcptun.server.key" v-bind:type="hideKtPassword ? 'password' : 'text'" v-bind:disabled="ktDisabled" ref="ktKey">
+                  <i class="link icon" v-bind:class="hideKtPassword ? 'unhide' : 'hide'" v-on:click="toggleKtPassword"></i>
+                </div>
+              </div>
+              <div class="eight wide field">
+                <label for="encrypt">Encrypt Method</label>
+                <input v-bind:disabled="ktDisabled" v-bind:value="kcptun.server.crypt" ref="ktCrypt">
+              </div>
+            </div>
           </div>
-          <!-- </div> -->
-        <!-- </fieldset> -->
-      <button id="edit-form" type="button" class="ui primary button">Edit</button>
-      <button id="save-apply" type="button" class="ui primary button">Save and Apply</button>
-    </form>
+          <div class="field">
+                <label>Others<i class="help circle link icon" data-content="kcptun的其他参数, 格式'key1=value1;key2=value2', 如sndwnd=256;rcvwnd=2048;nocomp=true"></i></label>
+                <input v-bind:disabled="ktDisabled" ref="ktOthers" v-bind:value="ktOthers">
+          </div>
+          <button id="edit-form" type="button" v-bind:class="{ui:true, negative:!disabled, teal:true, button:true}" v-on:click="editHandler">{{ disabled ? 'Edit' : 'Discard' }}</button>
+          <button id="save-apply" type="button" class="ui teal button " v-on:click="saveHandler" v-if="!disabled">Save and Apply</button>
+        </form>
+      </div>
 
-    <!-- <h2 class="ui blue header">List Mode</h2> -->
-    <!-- <div class="ui divider"></div> -->
-
-  </div>
-  <div class="ui bottom attached tab segment" data-tab="rules">
+      <div class="ui bottom attached tab segment" data-tab="rules">
         <div class="field">
           <label>Route Mode</label>
           <div id="bypass-mode" class="ui selection dropdown">
@@ -133,137 +173,128 @@
             </div>
           </div>
         </div>
-    <h2 class="ui blue header">List Details</h2>
-    <div class="ui divider"></div>
-    <div class="ui top attached tabular menu">
-      <a class="item" data-tab="rules/blacklist">blacklist</a>
-      <a class="item" data-tab="rules/whitelist">whitelist</a>
-      <a class="item" data-tab="rules/lans">lans</a>
-    </div>
-    <div class="ui bottom attached active tab segment" data-tab="rules/blacklist"></div>
-    <div class="ui bottom attached tab segment" data-tab="rules/whitelist"></div>
-    <div class="ui bottom attached tab segment" data-tab="rules/lans"></div>
-  </div>
-  <div class="ui bottom attached tab segment" data-tab="system">
-    <h2 class="ui blue header">OSX gateway & dns</h2>
-    <div class="ui divider"></div>
-    <div class="ui list">
-      <div class="item">
-        <div class="ui label">
-          gateway: <span id="gateway"></span>
+        <h2 class="ui blue header">List Details</h2>
+        <div class="ui divider"></div>
+        <div class="ui top attached tabular menu">
+          <a class="item" data-tab="rules/blacklist">blacklist</a>
+          <a class="item" data-tab="rules/whitelist">whitelist</a>
+          <a class="item" data-tab="rules/lans">lans</a>
         </div>
+        <div class="ui bottom attached active tab segment" data-tab="rules/blacklist"></div>
+        <div class="ui bottom attached tab segment" data-tab="rules/whitelist"></div>
+        <div class="ui bottom attached tab segment" data-tab="rules/lans"></div>
       </div>
-      <div class="item">
-        <div class="ui label">
-          dns: <span id="dns"></span>
-        </div>
-      </div>
-    </div>
-    <div class="ui positive message">
-      <div class="header">traffic route</div>
-      <p id="current-traffic"></p>
-      <button id="btn-route" class="ui button"></button>
-    </div>
-    <h2 class="ui blue header">VRouter Status</h2>
-    <div class="ui divider"></div>
-    <div class="ui list">
-      <div class="item">
-        <div class="ui label">
-          openwrt version: <span id="openwrt-version"></span>
-        </div>
-      </div>
-      <div class="item">
-        <div class="ui label">
-          br-lan IP address: <span id="lan"></span>
-        </div>
-      </div>
-      <div class="item">
-        <div class="ui label">
-          VRouter IP address: <span id="wan"></span>
-        </div>
-      </div>
-      <div class="item">
-        <div class="ui label">
-          shadowsocks-libev version: <span id="ss-version"></span>
-        </div>
-      </div>
-      <div class="item">
-        <div class="ui label">
-          kcptun version: <span id="kt-version"></span>
-        </div>
-      </div>
-    </div>
-    <h2 class="ui blue header">Services</h2>
-    <div class="ui divider"></div>
-    <table class="ui definition table">
-      <thead>
-        <tr>
-          <th></th>
-          <th>Version</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>openwrt</td>
-          <td>demo</td>
-          <td>demo</td>
-        </tr>
-        <tr>
-          <td>shadowsocks</td>
-          <td>demo</td>
-          <td>demo</td>
-        </tr>
-        <tr>
-          <td>kcptun</td>
-          <td>demo</td>
-          <td>demo</td>
-        </tr>
-        <tr>
-          <td>dnsmasq</td>
-          <td>demo</td>
-          <td>demo</td>
-        </tr>
-        <tr>
-          <td>iptables</td>
-          <td>demo</td>
-          <td>demo</td>
-        </tr>
-        <tr>
-          <td>ipset</td>
-          <td>demo</td>
-          <td>demo</td>
-        </tr>
-      </tbody>
-    </table>
-    <h2 class="ui blue header">SSH Keyfile</h2>
-    <div class="ui divider"></div>
-    <button class="ui button">regenerate</button>
-    <button class="ui button">restart</button>
-    <button class="ui button">shutdown</button>
-  </div>
 
-  <div class="ui basic modal">
-    <div class="ui icon header">
-      <i class="archive icon"></i>
-      Archive Old Messages
-    </div>
-    <div class="content">
-      <p>Your inbox is getting full, would you like us to enable automatic archiving of old messages?</p>
-    </div>
-    <div class="actions">
-      <div class="ui red basic cancel inverted button">
-        <i class="remove icon"></i>
-        No
+      <div class="ui bottom attached tab segment" data-tab="system">
+        <h4 class="ui header dividing teal">宿主状态</h4>
+        <div class="ui list">
+          <div class="item">
+            <div class="ui label">
+              gateway: <span id="gateway"></span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="ui label">
+              dns: <span id="dns"></span>
+            </div>
+          </div>
+        </div>
+        <h4 class="ui header dividing teal">VRouter状态</h4>
+        <div class="ui list">
+          <div class="item">
+            <div class="ui label">
+              openwrt version: <span id="openwrt-version"></span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="ui label">
+              br-lan IP address: <span id="lan"></span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="ui label">
+              VRouter IP address: <span id="wan"></span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="ui label">
+              shadowsocks-libev version: <span id="ss-version"></span>
+            </div>
+          </div>
+          <div class="item">
+            <div class="ui label">
+              kcptun version: <span id="kt-version"></span>
+            </div>
+          </div>
+        </div>
+        <!-- <h2 class="ui blue header">Services</h2>
+        <div class="ui divider"></div>
+        <table class="ui definition table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Version</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>openwrt</td>
+              <td>demo</td>
+              <td>demo</td>
+            </tr>
+            <tr>
+              <td>shadowsocks</td>
+              <td>demo</td>
+              <td>demo</td>
+            </tr>
+            <tr>
+              <td>kcptun</td>
+              <td>demo</td>
+              <td>demo</td>
+            </tr>
+            <tr>
+              <td>dnsmasq</td>
+              <td>demo</td>
+              <td>demo</td>
+            </tr>
+            <tr>
+              <td>iptables</td>
+              <td>demo</td>
+              <td>demo</td>
+            </tr>
+            <tr>
+              <td>ipset</td>
+              <td>demo</td>
+              <td>demo</td>
+            </tr>
+          </tbody>
+        </table> -->
       </div>
-      <div class="ui green ok inverted button">
-        <i class="checkmark icon"></i>
-        Yes
+
+      <div class="ui basic modal">
+        <div class="ui icon header">
+          <i class="archive icon"></i>
+          Archive Old Messages
+        </div>
+        <div class="content">
+          <p>Your inbox is getting full, would you like us to enable automatic archiving of old messages?</p>
+        </div>
+        <div class="actions">
+          <div class="ui red basic cancel inverted button">
+            <i class="remove icon"></i>
+            No
+          </div>
+          <div class="ui green ok inverted button">
+            <i class="checkmark icon"></i>
+            Yes
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-  <script>window.$ = window.jQuery = require("../node_modules/jquery/dist/jquery.min.js")</script>
-  <script src="../node_modules/semantic-ui/dist/semantic.min.js"></script>
-  <script src="../js/manage.js"></script>
-</body>
-</html>
+      <script>window.$ = window.jQuery = require("../node_modules/jquery/dist/jquery.min.js")</script>
+      <script src="../node_modules/semantic-ui/dist/semantic.min.js"></script>
+      <script src="../node_modules/vue/dist/vue.min.js" charset="utf-8"></script>
+      <script src="../js/manage.js"></script>
+      <script src="../js/external-link.js" charset="utf-8"></script>
+    </body>
+    </html>

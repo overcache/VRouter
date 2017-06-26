@@ -15,7 +15,13 @@ const sudo = require('sudo-prompt')
 const { EventEmitter } = require('events')
 
 class VRouter {
-  constructor (config) {
+  constructor () {
+    let config
+    try {
+      config = fs.readJsonSync(path.join(getAppDir(), packageJson.name, 'config.json'))
+    } catch (err) {
+      config = fs.readJsonSync(path.join(__dirname, '..', 'config', 'config.json'))
+    }
     if (!config.host.configDir) {
       config.host.configDir = path.join(getAppDir(), packageJson.name)
     }
@@ -152,7 +158,7 @@ class VRouter {
     ])
   }
 
-  async changeRouteTo (dst = 'vrouter') {
+  async changeRouteTo (dst = 'wifi') {
     let ip
     let networkService
     const inf = await this.getActiveAdapter()
@@ -805,12 +811,20 @@ class VRouter {
     const cmd = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} enable && /etc/init.d/${service} restart`
     return this.serialExec(cmd, `enable ${service}`)
   }
+  disabledService (service) {
+    const cmd = `/etc/init.d/${service} disable && /etc/init.d/${service} stop`
+    return this.serialExec(cmd, `disable ${service}`)
+  }
   configWatchdog () {
     const watchdogPath = `${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`
     const cronPath = `${this.config.vrouter.configDir}/${this.config.firewall.cronFile}`
 
     const cmd = `chmod +x '${watchdogPath}' && crontab '${cronPath}'`
     return this.serialExec(cmd, 'config watchdog')
+  }
+  restartCrontab () {
+    const cmd = '/etc/init.d/cron restart'
+    return this.serialExec(cmd)
   }
   async changeVMTZ () {
     const cc = String.raw`
@@ -913,32 +927,19 @@ class VRouter {
 
   getServerIP (protocol = 'shadowsocks') {
     const cfg = this.config[protocol]
-    if (cfg.ip) {
-      return Promise.resolve(cfg.ip)
-    }
-    if (cfg.domain) {
-      return new Promise((resolve, reject) => {
-        dns.lookup(cfg.domain, { family: 4 }, (err, address, family) => {
-          if (err) reject(err)
-          resolve(address)
-        })
-      })
-    }
-    if (this.config.server.ip) {
-      return Promise.resolve(this.config.server.ip)
-    }
-    if (!this.config.server.domain) {
-      return Promise.resolve('')
+    const ipPatthen = /^\d+.\d+.\d+.\d+$/ig
+    if (ipPatthen.test(cfg.server.address)) {
+      return Promise.resolve(cfg.server.address)
     }
     return new Promise((resolve, reject) => {
-      dns.lookup(this.config.server.domain, { family: 4 }, (err, address, family) => {
+      dns.lookup(cfg.server.address, { family: 4 }, (err, address, family) => {
         if (err) reject(err)
         resolve(address)
       })
     })
   }
   generateFWRulesHelper (str) {
-    return `iptables -t nat -A PREROUTING -d ${str}\niptables -t nat -A OUTPUT ${str}\n`
+    return `iptables -t nat -A PREROUTING ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
 
   async generateFWRules (m, p, overwrite = false) {
@@ -1088,21 +1089,27 @@ class VRouter {
         return Promise.resolve(cfgPath)
       })
   }
-  generateWatchdog () {
+  generateWatchdog (p) {
+    const protocol = p || this.config.firewall.currentProtocol
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.watchdogFile)
-    const content = String.raw`#!/bin/sh
-# KCPTUN
-if ! pgrep kcptun;then
-    /etc/init.d/${this.config.kcptun.service} restart
-    date >> /root/watchdog.log
-    echo "restart kcptun" >> /root/watchdog.log
-fi
+    let content = String.raw`#!/bin/sh
 # SHADOWSOCKS
 if ! (pgrep ss-redir && pgrep ss-tunnel);then
     /etc/init.d/${this.config.shadowsocks.service} restart
     date >> /root/watchdog.log
     echo "restart ss" >> /root/watchdog.log
-fi`
+fi
+`
+    const ktWatch = String.raw`# KCPTUN
+if ! pgrep kcptun;then
+    /etc/init.d/${this.config.kcptun.service} restart
+    date >> /root/watchdog.log
+    echo "restart kcptun" >> /root/watchdog.log
+fi
+`
+    if (protocol === 'kcptun') {
+      content += ktWatch
+    }
     return fs.outputFile(cfgPath, content, 'utf8')
       .then(() => {
         return Promise.resolve(cfgPath)
@@ -1159,14 +1166,26 @@ stop() {
         return Promise.resolve(cfgPath)
       })
   }
-  generateConfig (type = 'shadowsocks') {
+  async generateConfig (type = 'shadowsocks') {
+    if (type === 'shadowsocks') {
+      const cfgs = ['ss-client', 'ss-overKt', 'ss-dns']
+      const promises = []
+      cfgs.forEach((cfg) => {
+        promises.push(this.generateConfigHeler(cfg))
+      })
+      await Promise.all(promises)
+    } else {
+      await this.generateConfigHeler('kcptun')
+    }
+  }
+  generateConfigHeler (type = 'ss-client') {
     let cfg
     let content
     switch (type) {
       case 'ss-client':
         cfg = this.config.shadowsocks.client
         content = String.raw`{
-    "server":"${this.config.shadowsocks.server.ip}",
+    "server":"${this.config.shadowsocks.server.address}",
     "server_port":${this.config.shadowsocks.server.port},
     "local_address": "0.0.0.0",
     "local_port":${this.config.shadowsocks.clientPort},
@@ -1194,10 +1213,10 @@ stop() {
       case 'ss-dns':
         cfg = this.config.shadowsocks.dns
         content = String.raw`{
-    "server":"${this.config.shadowsocks.server.ip}",
+    "server":"${this.config.shadowsocks.server.address}",
     "server_port":${this.config.shadowsocks.server.port},
     "local_address": "0.0.0.0",
-    "local_port":${this.config.shadowsocks.clientPort},
+    "local_port":${this.config.shadowsocks.dnsPort},
     "password":"${this.config.shadowsocks.server.password}",
     "timeout":${this.config.shadowsocks.server.timeout},
     "method":"${this.config.shadowsocks.server.method}",
@@ -1209,7 +1228,7 @@ stop() {
       case 'kcptun':
         cfg = this.config.kcptun.client
         content = String.raw`{
-    "remoteaddr": "${this.config.kcptun.server.ip}:${this.config.kcptun.server.port}",
+    "remoteaddr": "${this.config.kcptun.server.address}:${this.config.kcptun.server.port}",
     "localaddr": ":${this.config.kcptun.clientPort}",
     "key": "${this.config.kcptun.server.key}",
     "crypt":    "${this.config.kcptun.server.crypt}",
@@ -1311,12 +1330,18 @@ stop() {
         await this.generateService('shadowsocks')
           .then((p) => {
             return this.scp(p, '/etc/init.d/')
+              .then(() => {
+                return this.serialExec(`chmod +x /etc/init.d/shadowsocks`)
+              })
           })
         break
       case 'ktService':
         await this.generateService('kcptun')
           .then((p) => {
             return this.scp(p, '/etc/init.d/')
+              .then(() => {
+                return this.serialExec(`chmod +x /etc/init.d/kcptun`)
+              })
           })
         break
       case 'shadowsocks':
@@ -1361,6 +1386,9 @@ stop() {
         await this.generateWatchdog()
           .then((p) => {
             return this.scp(p, this.config.vrouter.configDir)
+              .then(() => {
+                return this.serialExec(`chmod +x ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`)
+              })
           })
         break
       case 'cron':

@@ -102,8 +102,8 @@ const toggleGateway = exports.toggleGateway = async function () {
   await checkTrafficStatus()
 }
 
-const checkTrafficStatus = exports.checkTrafficStatus = async function () {
-  const vmState = await vrouter.vmStatus()
+const checkTrafficStatus = exports.checkTrafficStatus = async function (vrouter) {
+  const vmState = await vrouter.getVMState()
   console.log(vmState)
   const dns = await vrouter.hostDns()
   fillElement("#dns", dns)

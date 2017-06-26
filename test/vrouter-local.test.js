@@ -16,10 +16,7 @@ describe('Test ability of building VM', function () {
   this.slow(150000)
   let vrouter
   before('get vrouter instance', function () {
-    return fs.readJson(configFile)
-      .then((obj) => {
-        vrouter = new VRouter(obj)
-      })
+    vrouter = new VRouter()
   })
   // after('poweroff vm', function () {
     // return vrouter.stopVM('poweroff', 20000)
@@ -98,13 +95,8 @@ describe('Test ability of manage vm', function () {
   let vrouter
   let buildByTest = false
   before('buildvm is necessary', function () {
-    return fs.readJson(configFile)
-      .then((obj) => {
-        vrouter = new VRouter(obj)
-      })
-      .then(() => {
-        return vrouter.isVRouterExisted()
-      })
+    vrouter = new VRouter()
+    return vrouter.isVRouterExisted()
       .catch((err) => {
         console.log(err)
         return vrouter.buildVM()
@@ -367,10 +359,7 @@ describe('Test ability of modify vm', function () {
   this.slow(15000)
   let vrouter
   before('get instance', function () {
-    return fs.readJson(configFile)
-      .then((obj) => {
-        vrouter = new VRouter(obj)
-      })
+    vrouter = new VRouter()
   })
   it('hideVM should hide vm in virtualbox manager', function () {
     this.timeout(10000)
@@ -576,10 +565,7 @@ describe('Test ability of modify vm', function () {
 describe('Test ability of manage file', function () {
   let vrouter
   before('get a vrouter instance', function () {
-    return fs.readJson(configFile)
-      .then((obj) => {
-        vrouter = new VRouter(obj)
-      })
+    vrouter = new VRouter()
   })
   it('cfg should be delte after running deleteCfgFile(cfg)', function () {
     const cfg = vrouter.config.firewall.ipsetsFile
