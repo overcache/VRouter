@@ -63,8 +63,6 @@ async function buildVmHandler (vrouter) {
   }
 }
 
-  // <div class="ui long small modal" id="modal">
-//<h4 class="ui header">{{ data.header }}</h4>
 Vue.component('ui-modal', {
   props: ['data'],
   template: String.raw`
