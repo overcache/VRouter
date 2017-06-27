@@ -5,6 +5,7 @@ const path = require('path')
 const fs = require('fs-extra')
 const url = require('url')
 const { VRouter } = require('../js/vrouter-local.js')
+const { getAppDir } = require('../js/helper.js')
 
 function redirect () {
   window.location.replace(url.format({
@@ -178,7 +179,16 @@ async function checkRequirement (vrouter) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const cfgPath = path.join(__dirname, '..', 'config', 'config.json')
-  const vrouter = new VRouter(fs.readJsonSync(cfgPath))
+  let cfgPath
+  let json
+  try {
+    cfgPath = path.join(getAppDir(), 'VRouter', 'config.json')
+    json = fs.readJsonSync(cfgPath)
+  } catch (err) {
+    console.log(err)
+    cfgPath = path.join(__dirname, '..', 'config', 'config.json')
+    json = fs.readJsonSync(cfgPath)
+  }
+  const vrouter = new VRouter(json)
   checkRequirement(vrouter)
 })

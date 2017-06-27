@@ -1,5 +1,4 @@
-const shell = require('electron').shell
 $(document).on('click', 'a[href^="http"]', function (event) {
   event.preventDefault()
-  shell.openExternal(this.href)
+  require('electron').shell.openExternal(this.href)
 })

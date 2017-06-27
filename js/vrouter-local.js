@@ -246,6 +246,12 @@ class VRouter {
 
     return this.localExec(subCmds.join(' && '))
       .then(() => {
+        return this.lockGUIConfig()
+      })
+      .then(() => {
+        return this.hideVM()
+      })
+      .then(() => {
         return this.toggleSerialPort('on')
           .then(() => {
             this.process.emit('build', '配置虚拟机串口')
@@ -261,9 +267,6 @@ class VRouter {
             console.log('error when configVMNetwork. continue follow steps')
             console.log(err)
           })
-      })
-      .then(() => {
-        return this.lockGUIConfig()
       })
       .then(() => {
         return this.startVM()
@@ -811,8 +814,12 @@ class VRouter {
       })
   }
   enableService (service) {
-    const cmd = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} restart && /etc/init.d/${service} enable`
-    return this.serialExec(cmd, `enable ${service}`)
+    const cmd1 = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} enable`
+    // const cmd2 = `/etc/init.d/${service} restart`
+    return this.serialExec(cmd1, `enable ${service}`)
+      // .then(() => {
+        // return this.serialExec(cmd2, `start ${service}`)
+      // })
   }
   disabledService (service) {
     const cmd = `/etc/init.d/${service} disable && /etc/init.d/${service} stop`
@@ -1086,7 +1093,7 @@ class VRouter {
   }
   generateCronJob () {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.cronFile)
-    const content = `*/30 * * * * ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}\n`
+    const content = `* * * * * ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}\n`
     return fs.outputFile(cfgPath, content, 'utf8')
       .then(() => {
         return Promise.resolve(cfgPath)
@@ -1154,11 +1161,7 @@ SERVICE_DAEMONIZE=1
 
 start() {
     # kcptun will fail if network not ready
-    while true;do
-        service_start /usr/bin/kcptun -c ${this.config.vrouter.configDir}/${this.config.kcptun.client}
-        sleep 30
-        (pgrep kcptun) && break
-    done
+    service_start /usr/bin/kcptun -c ${this.config.vrouter.configDir}/${this.config.kcptun.client}
 }
 
 stop() {

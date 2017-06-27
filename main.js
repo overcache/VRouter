@@ -9,9 +9,9 @@ let win
 function createWindow () {
   win = new BrowserWindow({
     width: 569,
-    height: 750,
+    height: 680,
     minWidth: 569,
-    minHeight: 750
+    minHeight: 680
   })
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'html', 'prepare.html'),

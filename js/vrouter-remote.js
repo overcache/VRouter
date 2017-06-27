@@ -63,17 +63,48 @@ class VRouterRemote {
     return Promise.resolve(this.remoteExec(cmd))
   }
   getSSOverKTProcess () {
-    const cmd = 'ps | grep "[s]s-redir -c .*ss-over-kt.json"'
+    const cmd = 'ps -w| grep "[s]s-redir -c .*ss-over-kt.json"'
     return this.remoteExec(cmd)
   }
   getSSProcess () {
     // const cmd = 'ps | grep "[s]s-redir -c .*ss-client.json"'
-    const cmd = 'ps | grep "[s]s-redir -c .*ss_client.json"'
+    const cmd = 'ps -w| grep "[s]s-redir -c .*ss-client.json"'
     return this.remoteExec(cmd)
   }
   getSSDNSProcess () {
-    const cmd = 'ps | grep "[s]s-tunnel -c .*ss-dns.json"'
+    const cmd = 'ps -w| grep "[s]s-tunnel -c .*ss-dns.json"'
     return this.remoteExec(cmd)
+  }
+  getSSStatus () {
+    return this.getSSProcess()
+      .then(() => {
+        return this.getSSDNSProcess()
+      })
+      .then(() => {
+        if (this.config.firewall.currentProtocol === 'kcptun') {
+          return this.getSSOverKTProcess()
+        } else {
+          return Promise.resolve('dont panic')
+        }
+      })
+  }
+  getOpenwrtVersion () {
+    const cmd = 'cat /etc/banner'
+    return this.remoteExec(cmd)
+      .then((output) => {
+        const reg = /^ *(\w+ \w+ \(.*\)) *$/mg
+        const match = reg.exec(output)
+        return Promise.resolve((match && match[1]) || '')
+      })
+  }
+  getIP (inf) {
+    const cmd = `ifconfig ${inf} | grep 'inet addr'`
+    return this.remoteExec(cmd)
+      .then((output) => {
+        const reg = /^inet addr:(\d+.\d+.\d+.\d+)/
+        const match = reg.exec(output.trim())
+        return Promise.resolve((match && match[1]) || '')
+      })
   }
   getSSVersion () {
     const cmd = 'ss-redir -h | grep "shadowsocks-libev" | cut -d" " -f2'
@@ -90,7 +121,7 @@ class VRouterRemote {
   }
 
   getKTProcess () {
-    const cmd = 'ps | grep "[k]cptun -c .*/kt-client.json"'
+    const cmd = 'ps | grep "[k]cptun -c"'
     return this.remoteExec(cmd)
   }
   getKTVersion () {
@@ -128,6 +159,10 @@ class VRouterRemote {
     return this.getFile(`/etc/${this.config.firewall.firewallFile}`)
   }
 
+  restartNetwork () {
+    const cmd = '/etc/init.d/network restart'
+    return this.remoteExec(cmd)
+  }
   restartFirewall () {
     const cmd = `/etc/init.d/firewall restart`
     return this.remoteExec(cmd)
