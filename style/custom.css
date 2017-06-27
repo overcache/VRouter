@@ -70,6 +70,12 @@ body {
   width: 25% !important;
 }
 
-#moreModal div.actions div.button {
-  width: 180px;
+/* #moreModal div.actions div.button { */
+  /* width: 180px; */
+/* } */
+#errorModal div.content {
+  text-align: center;
+}
+#aboutModal div.content {
+  text-align: center;
 }

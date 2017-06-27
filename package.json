@@ -7,8 +7,8 @@
     "start": "electron .",
     "test": "mocha test"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "icymind (icymindt@gmail.com)",
+  "license": "GPL",
   "dependencies": {
     "chai-as-promised": "^7.0.0",
     "electron-config": "^1.0.0",

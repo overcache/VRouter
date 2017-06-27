@@ -61,7 +61,8 @@
           </div>
         </div>
       </div>
-      <div class="ui teal labeled icon button right floated" v-bind:data-content="btnToggleRouterPopup" v-on:click="btnToggleRouterHandler">
+      <div v-bind:class="{ui:true, teal:currentGW!=='vrouter',red:currentGW==='vrouter', labeled:true, icon:true, button:true, right:true, floated:true}"
+        v-bind:data-content="btnToggleRouterPopup" v-on:click="btnToggleRouterHandler">
         <i v-bind:class="btnToggleRouterIcon"></i>
         切换
       </div>
@@ -72,8 +73,8 @@
       <div v-bind:class="{ui:true, active:activeLoader, inverted:true, dimmer:true}">
         <div v-bind:class="{ui:true, active:activeLoader, loader:true}"></div>
       </div>
-      <form class="ui form">
-        <div class="field">
+        <!-- <div class="field"> -->
+          <div>
           <label>代理</label>
           <div id="proxy-chains" v-bind:class="{ui:true, selection:true, dropdown:true, disabled:ssDisabled}">
             <input type="hidden" name="proxy-chains">
@@ -89,6 +90,8 @@
             </div>
           </div>
         </div>
+        <div class="ui divider hidden"></div>
+      <form class="ui form">
         <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocks/shadowsocks-libev#usage">Shadowsocks<i class="small icon external square"></i></a></h4>
         <div class="field">
           <div class="three fields">
@@ -180,13 +183,13 @@
         <div class="ui loader"></div>
       </div>
       <div>
-        <label>代理模式</label>
+        <label>模式</label>
         <div id="bypass-mode" v-bind:class="{ui:true, selection:true, dropdown:true, disabled:proxyModeDisabled}">
           <input type="hidden" name="bypass-mode">
           <i class="dropdown icon"></i>
           <div class="text" v-text="proxyModeText" ref="proxyModeText"></div>
           <div class="menu">
-            <div class="item" data-value="all">全局代理</div>
+            <div class="item" data-value="all">全局模式</div>
             <div class="item" data-value="bypass-chind">绕过白名单</div>
             <div class="item" data-value="bypass-lan-china">仅黑名单</div>
             <div class="item" data-value="gfw-list">无代理</div>
@@ -197,13 +200,13 @@
       <div class="ui list">
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="gfw" disabled checked ref="gfwDomains">
-            <label>GFW-list <i class="ui refresh icon link" data-content="更新 gfwlist"></i></label>
+            <input type="checkbox" name="gfw" v-bind:checked="firewall.selectedBL.gfwDomains" v-bind:disabled="proxyModeDisabled" ref="gfwDomains">
+            <label>GFW-list <i v-if="false" class="ui refresh icon link" data-content="更新 gfwlist" v-on:click="updateGfwList"></i></label>
           </div>
         </div>
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="extraBlackList" v-bind:disabled="proxyModeDisabled" checked ref="extraBlackList">
+            <input type="checkbox" name="extraBlackList" v-bind:disabled="proxyModeDisabled" v-bind:checked="firewall.selectedBL.extraBlackList" ref="extraBlackList">
             <label>自定义黑名单 <i class="ui link file text icon" v-on:click="openExtraBlackList"></i></label>
           </div>
         </div>
@@ -212,22 +215,22 @@
       <div class="ui list">
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="chinaIPs" disabled checked ref="chinaIPs">
-            <label>
-              国内 IP 
-              <i class="ui refresh icon link loading" data-content="更新 IP 数据库"></i>
-            </label>
-          </div>
-        </div>
-        <div class="item">
-          <div class="ui checkbox">
-            <input type="checkbox" name="LanIP" disabled checked ref="lanNetworks">
+            <input type="checkbox" name="LanIP" checked disabled ref="lanNetworks">
             <label>局域网</label>
           </div>
         </div>
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="extraWhiteList" v-bind:disabled="proxyModeDisabled" checked ref="extraWhiteList">
+            <input type="checkbox" name="chinaIPs" v-bind:checked="firewall.selectedWL.chinaIPs" v-bind:disabled="proxyModeDisabled" ref="chinaIPs">
+            <label>
+              国内 IP 
+              <i class="ui refresh icon link" data-content="更新 IP 数据库" v-on:click="updateChinaIPs"></i>
+            </label>
+          </div>
+        </div>
+        <div class="item">
+          <div class="ui checkbox">
+            <input type="checkbox" name="extraWhiteList" v-bind:disabled="proxyModeDisabled" v-bind:checked="firewall.selectedWL.extraWhiteList" ref="extraWhiteList">
             <label>自定义白名单 <i class="ui link file text icon" v-on:click="openExtraWhiteList"></i></label>
           </div>
         </div>
@@ -314,9 +317,27 @@
           </div>
         </div>
       </div>
-      <div class="ui teal labeled icon button right floated" v-on:click="btnMoreHandlerModal">
+      <div class="ui dropdown button bottom right pointing right floated labeled icon teal">
         <i class="ellipsis horizontal icon"></i>
         更多
+        <div class="menu">
+          <div class="item" v-on:click="btnDeleteHandler">
+            <i class="ui trash icon red"></i>
+            删除
+          </div>
+          <div class="item" v-on:click="btnShutdownHandler">
+            <i class="ui shutdown icon red"></i>
+            关闭
+          </div>
+          <div class="item" v-on:click="btnResetGW">
+            <i class="ui pause icon yellow"></i>
+            暂停
+          </div>
+          <div class="item" v-on:click="btnAbout">
+            <i class="ui info icon teal"></i>
+            关于
+          </div>
+        </div>
       </div>
       <div class="ui labeled icon teal button right floated" data-content="重新收集状态信息" data-position="top center" v-on:click="refreshInfos">
         <i class="inline ui refresh icon"></i>
@@ -334,9 +355,13 @@
         <p>VRouter 和后台的虚拟机紧密关联, 各项功能都依赖于正确设置了虚拟机. 修改虚拟机可能会造成 VRouter 无法正常工作.</p>
       </div>
       <div class="actions">
+        <div class="ui red inverted button" v-on:click="guiLogin">
+          <i class="remove icon"></i>
+          GUI 登入
+        </div>
         <div class="ui red cancel inverted button">
           <i class="remove icon"></i>
-          依然登入
+          SSH 登入
         </div>
         <div class="ui green ok inverted button">
           <i class="checkmark icon"></i>
@@ -345,34 +370,42 @@
       </div>
     </div>
 
-    <div id="moreModal" class="ui basic modal" ref="moreModal">
+    <div id="errorModal" class="ui basic modal" ref="errorModal">
+      <div class="ui icon header">
+        <i class="remove circle icon red"></i>
+        Error
+      </div>
+      <div class="content">
+        <p>{{ errorMsg }}</p>
+      </div>
+      <div class="actions">
+        <div class="ui green ok inverted button">
+          <i class="remove icon"></i>
+          取消
+        </div>
+      </div>
+    </div>
+    <div id="aboutModal" class="ui basic modal" ref="aboutModal">
       <div class="ui icon header">
         <i class="cube icon teal"></i>
         VRouter
       </div>
       <div class="content">
-        <p>icymindt@gmail.com</p>
+        <p>Version: {{ vrouterVersion }}</p>
+        <p><i class="ui terminal icon teal"></i>Build by {{ author }}.</p>
+        <div class="ui divider hidden"></div>
+        <p><i class="ui heart icon red"></i> Base on virtualbox/openwrt/electron/semantic-ui/shadowsocks/kcptun.</p>
+        <div class="ui divider hidden"></div>
+        <p>Released under GPL license.</p>
       </div>
       <div class="actions">
-        <div class="ui green ok inverted labeled icon button">
-          <i class="checkmark icon"></i>
-          取消
+        <div class="ui button ok teal reverted labeled icon" v-on:click="goToHomepage">
+          <i class="ui world icon"></i>
+          主页
         </div>
-        <div class="ui hidden" style="clear:both"></div>
-        <div class="ui red cancel inverted labeled icon button">
-          <i class="pause icon"></i>
-          恢复系统网关
-        </div>
-        <div class="ui hidden" style="clear:both"></div>
-        <div class="ui red cancel inverted labeled icon button">
-          <i class="shutdown icon"></i>
-          关闭后台虚拟机
-        </div>
-        <div class="ui hidden" style="clear:both"></div>
-        <div class="ui red cancel inverted labeled icon button">
-          <i class="trash icon"></i>
-          删除后台虚拟机
-        </div>
+        <div class="ui button cancel teal labeled icon">
+          <i class="ui checkmark icon"></i>
+          确定</div>
       </div>
     </div>
   </div>

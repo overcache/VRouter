@@ -1,10 +1,12 @@
 /* eslint-env jquery */
-/* global Vue */
+/* global Vue alert */
 
 const { VRouter } = require('../js/vrouter-local.js')
 const { app } = require('electron').remote
 const { shell } = require('electron')
 const path = require('path')
+const fs = require('fs-extra')
+const os = require('os')
 
 let vrouter = new VRouter()
 
@@ -41,9 +43,16 @@ const myApp = new Vue({
       blacklist: '仅黑名单',
       none: '无代理'
     },
-    activeLoader: false
+    activeLoader: false,
+    errorMsg: ''
   },
   computed: {
+    author () {
+      return fs.readJsonSync(path.join(__dirname, '..', 'package.json')).author
+    },
+    vrouterVersion () {
+      return app.getVersion()
+    },
     circleIcon () {
       return {
         ui: true,
@@ -111,6 +120,7 @@ const myApp = new Vue({
   },
   methods: {
     async btnToggleRouterHandler () {
+      $('*[data-content]').popup('hide')
       this.activeLoader = true
       const to = this.currentGW === 'vrouter'
         ? 'wifi' : 'vrouter'
@@ -120,6 +130,8 @@ const myApp = new Vue({
         await this.checkTrafficStatus()
       } catch (err) {
         console.log(err)
+        this.errorMsg = err.message
+        $(this.$refs.errorModal).modal('show')
       } finally {
         this.activeLoader = false
       }
@@ -130,9 +142,42 @@ const myApp = new Vue({
     },
     async btnShutdownHandler () {
       this.activeLoader = true
-      await vrouter.changeRouteTo('wifi')
-      await vrouter.stopVM('savestate')
+      try {
+        await vrouter.changeRouteTo('wifi')
+        await vrouter.stopVM('savestate')
+        app.quit()
+      } catch (err) {
+        this.errorMsg = err.message
+        $(this.$refs.errorModal).modal('show')
+      } finally {
+        this.activeLoader = false
+      }
       app.quit()
+    },
+    async btnDeleteHandler () {
+      this.activeLoader = true
+      try {
+        await vrouter.changeRouteTo('wifi')
+        await vrouter.deleteVM(true)
+        app.quit()
+      } catch (err) {
+        this.errorMsg = err.message
+        $(this.$refs.errorModal).modal('show')
+      } finally {
+        this.activeLoader = false
+      }
+    },
+    async btnResetGW () {
+      this.activeLoader = true
+      try {
+        await vrouter.changeRouteTo('wifi')
+        await this.checkTrafficStatus()
+      } catch (err) {
+        this.errorMsg = err.message
+        $(this.$refs.errorModal).modal('show')
+      } finally {
+        this.activeLoader = false
+      }
     },
     async toggleBlink (blink) {
       const icons = [...this.$el.querySelectorAll('#status-tab .ui.circle.icon')]
@@ -226,25 +271,20 @@ const myApp = new Vue({
       this.hideKtPassword = true
       this.hideSSPassword = true
 
-      const changed = this.syncFileds()
-      if (!changed.shadowsocksChanged && !changed.kcptunChanged && !changed.protocolChanged) {
-        this.activeLoader = false
-        return
-      }
-      await vrouter.saveConfig()
+      this.syncFileds()
 
-      if (changed.shadowsocksChanged) {
+      try {
+        await vrouter.saveConfig()
+
+        // 即使ss或者kcptun配置改动, 而协议链没动, 也需要重新生成firewall配置. 不然iptables无法绕过服务器地址.
+        // 即使ss没动, 也应该重新生成配置文件, 确保虚拟机配置和当前一致
         await vrouter.generateConfig('shadowsocks')
         await vrouter.scpConfig('shadowsocks')
         await this.remote.restartShadowsocks()
-      }
 
-      if (this.firewall.currentProtocol === 'kcptun' && changed.kcptunChanged) {
         await vrouter.generateConfig('kcptun')
         await vrouter.scpConfig('kcptun')
-      }
 
-      if (changed.protocolChanged) {
         await vrouter.generateWatchdog()
         await vrouter.scpConfig('watchdog')
         if (this.firewall.currentProtocol === 'kcptun') {
@@ -255,16 +295,19 @@ const myApp = new Vue({
           await this.remote.stopKcptun()
             .catch(e => console.log(e))
         }
-
         await vrouter.restartCrontab()
 
         await vrouter.generateFWRules(null, null, true)
         await vrouter.scpConfig('firewall')
-
         await this.remote.restartFirewall()
+
+        await this.refreshInfos()
+      } catch (err) {
+        this.errorMsg = err.message
+        $(this.$refs.errorModal).modal('show')
+      } finally {
+        this.activeLoader = false
       }
-      await this.refreshInfos()
-      this.activeLoader = false
     },
 
     toggleSSPassword () {
@@ -350,20 +393,24 @@ const myApp = new Vue({
       }
     },
     async refreshInfos () {
+      $('*[data-content]').popup('hide')
       this.activeLoader = true
-      await this.checkTrafficStatus()
-      await this.checkVersions()
-      await this.checkPID()
-      this.activeLoader = false
+      try {
+        await this.checkTrafficStatus()
+        await this.checkVersions()
+        await this.checkPID()
+      } catch (err) {
+        this.errorMsg = err.message
+        $(this.$refs.errorModal).moal('show')
+      } finally {
+        this.activeLoader = false
+      }
     },
     async saveProxyModeHandler () {
       this.proxyModeDisabled = true
       this.activeLoader = true
 
-      let modeChanged = false
-      let whiteListChanged = false
       let whiteList = {}
-      let blackListChanged = false
       let blackList = {}
 
       const selectedText = this.$refs.proxyModeText.innerHTML.trim()
@@ -373,7 +420,6 @@ const myApp = new Vue({
           mode = key
         }
       })
-      modeChanged = this.firewall.currentMode === mode
       this.firewall.currentMode = mode
 
       const blackListRef = ['gfwDomains', 'extraBlackList']
@@ -382,15 +428,6 @@ const myApp = new Vue({
           blackList[ref] = true
         }
       })
-      if (Object.keys(blackList).length === Object.keys(this.firewall.selectedBL).length) {
-        Object.keys(blackList).forEach((key) => {
-          if (blackList[key] !== this.firewall.selectedBL[key]) {
-            blackListChanged = true
-          }
-        })
-      } else {
-        blackListChanged = true
-      }
       this.firewall.selectedBL = blackList
 
       const whiteListRef = ['chinaIPs', 'lanNetworks', 'extraWhiteList']
@@ -399,35 +436,30 @@ const myApp = new Vue({
           whiteList[ref] = true
         }
       })
-      if (Object.keys(whiteList).length === Object.keys(this.firewall.selectedWL).length) {
-        Object.keys(whiteList).forEach((key) => {
-          if (whiteList[key] !== this.firewall.selectedWL[key]) {
-            whiteListChanged = true
-          }
-        })
-      } else {
-        whiteListChanged = true
-      }
       this.firewall.selectedWL = whiteList
 
-      if (modeChanged) {
-        await vrouter.generateFWRules(null, null, true)
-      }
-      if (whiteListChanged || blackListChanged) {
-        // todo:
-        await vrouter.generateIPsets()
-        await vrouter.generateDnsmasqCf()
-        await this.remote.restartDnsmasq()
-      }
-      if (modeChanged || whiteListChanged || blackListChanged) {
-        await this.remote.restartFirewall()
-      }
+      try {
+        await vrouter.saveConfig()
 
-      this.activeLoader = false
+        await vrouter.generateIPsets(true)
+        await vrouter.scpConfig('ipset')
+        await vrouter.generateDnsmasqCf(true)
+        await vrouter.scpConfig('dnsmasq')
+        await this.remote.restartDnsmasq()
+
+        await vrouter.generateFWRules(null, null, true)
+        await vrouter.scpConfig('firewall')
+        await this.remote.restartFirewall()
+      } catch (error) {
+        this.errorMsg = error.message
+        $(this.$refs.errorModal).modal('show')
+      } finally {
+        this.activeLoader = false
+      }
     },
     async restartVrouterNetwork () {
       this.activeLoader = true
-      $(this.$refs.restartVrouterNetwork).popup('hide')
+      $('*[data-content]').popup('hide')
       await this.remote.restartNetwork()
       this.activeLoader = false
     },
@@ -440,6 +472,49 @@ const myApp = new Vue({
       if (!this.proxyModeDisabled) {
         shell.openItem(path.join(vrouter.config.host.configDir, this.firewall.extraWhiteList))
       }
+    },
+    async updateChinaIPs () {
+      if (this.proxyModeDisabled) {
+        return
+      }
+      this.activeLoader = true
+      try {
+        const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.chinaIPs)
+        const url = vrouter.config.firewall.chinaIPsUrl
+        await vrouter.downloadFile(url, cfgPath)
+      } catch (error) {
+        this.errorMsg = error.message
+        $(this.$refs.errorModal).modal('show')
+      } finally {
+        this.activeLoader = false
+      }
+    },
+    async updateGfwList () {
+      if (this.proxyModeDisabled) {
+        return
+      }
+      this.activeLoader = true
+      try {
+        const tmp = path.join(os.tmpdir(), 'gfwList.txt')
+        const url = vrouter.config.firewall.gfwListUrl
+        await vrouter.downloadFile(url, tmp)
+
+        const b64 = await fs.readFile(tmp, 'utf8')
+        const content = Buffer.from(b64, 'base64').toString()
+        const fpath = path.join(vrouter.config.host.configDir, 'gfwList.txt')
+        await fs.outputFile(fpath, content, 'utf8')
+      } catch (error) {
+        console.log(error)
+        this.errorMsg = error.message
+        $(this.$refs.errorModal).modal('show')
+      } finally {
+        this.activeLoader = false
+      }
+    },
+    async guiLogin () {
+      const cmd = `VBoxManage startvm ${vrouter.config.vrouter.name} --type separate`
+      await vrouter.localExec(cmd)
+      $(this.$refs.loginModal).modal('hide')
     },
     async loginVRouter () {
       const applescript = String.raw`
@@ -460,7 +535,7 @@ const myApp = new Vue({
     },
     async loginVRouterModal () {
       // alert('登录后请尽量避免修改虚拟机.')
-      $(this.$refs.loginVRouterModal).popup('hide')
+      $('*[data-content]').popup('hide')
       const vueApp = this
       $(this.$refs.loginModal)
         .modal({
@@ -469,19 +544,28 @@ const myApp = new Vue({
           }
         })
         .modal('show')
+    },
+    async btnAbout () {
+      $(this.$refs.aboutModal).modal('show')
+    },
+    goToHomepage () {
+      return shell.openExternal('https://github.com/icymind/VRouter')
     }
   },
   async mounted () {
-    this.remote = await vrouter.connect()
-    await this.checkTrafficStatus()
-    await this.checkVersions()
-    await this.checkPID()
+    try {
+      this.remote = await vrouter.connect()
+      await this.checkTrafficStatus()
+      await this.checkVersions()
+      await this.checkPID()
+    } catch (err) {
+      alert(err)
+    }
   }
 })
 
 document.addEventListener('DOMContentLoaded', async () => {
   $('.tabular.menu .item').tab()
-  $('#proxy-chains').dropdown()
-  $('#bypass-mode').dropdown()
+  $('.dropdown').dropdown()
   $('*[data-content]').popup()
 })

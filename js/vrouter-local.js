@@ -13,6 +13,7 @@ const dns = require('dns')
 const crypto = require('crypto')
 const sudo = require('sudo-prompt')
 const { EventEmitter } = require('events')
+const os = require('os')
 
 class VRouter {
   constructor () {
@@ -106,8 +107,9 @@ class VRouter {
 
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const pre = `echo "" |  nc -U "${serialPath}"`
-    const message = msg || 'executing'
-    const serialCmd = `echo "echo '>>>VRouter: ${message}' >> /dev/kmsg && ${cmd} && echo '>>>VRouter: done' >> /dev/kmsg" | nc -U '${serialPath}'`
+    // const message = msg || 'executing'
+    // const serialCmd = `echo "echo '>>>VRouter: ${message}' >> /dev/kmsg && ${cmd} && echo '>>>VRouter: done' >> /dev/kmsg" | nc -U '${serialPath}'`
+    const serialCmd = `echo "${cmd}" | nc -U '${serialPath}'`
     await this.localExec(pre)
       .then(() => {
         return this.localExec(pre)
@@ -201,11 +203,9 @@ class VRouter {
           image = await this.downloadFile(this.config.vrouter.imageUrl)
           this.process.emit('build', '下载镜像')
           console.log('download image sucess.')
-          // console.log(image)
         } catch (err) {
-          console.log(err)
           this.process.emit('build', '下载失败')
-          throw Error('download failed')
+          throw Error(err)
         }
       }
     }
@@ -271,7 +271,7 @@ class VRouter {
       .then(() => {
         return this.startVM()
           .then(() => {
-            this.process.emit('build', '开始启动虚拟机...请稍候')
+            this.process.emit('build', '开始启动虚拟机...请稍候30秒')
           })
           .then(() => {
             return this.wait(30000)
@@ -555,7 +555,7 @@ class VRouter {
     const cmd = `ifconfig ${inf}`
     return this.localExec(cmd)
       .then((output) => {
-        const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(output)
+        const ipMatch = /inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) netmask/ig.exec(output)
         const ip = (ipMatch && ipMatch[1]) || ''
         return ip
       })
@@ -910,27 +910,55 @@ class VRouter {
     ws.write(`create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
     ws.write(`create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
 
-    const lan = await this.getCfgContent(this.config.firewall.lanNetworks)
-    lan.split('\n').forEach((line) => {
-      if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`add ${this.config.firewall.ipsets.lan} ${line}\n`)
-      }
-    })
+        // "selectedBL": {"gfwDomains":true, "extraBlackList":true},
+        // "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
+    if (this.config.firewall.selectedWL.lanNetworks) {
+      const lan = await this.getCfgContent(this.config.firewall.lanNetworks)
+      lan.split('\n').forEach((line) => {
+        const trimLine = line.trim()
+        if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
+          ws.write(`add ${this.config.firewall.ipsets.lan} ${trimLine}\n`)
+        }
+      })
+    }
 
-    const chinaIPs = await this.getCfgContent(this.config.firewall.chinaIPs)
-    chinaIPs.split('\n').forEach((line) => {
-      if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`add ${this.config.firewall.ipsets.white} ${line}\n`)
-      }
-    })
+    if (this.config.firewall.selectedWL.chinaIPs) {
+      const chinaIPs = await this.getCfgContent(this.config.firewall.chinaIPs)
+      chinaIPs.split('\n').forEach((line) => {
+        const trimLine = line.trim()
+        if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
+          ws.write(`add ${this.config.firewall.ipsets.white} ${trimLine}\n`)
+        }
+      })
+    }
 
-    // add extra_blocked_ips to blacklist_ipset
-    const extraBlockedIPs = await this.getCfgContent(this.config.firewall.extraBlockedIPs)
-    extraBlockedIPs.split('\n').forEach((line) => {
-      if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`add ${this.config.firewall.ipsets.black} ${line}\n`)
-      }
-    })
+    if (this.config.firewall.selectedWL.extraWhiteList) {
+      const extraList = await this.getCfgContent(this.config.firewall.extraWhiteList)
+      extraList.split('\n').forEach((line) => {
+        const trimLine = line.trim()
+        if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
+          const ip = /^\d+\.\d+\.\d+\.\d+$/g
+          if (ip.test(trimLine)) {
+            ws.write(`add ${this.config.firewall.ipsets.white} ${trimLine}\n`)
+          }
+        }
+      })
+    }
+
+    if (this.config.firewall.selectedBL.extraBlackList) {
+      // add extra_blocked_ips to blacklist_ipset
+      const extraList = await this.getCfgContent(this.config.firewall.extraBlackList)
+      extraList.split('\n').forEach((line) => {
+        const trimLine = line.trim()
+        if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
+          const ip = /^\d+\.\d+\.\d+\.\d+$/g
+          if (ip.test(trimLine)) {
+            ws.write(`add ${this.config.firewall.ipsets.black} ${trimLine}\n`)
+          }
+        }
+      })
+    }
+
     ws.end()
     return promise
   }
@@ -979,14 +1007,15 @@ class VRouter {
 
     ws.write('# com.icymind.vrouter\n')
     ws.write(`# workMode: ${mode}\n`)
-    ws.write('# create ipsets in order to avoid errors when run firewall.user\n')
-    ws.write(`ipset create ${this.config.firewall.ipsets.lan}   hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
-    ws.write(`ipset create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
-    ws.write(`ipset create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
-    ws.write(`/usr/sbin/ipset restore -exist -file ${this.config.vrouter.configDir}/${this.config.firewall.ipsetsFile} &> /dev/null\n`)
+    // ws.write('# create ipsets in order to avoid errors when run firewall.user\n')
+    // ws.write(`ipset create ${this.config.firewall.ipsets.lan}   hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    // ws.write(`ipset create ${this.config.firewall.ipsets.white} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    // ws.write(`ipset create ${this.config.firewall.ipsets.black} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
+    ws.write('ipset flush\n')
+    ws.write(`/usr/sbin/ipset restore -f -! ${this.config.vrouter.configDir}/${this.config.firewall.ipsetsFile} &> /dev/null\n`)
 
-    const serverIP = await this.getServerIP()
-    if (!serverIP) {
+    const ssServerIP = await this.getServerIP('shadowsocks')
+    if (!ssServerIP) {
       ws.end()
       return promise
     }
@@ -994,17 +1023,26 @@ class VRouter {
     // if kcp protocol: speedup ssh
     if (protocol === 'kcptun' && this.config.server.sshPort) {
       ws.write('# speedup ssh connection if current protocol is kcptun\n')
-      const rule = `-d ${serverIP} -p tcp --dport ${this.config.server.sshPort} -j REDIRECT --to-port ${redirPort}`
-      ws.write(this.generateFWRulesHelper(rule))
+      // const rule = `-d ${ssServerIP} -p tcp --dport ${this.config.server.sshPort} -j REDIRECT --to-port ${redirPort}`
+      // ws.write(this.generateFWRulesHelper(rule))
     }
 
-    // bypass server_ip
-    ws.write('# bypass server ip\n')
-    ws.write(this.generateFWRulesHelper(`-d ${serverIP} -j RETURN`))
+    // bypass shadowscoks server_ip
+    ws.write('# bypass shadowscoks server ip\n')
+    ws.write(this.generateFWRulesHelper(`-d ${ssServerIP} -j RETURN`))
 
-    // bypass lan_networks
+    // bypass kcptun server_ip
+    const ktServerIP = await this.getServerIP('kcptun')
+    if (ktServerIP) {
+      ws.write('# bypass kcptun server ip\n')
+      ws.write(this.generateFWRulesHelper(`-d ${ktServerIP} -j RETURN`))
+    }
+
+    let rule = ''
+
+    // bypass lan_networks. 如果不想绕过lan, 生成一个空的lan ipset集合即可
     ws.write('# bypass lan networks\n')
-    let rule = `-m set --match-set ${this.config.firewall.ipsets.lan} dst -j RETURN`
+    rule = `-m set --match-set ${this.config.firewall.ipsets.lan} dst -j RETURN`
     ws.write(this.generateFWRulesHelper(rule))
 
     // whitelist mode: bypass whitelist and route others
@@ -1038,8 +1076,8 @@ class VRouter {
       `127.0.0.1#${this.config.shadowsocks.dnsPort}`
     ]
   }
-  async generateDnsmasqCf (m, overwrite = false) {
-    const mode = m || this.config.firewall.currentMode
+  async generateDnsmasqCf (overwrite = false) {
+    // const mode = m || this.config.firewall.currentMode
     const DNSs = this.getDNSServer()
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile)
 
@@ -1059,35 +1097,51 @@ class VRouter {
       })
     })
 
-    if (mode === 'none') {
+    if (this.config.firewall.currentMode === 'none') {
       ws.write('# stay in wall\n')
       ws.end()
       return promise
     }
+    if (this.config.firewall.selectedBL.gfwDomains) {
+      const gfwDomains = await this.getCfgContent(this.config.firewall.gfwDomains)
+      gfwDomains.split('\n').forEach((line) => {
+        const trimLine = line.trim()
+        if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
+          ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
+          ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.black}\n`)
+        }
+      })
+    }
 
-    const whiteDomains = await this.getCfgContent(this.config.firewall.whiteDomains)
-    whiteDomains.split('\n').forEach((line) => {
-      if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`server=/${line}/${DNSs[0]}\n`)
-        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.white}\n`)
-      }
-    })
+    if (this.config.firewall.selectedBL.extraBlackList) {
+      // add extra_blocked_ips to blacklist_ipset
+      const extraList = await this.getCfgContent(this.config.firewall.extraBlackList)
+      extraList.split('\n').forEach((line) => {
+        const trimLine = line.trim()
+        if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
+          const ip = /^\d+\.\d+\.\d+\.\d+$/g
+          if (!ip.test(trimLine)) {
+            ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
+            ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.black}\n`)
+          }
+        }
+      })
+    }
 
-    const gfwDomains = await this.getCfgContent(this.config.firewall.gfwDomains)
-    gfwDomains.split('\n').forEach((line) => {
-      if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`server=/${line}/${DNSs[1]}\n`)
-        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.black}\n`)
-      }
-    })
+    if (this.config.firewall.selectedWL.extraWhiteList) {
+      const extraList = await this.getCfgContent(this.config.firewall.extraWhiteList)
+      extraList.split('\n').forEach((line) => {
+        const trimLine = line.trim()
+        if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
+          const ip = /^\d+\.\d+\.\d+\.\d+$/g
+          if (!ip.test(trimLine)) {
+            ws.write(`server=/${trimLine}/${DNSs[0]}\n`)
+            ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.white}\n`)
+          }
+        }
+      })
+    }
 
-    const extraBlockedDomains = await this.getCfgContent(this.config.firewall.extraBlockedDomains)
-    extraBlockedDomains.split('\n').forEach((line) => {
-      if (!/^\s*#/ig.test(line) && !/^\s*$/ig.test(line)) {
-        ws.write(`server=/${line}/${DNSs[1]}\n`)
-        ws.write(`ipset=/${line}/${this.config.firewall.ipsets.black}\n`)
-      }
-    })
     ws.end()
     return promise
   }
@@ -1104,7 +1158,10 @@ class VRouter {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.watchdogFile)
     let content = String.raw`#!/bin/sh
 # SHADOWSOCKS
-if ! (pgrep ss-redir && pgrep ss-tunnel);then
+ssDns=$(ps -w| grep "[s]s-tunnel -c .*ss-dns.json")
+ssOverKt=$(ps -w| grep "[s]s-redir -c .*ss-over-kt.json")
+ssClient=$(ps -w| grep "[s]s-redir -c .*ss-client.json")
+if [[ -z "$ssDns" || -z "$ssOverKt" || -z "$ssClient" ]];then
     /etc/init.d/${this.config.shadowsocks.service} restart
     date >> /root/watchdog.log
     echo "restart ss" >> /root/watchdog.log
@@ -1258,17 +1315,24 @@ stop() {
     if (!dest) {
       destination = path.join(this.config.host.configDir, path.basename(src))
     }
+    const tmp = path.join(os.tmpdir(), path.basename(src))
     return new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(destination)
+      const file = fs.createWriteStream(tmp)
       method.get(src, (response) => {
         response.pipe(file)
-        file.on('finish', () => {
+        file.on('finish', async () => {
           file.close()
-          resolve(destination)
+          return fs.copy(tmp, destination)
+            .then(() => {
+              return resolve(destination)
+            })
+            .catch((err) => {
+              return reject(err)
+            })
         })
       }).on('error', (err) => {
-        fs.unlink(dest)
-        reject(err)
+        fs.unlink(tmp)
+        return reject(err)
       })
     })
   }

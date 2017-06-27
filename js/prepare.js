@@ -63,15 +63,18 @@ async function buildVmHandler (vrouter) {
   }
 }
 
+  // <div class="ui long small modal" id="modal">
+//<h4 class="ui header">{{ data.header }}</h4>
 Vue.component('ui-modal', {
   props: ['data'],
   template: String.raw`
-  <div class="ui long small modal" id="modal">
-  <h4 class="ui header">{{ data.header }}</h4>
+  <div class="ui basic modal" id="modal">
+    <h4>{{ data.header }}</h4>
+    <div class="ui divider hidden"></div>
     <p v-html="data.content"></p>
-    <button class="ui button teal" v-for="button in data.buttons" v-on:click="button.handler">
+    <div class="ui button teal" v-for="button in data.buttons" v-on:click="button.handler">
       {{ button.label }}
-    </button>
+    </div>
   </div>
   `
 })
@@ -90,9 +93,9 @@ const vue = new Vue({
     show () {
       $(`#${this.$el.id} .ui.modal`)
       .modal({
-        dimmerSettings: {
-          opacity: 0.2
-        },
+        // dimmerSettings: {
+          // opacity: 0.2
+        // },
         closable: this.$data.data.closable,
         detachable: false
       })
@@ -185,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cfgPath = path.join(getAppDir(), 'VRouter', 'config.json')
     json = fs.readJsonSync(cfgPath)
   } catch (err) {
-    console.log(err)
+    console.log('使用config.json模板')
     cfgPath = path.join(__dirname, '..', 'config', 'config.json')
     json = fs.readJsonSync(cfgPath)
   }
