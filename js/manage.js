@@ -2,7 +2,7 @@
 /* global Vue alert */
 
 const { VRouter } = require('../js/vrouter-local.js')
-const { app } = require('electron').remote
+const { app, getCurrentWindow } = require('electron').remote
 const { shell } = require('electron')
 const path = require('path')
 const fs = require('fs-extra')
@@ -544,6 +544,9 @@ const myApp = new Vue({
           }
         })
         .modal('show')
+    },
+    btnConsole () {
+      return getCurrentWindow().toggleDevTools()
     },
     async btnAbout () {
       $(this.$refs.aboutModal).modal('show')
