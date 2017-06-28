@@ -15,7 +15,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 前提条件: 
 
 1. Shadowsocks 的服务端需要开启 udp 转发: 如果是服务端是用命令行启动, 请确保带了 `-u` 参数; 如果是用配置文件, 请确保配置文件包含: `"mode": "tcp_and_udp"`
-2. 确保上游路由器开启了DHCP
+2. 确保上游路由器开启了DHCP.
 
 使用:
 
@@ -110,7 +110,6 @@ sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
 - 集成ssr
 - 增加功能: 更新集成的软件
 - updater
-- Linux 适配
 - Windows 适配
 - 系统状态栏
 

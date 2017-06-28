@@ -30,6 +30,9 @@
   },
   "build": {
     "appId": "com.icymind.vrouter",
-    "compression": "maximum"
+    "compression": "maximum",
+    "mac": {
+        "target": "dmg"
+    }
   }
 }

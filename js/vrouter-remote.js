@@ -106,6 +106,10 @@ class VRouterRemote {
         return Promise.resolve((match && match[1]) || '')
       })
   }
+  getMacAddress (inf = 'eth1') {
+    const cmd = `cat /sys/class/net/${inf}/address`
+    return this.remoteExec(cmd)
+  }
   getSSVersion () {
     const cmd = 'ss-redir -h | grep "shadowsocks-libev" | cut -d" " -f2'
     return this.remoteExec(cmd)

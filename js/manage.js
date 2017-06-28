@@ -31,6 +31,7 @@ const myApp = new Vue({
     openwrtVersion: '',
     brLanIP: '',
     lanIP: '',
+    macAddress: '',
     ssVersion: '',
     ktVersion: '',
     ssStatus: '',
@@ -226,6 +227,7 @@ const myApp = new Vue({
       this.openwrtVersion = await this.remote.getOpenwrtVersion()
       this.brLanIP = await this.remote.getIP('br-lan')
       this.lanIP = await this.remote.getIP('eth1')
+      this.macAddress = await this.remote.getMacAddress('eth1')
       this.ssVersion = await this.remote.getSSVersion()
       this.ktVersion = await this.remote.getKTVersion()
     },
@@ -521,7 +523,7 @@ const myApp = new Vue({
       tell application "Terminal"
           do script ("ssh root@${vrouter.config.vrouter.ip};")
           activate
-          delay 1
+          delay 3
           tell application "System Events" to keystroke "root"
           tell application "System Events" to key code 36
       end tell
