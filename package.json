@@ -1,7 +1,7 @@
 {
   "name": "VRouter",
   "version": "0.1.0",
-  "description": "",
+  "description": "oxs transparent proxy.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -30,11 +30,6 @@
   },
   "build": {
     "appId": "com.icymind.vrouter",
-    "compression": "maximum",
-    "mac": {
-      "category": "tools",
-      "icon": "img/vrouter.icns",
-      "target": "zip"
-    }
+    "compression": "maximum"
   }
 }
