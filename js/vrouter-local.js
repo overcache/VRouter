@@ -176,8 +176,18 @@ class VRouter {
     if (dst === 'vrouter') {
       ip = this.config.vrouter.ip
     } else {
-      const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router | awk -F ": " '{print $2}'`
-      ip = await this.localExec(subCmd).then(ip => ip.trim())
+      // const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router | awk -F ": " '{print $2}'`
+      const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router`
+      ip = await this.localExec(subCmd)
+        .then((output) => {
+          const ipReg = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/ig
+          const match = ipReg.exec(output)
+          if (match && match[1]) {
+            return Promise.resolve(match[1])
+          } else {
+            return Promise.reject(Error('can not get Router IP'))
+          }
+        })
     }
     // const cmd = `sudo /sbin/route change default "${ip}"` +
       // ' && ' + `sudo /usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
