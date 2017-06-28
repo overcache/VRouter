@@ -64,7 +64,7 @@
       <div v-bind:class="{ui:true, teal:currentGW!=='vrouter',red:currentGW==='vrouter', labeled:true, icon:true, button:true, right:true, floated:true}"
         v-bind:data-content="btnToggleRouterPopup" v-on:click="btnToggleRouterHandler">
         <i v-bind:class="btnToggleRouterIcon"></i>
-        切换
+        {{ btnToggleRouterText }}
       </div>
       <div class="ui hidden" style="clear:both"></div>
     </div>

@@ -27,7 +27,7 @@ const myApp = new Vue({
     ssDisabled: true,
     ktDisabled: true,
     btnToggleRouterPopup: '',
-    btnToggleRouterText: '启用VRouter网关',
+    // btnToggleRouterText: '启用VRouter网关',
     openwrtVersion: '',
     brLanIP: '',
     lanIP: '',
@@ -76,6 +76,13 @@ const myApp = new Vue({
         pause: this.currentGW === 'vrouter',
         play: this.currentGW !== 'vrouter',
         icon: true
+      }
+    },
+    btnToggleRouterText () {
+      if (this.currentGW === 'vrouter') {
+        return '暂停'
+      } else {
+        return '启用'
       }
     },
     ssStatusIcon () {
@@ -244,7 +251,7 @@ const myApp = new Vue({
       }
       const isGWVRouter = this.currentGW === 'vrouter'
       this.btnToggleRouterPopup = isGWVRouter ? '停止接管流量' : '开始接管流量'
-      this.btnToggleRouterText = isGWVRouter ? '恢复系统网关' : '启用VRouter网关'
+      // this.btnToggleRouterText = isGWVRouter ? '恢复系统网关' : '启用VRouter网关'
       this.toggleBlink(isGWVRouter)
     },
     btnEditHandler () {
