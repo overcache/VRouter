@@ -14,7 +14,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 前提条件: 
 
-1. Shadowsocks 的服务端需要开启 udp 转发: 如果是服务端是用命令行启动, 请确保带了 `-u` 参数; 如果是用配置文件, 请确保配置文件包含: `"mode": "tcp_and_udp"`
+1. 因为需要转发DNS查询, 所以Shadowsocks 的服务端需要开启 udp 转发: 如果是服务端是用命令行启动, 请确保带了 `-u` 参数; 如果是用配置文件, 请确保配置文件包含: `"mode": "tcp_and_udp"`
 2. 确保上游路由器开启了DHCP.
 
 使用:
@@ -103,15 +103,15 @@ sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
 
 ### TODO
 
-- 将自定义黑白名单的ipset从BLACKLIST/WHITELIST中分离, 并在防火墙中做优先处理
-- 增加log
-- 更新gfwlist
-- 增加转发tcp/udp的配置入口
-- 集成ssr
-- 增加功能: 更新集成的软件
-- updater
-- Windows 适配
-- 系统状态栏
+- [  ] 将自定义黑白名单的ipset从BLACKLIST/WHITELIST中分离, 并在防火墙中做优先处理
+- [  ] 增加log
+- [  ] 更新gfwlist
+- [  ] 增加转发tcp/udp的配置入口
+- [  ] 集成ssr
+- [  ] 增加功能: 更新集成的软件
+- [  ] updater
+- [  ] Windows 适配
+- [  ] 系统状态栏
 
 ### 截图
 

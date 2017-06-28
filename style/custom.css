@@ -17,6 +17,7 @@ body {
 }
 #logo {
   background-color: #6bae7f;
+  border-radius: 5px;
   text-align: center;
 }
 #logo img {
