@@ -8,6 +8,8 @@
 
 VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认路由, 将所有系统数据包转发到虚拟机上. 依托 openwrt 的 iptables 进行数据包的处理.
 
+了解构造过程请点击: [构造过程](https://icymind.com/virtual-openwrt/)
+
 ### 如何使用
 
 0. 确保上游路由器开启了DHCP
