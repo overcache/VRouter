@@ -64,6 +64,8 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 ### TODO
 
 - 更新gfwlist
+- Linux 适配
+- Windows 适配
 - 系统状态栏
 
 ### 截图
