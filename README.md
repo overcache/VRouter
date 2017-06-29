@@ -12,9 +12,46 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 ### 如何使用
 
-0. 确保上游路由器开启了DHCP
+前提条件: 
+
+1. Shadowsocks 的服务端需要开启 udp 转发: 如果是服务端是用命令行启动, 请确保带了 `-u` 参数; 如果是用配置文件, 请确保配置文件包含: `"mode": "tcp_and_udp"`
+2. 确保上游路由器开启了DHCP
+
+使用:
+
 1. 下载运行, 填写相应的代理参数
 2. 点击"切换"按钮, 切换网关为 VRouter
+
+### 自定义黑白名单
+
+- 每个域名/IP/IP段一行, 注释行以#开头
+- 域名
+    - 域名可以是裸域名如 `example.com`, 将会匹配该域下的所有子域名如  `a.example.com`, `b.example.com` 等等
+    - 也可以填写子域名如 `a.example.com`, 如此不会匹配到 `b.example.com`
+- IP
+    - 可以是独立的IP, 如 `123.123.123.123`
+    - 也可以是IP段, 如 `123.123.123.0/8` 将会匹配 `123.123.123.0~123.123.123.255` 之间的IP地址. `123.123.0.0/16`将匹配 `123.123.0.0 ~ 123.123.255.255`之间的IP地址
+
+### 恢复网关
+
+如果出 bug 造成无法上网或者无法解析域名, 而 VRouter 又无法恢复系统默认网关.可以手动恢复:
+
+```bash
+# 查找你的路由器地址, 假设命令输出1.2.3.4
+/usr/sbin/networksetup -getinfo Wi-Fi | grep Router
+
+# 恢复网关, 1.2.3.4 换成第一条命令的输出
+sudo /sbin/route change default 1.2.3.4
+
+# 恢复DNS, 1.2.3.4 换成第一条命令的输出
+sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
+
+# 确认网关已恢复
+/usr/sbin/netstat -nr | grep default | awk '{print $2}'
+
+# 确认DNS已恢复
+/usr/sbin/networksetup -getdnsservers Wi-Fi
+```
 
 ### FAQ
 
@@ -53,19 +90,26 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 优点:
 
 - 可以实现透明代理
-- 性能比物理路由器强
+- 性能不受局限
 - 便携性良好, 随笔记本移动
 - 资源占用小
+- 切换方便
 - 免费
 
 缺点:
 
+- 需要先安装virtualbox
 - 无法服务局域网内的其他设备
-- 依赖较多
 
 ### TODO
 
+- 将自定义黑白名单的ipset从BLACKLIST/WHITELIST中分离, 并在防火墙中做优先处理
+- 增加log
 - 更新gfwlist
+- 增加转发tcp/udp的配置入口
+- 集成ssr
+- 增加功能: 更新集成的软件
+- updater
 - Linux 适配
 - Windows 适配
 - 系统状态栏
