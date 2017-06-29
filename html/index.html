@@ -98,7 +98,8 @@
         </div>
         <div class="ui divider hidden"></div>
       <form class="ui form">
-        <div v-bind:class="formSSClass">
+        <!-- <div v-bind:class="formSSClass"> -->
+        <div class="hidden">
           <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocks/shadowsocks-libev#usage">Shadowsocks<i class="small icon external square"></i></a></h4>
           <div class="field">
             <div class="three fields">
@@ -121,8 +122,8 @@
               <div class="eight wide icon field">
                 <label for="password">Password</label>
                 <div class="ui icon input">
-                  <input v-bind:value="shadowsocks.password" v-bind:type="ui.hideSSPassword ? 'password' : 'text'" v-bind:disabled="ui.ssDisabled" ref="password">
-                  <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.hideSSPassword ? 'unhide' : 'hide']" v-on:click="toggleSSPassword"></i>
+                  <input v-bind:value="shadowsocks.password" v-bind:type="ui.hideSsPassword ? 'password' : 'text'" v-bind:disabled="ui.ssDisabled" ref="password">
+                  <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.hideSsPassword ? 'unhide' : 'hide']" v-on:click="toggleSSPassword"></i>
                 </div>
               </div>
               <div class="four wide field">
@@ -136,6 +137,7 @@
             </div>
           </div>
         </div>
+
         <div v-bind:class="['ui']">
           <h4 class="ui header dividing teal"><a href="https://github.com/xtaci/kcptun#usage">Kcptun<i class="small icon external square"></i></a></h4>
           <div class="field">
@@ -174,16 +176,19 @@
             <input v-bind:disabled="ui.ktDisabled" ref="ktOthers" v-bind:value="ktOthers">
           </div>
         </div>
+
         <div
           v-bind:class="['ui teal button labeled icon right floated', ui.ssDisabled || 'negative']"
           v-on:click="btnEditHandler">
           <i v-bind:class="['ui icon', ui.ssDisabled ? 'write' : 'remove']"></i>
           {{ ui.ssDisabled ? '编辑' : '取消' }}
         </div>
+
         <div class="ui teal button labeled icon right floated" v-on:click="saveHandler" v-if="!ui.ssDisabled">
           <i class="ui checkmark icon"></i>
           应用
         </div>
+
         <div class="ui hidden" style="clear: both"></div>
       </form>
     </div>

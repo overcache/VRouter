@@ -33,7 +33,7 @@ const myApp = new Vue({
     },
     ui: {
       blinkIntervals: [],
-      hideSSPassword: true,
+      hideSsPassword: true,
       hideKtPassword: true,
       ssDisabled: true,
       ktDisabled: true,
@@ -215,7 +215,7 @@ const myApp = new Vue({
       const isDiscards = !this.ui.ssDisabled
       if (isDiscards) {
         this.ui.ssDisabled = true
-        this.ui.hideSSPassword = true
+        this.ui.hideSsPassword = true
         this.ui.ktDisabled = true
         this.ui.hideKtPassword = true
         if (this.firewall.currentProtocol.indexOf('kt') >= 0) {
@@ -225,7 +225,7 @@ const myApp = new Vue({
         this.resetProxyChain()
       } else {
         this.ui.ssDisabled = false
-        this.ui.hideSSPassword = false
+        this.ui.hideSsPassword = false
         this.ui.ktDisabled = false
         this.ui.hideKtPassword = false
       }
@@ -235,7 +235,7 @@ const myApp = new Vue({
       this.ui.ssDisabled = true
       this.ui.ktDisabled = true
       this.ui.hideKtPassword = true
-      this.ui.hideSSPassword = true
+      this.ui.hideSsPassword = true
 
       this.syncFileds()
 
@@ -277,7 +277,7 @@ const myApp = new Vue({
     },
 
     toggleSSPassword () {
-      this.ui.hideSSPassword = !this.ui.hideSSPassword
+      this.ui.hideSsPassword = !this.ui.hideSsPassword
     },
     toggleKtPassword () {
       this.ui.hideKtPassword = !this.ui.hideKtPassword
