@@ -36,7 +36,8 @@ class VRouter {
   }
   sudoExec (cmd) {
     const option = {
-      name: 'VRouter'
+      name: 'VRouter',
+      icns: path.join(__dirname, '..', 'build', 'icon.icns')
     }
     return new Promise((resolve, reject) => {
       sudo.exec(cmd, option, (err, stdout, stderr) => {
@@ -1057,15 +1058,26 @@ class VRouter {
 
     // whitelist mode: bypass whitelist and route others
     if (mode === 'whitelist') {
+      // "绕过白名单"模式下, 先将黑名单导向代理, 如果自定义黑名单中存在白名单相同项, 先处理黑名单符合预期
+      ws.write('# route all blacklist traffic\n')
+      rule = `-p tcp -m set --match-set ${this.config.firewall.ipsets.black} dst -j REDIRECT --to-port ${redirPort}`
+      ws.write(this.generateFWRulesHelper(rule))
+
       ws.write('# bypass whitelist\n')
       rule = `-m set --match-set ${this.config.firewall.ipsets.white} dst -j RETURN`
       ws.write(this.generateFWRulesHelper(rule))
+
       ws.write('# route all other traffic\n')
       rule = `-p tcp -j REDIRECT --to-ports ${redirPort}`
       ws.write(this.generateFWRulesHelper(rule))
     }
 
     if (mode === 'blacklist') {
+      // 仅代理黑名单模式下, 先将白名单返回. 如果自定义白名单中存在黑名单相同项, 先处理白名单符合预期
+      ws.write('# bypass whitelist\n')
+      rule = `-m set --match-set ${this.config.firewall.ipsets.white} dst -j RETURN`
+      ws.write(this.generateFWRulesHelper(rule))
+
       ws.write('# route all blacklist traffic\n')
       rule = `-p tcp -m set --match-set ${this.config.firewall.ipsets.black} dst -j REDIRECT --to-port ${redirPort}`
       ws.write(this.generateFWRulesHelper(rule))

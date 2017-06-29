@@ -27,6 +27,7 @@
             "password": "demo-paswd",
             "timeout": 300,
             "method": "chacha20",
+            "mode": "tcp_only",
             "fastOpen": true
         },
         "client": "ss-client.json",

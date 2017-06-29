@@ -103,15 +103,15 @@ sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
 
 ### TODO
 
-- [  ] 将自定义黑白名单的ipset从BLACKLIST/WHITELIST中分离, 并在防火墙中做优先处理
-- [  ] 增加log
-- [  ] 更新gfwlist
-- [  ] 增加转发tcp/udp的配置入口
-- [  ] 集成ssr
-- [  ] 增加功能: 更新集成的软件
-- [  ] updater
-- [  ] Windows 适配
-- [  ] 系统状态栏
+- [x] 优化黑白名单的处理
+- [ ] 增加log
+- [ ] 更新gfwlist
+- [ ] 增加转发tcp/udp的配置入口
+- [ ] 集成ssr
+- [ ] 增加功能: 更新集成的软件
+- [ ] updater
+- [ ] Windows 适配
+- [ ] 系统状态栏
 
 ### 截图
 
