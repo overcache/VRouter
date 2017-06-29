@@ -75,7 +75,7 @@ class VRouterRemote {
     const cmd = 'ps -w| grep "[s]s-tunnel -c .*ss-dns.json"'
     return this.remoteExec(cmd)
   }
-  getSSStatus () {
+  isSsRunning () {
     return this.getSSProcess()
       .then(() => {
         return this.getSSDNSProcess()
@@ -86,6 +86,12 @@ class VRouterRemote {
         } else {
           return Promise.resolve('dont panic')
         }
+      })
+      .then(() => {
+        return Promise.resolve(true)
+      })
+      .catch(() => {
+        return Promise.resolve(false)
       })
   }
   getOpenwrtVersion () {
@@ -124,9 +130,15 @@ class VRouterRemote {
     return this.getFile(`${this.config.vrouter.configDir}/${this.config.shadowsocks.overKt}`)
   }
 
-  getKTProcess () {
+  isKtRunning () {
     const cmd = 'ps | grep "[k]cptun -c"'
     return this.remoteExec(cmd)
+      .then(() => {
+        return Promise.resolve(true)
+      })
+      .catch(() => {
+        return Promise.resolve(false)
+      })
   }
   getKTVersion () {
     const cmd = 'kcptun --version | cut -d" " -f3'

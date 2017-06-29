@@ -73,7 +73,7 @@
         "extraWhiteList": "extra-whitelist.txt",
         "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
         "currentMode": "none",
-        "currentProtocol": "shadowsocks",
+        "currentProtocol": "ss",
         "dnsmasqFile": "custom.conf",
         "firewallFile": "firewall.user",
         "ipsetsFile": "custom.ipset",
