@@ -154,6 +154,7 @@ class VRouter {
 
     return Promise.all([
       this.localExec(cmd1).then((output) => {
+        output = output.replace(/(\r?\n|\r).+/, '')
         return Promise.resolve((output && output.trim()) || '')
       }),
       this.localExec(cmd2).then((output) => {
