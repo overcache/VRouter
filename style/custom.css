@@ -15,8 +15,11 @@ body {
 .ui.item.menu > a.item.active {
   color: #00B5AD;
 }
-.ui.header.dividing > a {
+.ui.header.dividing.teal > a {
   color: #00B5AD;
+}
+.ui.header.dividing.pink > a {
+  color: #E03997;
 }
 #logo {
   background-color: #6bae7f;

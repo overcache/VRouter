@@ -28,7 +28,7 @@
 
   <div id="app">
     <div v-bind:class="['ui inverted dimmer', ui.activeLoader && 'active']">
-      <div v-bind:class="['ui loader', ui.activeLoader && 'active']"></div>
+      <div class="ui loader"></div>
     </div>
     <div id="status-tab" class="ui bottom attached tab segment active" data-tab="status">
       <div id="logo">
@@ -72,21 +72,21 @@
     <div id="proxies-tab" class="ui bottom attached tab segment" data-tab="proxies">
       <div>
         <label>代理</label>
-        <div id="proxies-chains" v-bind:class="['ui selection dropdown', ui.ssDisabled && 'disabled']">
+        <div id="proxies-chains" v-bind:class="['ui selection dropdown', ui.editable.proxies || 'disabled']">
           <input type="hidden" name="proxies-chains">
-          <i class="dropdown icon"></i>
+          <i class="ui dropdown icon"></i>
           <div class="text" ref="proxiesText" v-text="ui.proxiesTextDic[firewall.currentProxies]"></div>
-          <div class="menu" ref="proxiesDropdown">
+          <div class="ui menu" ref="proxiesDropdown">
             <div class="item" data-value="ss" v-on:click="selectProxies">
               {{ ui.proxiesTextDic.ss }}
             </div>
             <div class="item" data-value="ssr" v-on:click="selectProxies">
               {{ ui.proxiesTextDic.ssr }}
             </div>
-            <div class="item" data-value="ss-kt" v-on:click="selectProxies">
+            <div class="item" data-value="ssKt" v-on:click="selectProxies">
               {{ ui.proxiesTextDic.ssKt }}
             </div>
-            <div class="item" data-value="ssr-kt" v-on:click="selectProxies">
+            <div class="item" data-value="ssrKt" v-on:click="selectProxies">
               {{ ui.proxiesTextDic.ssrKt }}
             </div>
           </div>
@@ -94,21 +94,21 @@
       </div>
       <div class="ui divider hidden"></div>
       <form class="ui form">
-        <div id="ss">
+        <div id="shadowsocks">
           <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocks/shadowsocks-libev#usage">Shadowsocks<i class="small icon external square"></i></a></h4>
           <div class="field">
             <div class="three fields">
               <div class="eight wide field">
                 <label for="server">Server</label>
-                <input v-bind:value="shadowsocks.address" v-bind:disabled="ui.ssDisabled" ref="ssAddress">
+                <input v-bind:value="shadowsocks.address" v-bind:disabled="!ui.editable.proxies" ref="ssAddress">
               </div>
               <div class="four wide field">
                 <label for="server-port">Server Port</label>
-                <input v-bind:value="shadowsocks.port" v-bind:disabled="ui.ssDisabled" ref="ssPort">
+                <input v-bind:value="shadowsocks.port" v-bind:disabled="!ui.editable.proxies" ref="ssPort">
               </div>
               <div class="four wide field">
                 <label for="fast-open">Fast Open</label>
-                <input v-bind:disabled="ui.ssDisabled" v-bind:value="shadowsocks.fastOpen" ref="ssFastOpen">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.fastOpen" ref="ssFastOpen">
               </div>
             </div>
           </div>
@@ -117,37 +117,37 @@
               <div class="eight wide icon field">
                 <label for="password">Password</label>
                 <div class="ui icon input">
-                  <input v-bind:value="shadowsocks.password" v-bind:type="ui.pwdVisible.ss ? 'password' : 'text'" v-bind:disabled="ui.ssDisabled" ref="ssPassword">
+                  <input v-bind:value="shadowsocks.password" v-bind:type="ui.pwdVisible.ss ? 'text' : 'password'" v-bind:disabled="!ui.editable.proxies" ref="ssPassword">
                   <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.pwdVisible.ss ? 'unhide' : 'hide']" v-on:click="togglePwdVsblt('ss')"></i>
                 </div>
               </div>
               <div class="four wide field">
                 <label for="encrypt">Encrypt Method</label>
-                <input v-bind:disabled="ui.ssDisabled" v-bind:value="shadowsocks.method" ref="ssMethod">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.method" ref="ssMethod">
               </div>
               <div class="four wide field">
                 <label for="timeout">Timeout</label>
-                <input v-bind:disabled="ui.ssDisabled" v-bind:value="shadowsocks.timeout" ref="ssTimeout">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.timeout" ref="ssTimeout">
               </div>
             </div>
           </div>
         </div>
 
-        <div id="ssr">
-          <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocksr/shadowsocksr-libev#usage">ShadowsocksR<i class="small icon external square"></i></a></h4>
+        <div id="shadowsocksr">
+          <h4 class="ui header dividing pink"><a href="https://github.com/shadowsocksr/shadowsocksr-libev#usage">ShadowsocksR<i class="small icon external square"></i></a></h4>
           <div class="field">
             <div class="three fields">
               <div class="eight wide field">
                 <label for="server">Server</label>
-                <input v-bind:value="shadowsocksr.address" ref="ssrAddress">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.address" ref="ssrAddress">
               </div>
               <div class="four wide field">
                 <label for="server-port">Server Port</label>
-                <input v-bind:value="shadowsocksr.port" ref="ssrPort">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.port" ref="ssrPort">
               </div>
               <div class="four wide field">
                 <label for="fast-open">Fast Open</label>
-                <input v-bind:disabled="ui.ssDisabled" ref="ssrFastOpen">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.fastOpen" ref="ssrFastOpen">
               </div>
             </div>
           </div>
@@ -156,37 +156,37 @@
               <div class="eight wide icon field">
                 <label for="password">Password</label>
                 <div class="ui icon input">
-                  <input v-bind:value="shadowsocksr.password" v-bind:type="ui.pwdVisible.ssr ? 'password' : 'text'" ref="ssrPassword">
-                  <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.pwdVisible.ssr ? 'unhide' : 'hide']" v-on:click="togglePwdVsblt('ssr')"></i>
+                  <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.password" v-bind:type="ui.pwdVisible.ssr ? 'text' : 'password'" ref="ssrPassword">
+                  <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.pwdVisible.ssr ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('ssr')"></i>
                 </div>
               </div>
               <div class="four wide field">
                 <label for="encrypt">Encrypt Method</label>
-                <input v-bind:disabled="ui.ssDisabled" v-bind:value="shadowsocksr.method" ref="ssrMethod">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.method" ref="ssrMethod">
               </div>
               <div class="four wide field">
                 <label for="timeout">Timeout</label>
-                <input v-bind:value="shadowsocksr.timeout" ref="ssrTimeout">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.timeout" ref="ssrTimeout">
               </div>
             </div>
           </div>
         </div>
 
-        <div id="kt">
+        <div id="kcptun">
           <h4 class="ui header dividing teal"><a href="https://github.com/xtaci/kcptun#usage">Kcptun<i class="small icon external square"></i></a></h4>
           <div class="field">
             <div class="three fields">
               <div class="eight wide field">
                 <label for="server">Server</label>
-                <input v-bind:value="kcptun.address" v-bind:disabled="ui.ktDisabled" ref="ktAddress">
+                <input v-bind:value="kcptun.address" v-bind:disabled="!ui.editable.proxies" ref="ktAddress">
               </div>
               <div class="four wide field">
                 <label for="server-port">Server Port</label>
-                <input v-bind:value="kcptun.port" v-bind:disabled="ui.ktDisabled" ref="ktPort">
+                <input v-bind:value="kcptun.port" v-bind:disabled="!ui.editable.proxies" ref="ktPort">
               </div>
               <div class="four wide field">
                 <label for="fast-open">Mode</label>
-                <input v-bind:disabled="ui.ktDisabled" v-bind:value="kcptun.mode" ref="ktMode">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="kcptun.mode" ref="ktMode">
               </div>
             </div>
           </div>
@@ -195,30 +195,31 @@
               <div class="eight wide icon field">
                 <label for="password">Key</label>
                 <div class="ui icon input">
-                  <input v-bind:value="kcptun.key" v-bind:type="ui.pwdVisible.kt ? 'password' : 'text'" v-bind:disabled="ui.ktDisabled" ref="ktKey">
-                  <i v-bind:class="['ui link icon', ui.pwdVisible.kt ? 'unhide' : 'hide']" v-on:click="togglePwdVsblt('kt')"></i>
+                  <input v-bind:value="kcptun.key" v-bind:type="ui.pwdVisible.kt ? 'text' : 'password'" v-bind:disabled="!ui.editable.proxies" ref="ktKey">
+                  <i v-bind:class="['ui link icon', ui.pwdVisible.kt ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('kt')"></i>
                 </div>
               </div>
               <div class="eight wide field">
                 <label for="encrypt">Encrypt Method</label>
-                <input v-bind:disabled="ui.ktDisabled" v-bind:value="kcptun.crypt" ref="ktCrypt">
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="kcptun.crypt" ref="ktCrypt">
               </div>
             </div>
           </div>
           <div class="field">
             <label>Others<i class="help circle link icon" data-content="kcptun的其他参数, 格式'key1=value1;key2=value2', 如sndwnd=256;rcvwnd=2048;nocomp=true"></i></label>
-            <input v-bind:disabled="ui.ktDisabled" ref="ktOthers" v-bind:value="ktOthers">
+            <input v-bind:disabled="!ui.editable.proxies" ref="ktOthers" v-bind:value="ktOthers">
           </div>
         </div>
 
+        <div class="ui divider hidden"></div>
         <div
-          v-bind:class="['ui teal button labeled icon right floated', ui.ssDisabled || 'negative']"
+          v-bind:class="['ui teal button labeled icon right floated', ui.editable.proxies && 'negative']"
           v-on:click="editProxies">
-          <i v-bind:class="['ui icon', ui.ssDisabled ? 'write' : 'remove']"></i>
-          {{ ui.ssDisabled ? '编辑' : '取消' }}
+          <i v-bind:class="['ui icon', ui.editable.proxies ? 'remove' : 'write']"></i>
+          {{ ui.editable.proxies ? '取消' : '编辑' }}
         </div>
 
-        <div class="ui teal button labeled icon right floated" v-on:click="applyProxies" v-if="!ui.ssDisabled">
+        <div class="ui teal button labeled icon right floated" v-on:click="applyProxies" v-if="ui.editable.proxies">
           <i class="ui checkmark icon"></i>
           应用
         </div>
@@ -230,9 +231,9 @@
     <div class="ui bottom attached tab segment" data-tab="mode">
       <div>
         <label>模式</label>
-        <div id="bypass-mode" v-bind:class="['ui selection dropdown', ui.modeDisabled && 'disabled']">
+        <div id="bypass-mode" v-bind:class="['ui selection dropdown', ui.editable.mode || 'disabled']">
           <input type="hidden" name="bypass-mode">
-          <i class="dropdown icon"></i>
+          <i class="ui dropdown icon"></i>
           <div class="text" v-text="proxiesModeText" ref="proxiesModeText"></div>
           <div class="menu">
             <div class="item" data-value="global">{{ ui.proxiesModeTextDic.global }}</div>
@@ -246,14 +247,14 @@
       <div class="ui list">
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="gfw" v-bind:checked="firewall.selectedBL.gfwDomains" v-bind:disabled="ui.modeDisabled" ref="gfwDomains">
+            <input type="checkbox" name="gfw" v-bind:checked="firewall.selectedBL.gfwDomains" v-bind:disabled="!ui.editable.mode" ref="gfwDomains">
             <label>GFW-list <i v-if="false" class="ui refresh icon link" data-content="更新 gfwlist" v-on:click="updateGfwList"></i></label>
           </div>
         </div>
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="extraBlackList" v-bind:disabled="ui.modeDisabled" v-bind:checked="firewall.selectedBL.extraBlackList" ref="extraBlackList">
-            <label>自定义黑名单 <i class="ui link file text icon" v-on:click="openExtraBlackList"></i></label>
+            <input type="checkbox" name="extraBlackList" v-bind:disabled="!ui.editable.mode" v-bind:checked="firewall.selectedBL.extraBlackList" ref="extraBlackList">
+            <label>自定义黑名单 <i class="ui link file text icon" v-on:click="openExtraList('Black')"></i></label>
           </div>
         </div>
       </div>
@@ -267,7 +268,7 @@
         </div>
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="chinaIPs" v-bind:checked="firewall.selectedWL.chinaIPs" v-bind:disabled="ui.modeDisabled" ref="chinaIPs">
+            <input type="checkbox" name="chinaIPs" v-bind:checked="firewall.selectedWL.chinaIPs" v-bind:disabled="!ui.editable.mode" ref="chinaIPs">
             <label>
               国内 IP 
               <i class="ui refresh icon link" data-content="更新 IP 数据库" v-on:click="updateChinaIPs"></i>
@@ -276,16 +277,16 @@
         </div>
         <div class="item">
           <div class="ui checkbox">
-            <input type="checkbox" name="extraWhiteList" v-bind:disabled="ui.modeDisabled" v-bind:checked="firewall.selectedWL.extraWhiteList" ref="extraWhiteList">
-            <label>自定义白名单 <i class="ui link file text icon" v-on:click="openExtraWhiteList"></i></label>
+            <input type="checkbox" name="extraWhiteList" v-bind:disabled="!ui.editable.mode" v-bind:checked="firewall.selectedWL.extraWhiteList" ref="extraWhiteList">
+            <label>自定义白名单 <i class="ui link file text icon" v-on:click="openExtraList('White')"></i></label>
           </div>
         </div>
       </div>
-      <div v-bind:class="['ui button labeled icon right floated', ui.modeDisabled ? 'teal' : 'negative']" v-on:click="btnProxiesModeHandler">
-        <i v-bind:class="['ui icon', ui.modeDisabled ? 'write' : 'remove']"></i>
-        {{ ui.modeDisabled ? '编辑' : '取消'}}
+      <div v-bind:class="['ui button labeled icon right floated teal', ui.editable.mode && 'negative']" v-on:click="editProxiesMode">
+        <i v-bind:class="['ui icon', ui.editable.mode ? 'remove' : 'write']"></i>
+        {{ ui.editable.mode ? '取消' : '编辑'}}
       </div>
-      <div class="ui button teal labeled icon right floated" v-on:click="saveProxiesModeHandler" v-if="!ui.modeDisabled">
+      <div class="ui button teal labeled icon right floated" v-on:click="applyProxiesMode" v-if="ui.editable.mode">
         <i class="ui checkmark icon"></i>
         应用
       </div>
@@ -312,7 +313,7 @@
         <div class="item">
           <div class="ui label">
             openwrt 版本: 
-            <a class="detail" data-content="进入虚拟机" data-position="right center" v-on:click="loginVRouterModal" ref="loginVRouterModal">
+            <a class="detail" data-content="进入虚拟机" data-position="right center" v-on:click="showLoginModal" ref="showLoginModal">
               {{ status.openwrtVersion }}
               <i class="ui sign in icon teal"></i>
             </a>
@@ -385,11 +386,11 @@
             <i class="ui pause icon yellow"></i>
             暂停
           </div>
-          <div class="item" v-on:click="btnConsole">
+          <div class="item" v-on:click="toggleDevTools">
             <i class="ui terminal icon teal"></i>
             控制台
           </div>
-          <div class="item" v-on:click="btnAbout">
+          <div class="item" v-on:click="showAboutModal">
             <i class="ui info icon teal"></i>
             关于
           </div>
@@ -415,7 +416,7 @@
           <i class="remove icon"></i>
           GUI 登入
         </div>
-        <div class="ui red cancel inverted button">
+        <div class="ui red cancel inverted button" v-on:click="sshLogin">
           <i class="remove icon"></i>
           SSH 登入
         </div>

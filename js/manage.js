@@ -36,20 +36,14 @@ const myApp = new Vue({
     ui: {
       blinkIntervals: [],
       pwdVisible: {
-        ss: true,
-        ssr: true,
-        kt: true
+        ss: false,
+        ssr: false,
+        kt: false
       },
-      hideSsPassword: true,
-      hideSsrPassword: true,
-      hideKtPassword: true,
       editable: {
         proxies: false,
         mode: false
       },
-      ssDisabled: true,
-      ktDisabled: true,
-      modeDisabled: true,
       activeLoader: false,
       btnToggleRouterPopup: '',
       proxiesTextDic: {
@@ -103,7 +97,7 @@ const myApp = new Vue({
 // Status Tab
     showErrModal (err) {
       console.log(err)
-      this.errorMsg = err
+      this.errorMsg = err.message
       $(this.$refs.errorModal).modal('show')
     },
     async toggleVrouter () {
@@ -166,6 +160,7 @@ const myApp = new Vue({
         this.ui.pwdVisible[key] = this.ui.editable.proxies
       })
       this.resetProxiesDropdown()
+      this.resetProxiesForm()
     },
     async applyProxies () {
       this.ui.activeLoader = true
@@ -221,14 +216,39 @@ const myApp = new Vue({
       this.$refs.proxiesText.innerHTML = this.ui.proxiesTextDic[this.firewall.currentProxies]
     },
     selectProxies (event) {
-      const selectedText = event.target.innerHTML.trim()
-      if (selectedText === '仅 Shadowsocks') {
-        this.ui.ktDisabled = true
-        this.ui.hideKtPassword = true
-      } else {
-        this.ui.ktDisabled = false
-        this.ui.hideKtPassword = false
+      const selectedProxies = event.target.dataset.value
+      this.resetProxiesForm(selectedProxies)
+    },
+    resetProxiesForm (proxies) {
+      const arr = []
+      switch (proxies || this.firewall.currentProxies) {
+        case 'ss':
+          arr.push('shadowsocks')
+          break
+        case 'ssr':
+          arr.push('shadowsocksr')
+          break
+        case 'ssKt':
+          arr.push('shadowsocks')
+          arr.push('kcptun')
+          break
+        case 'ssrKt':
+          arr.push('shadowsocksr')
+          arr.push('kcptun')
+          break
       }
+      console.log(arr)
+      this.toggleProxiesForm(arr)
+    },
+    toggleProxiesForm (selected) {
+      const proxies = ['shadowsocks', 'shadowsocksr', 'kcptun']
+      proxies.forEach((proxy) => {
+        if (selected.includes(proxy)) {
+          document.getElementById(proxy).style.display = ''
+        } else {
+          document.getElementById(proxy).style.display = 'none'
+        }
+      })
     },
     saveCurrentProxiesFields () {
       const currentProxies = vrouter.config.firewall.currentProxies
@@ -287,12 +307,12 @@ const myApp = new Vue({
       })
       proxiesChanged = pre !== this.firewall.currentProxies
 
-      let SSKeys = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
-      for (let i = 0; i < SSKeys.length; i++) {
+      let SsKeys = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
+      for (let i = 0; i < SsKeys.length; i++) {
         if (!shadowsocksChanged) {
-          shadowsocksChanged = vrouter.config.shadowsocks.server[SSKeys[i]] !== this.$refs[SSKeys[i]].value.trim()
+          shadowsocksChanged = vrouter.config.shadowsocks.server[SsKeys[i]] !== this.$refs[SsKeys[i]].value.trim()
         }
-        vrouter.config.shadowsocks.server[SSKeys[i]] = this.$refs[SSKeys[i]].value.trim()
+        vrouter.config.shadowsocks.server[SsKeys[i]] = this.$refs[SsKeys[i]].value.trim()
       }
 
       const newKt = {}
@@ -466,7 +486,7 @@ const myApp = new Vue({
         this.showErrModal(err)
       }
     },
-    async loginVRouter () {
+    async sshLogin () {
       try {
         await vrouter.sshLogin()
         $(this.$refs.loginModal).modal('hide')
@@ -493,8 +513,8 @@ const myApp = new Vue({
       this.status.brLanIP = await this.remote.getIP('br-lan')
       this.status.lanIP = await this.remote.getIP('eth1')
       this.status.macAddress = await this.remote.getMacAddress('eth1')
-      this.status.ssVersion = await this.remote.getSSVersion()
-      this.status.ktVersion = await this.remote.getKTVersion()
+      this.status.ssVersion = await this.remote.getSsVersion()
+      this.status.ktVersion = await this.remote.getKtVersion()
     },
     async refreshInfos () {
       $('*[data-content]').popup('hide')
@@ -524,7 +544,7 @@ const myApp = new Vue({
       this.ui.activeLoader = true
       try {
         await vrouter.changeRouteTo('wifi')
-        await vrouter.stopVM('savestate')
+        await vrouter.stopvm('savestate')
         app.quit()
       } catch (err) {
         this.showErrModal(err)
@@ -536,7 +556,7 @@ const myApp = new Vue({
       this.ui.activeLoader = true
       try {
         await vrouter.changeRouteTo('wifi')
-        await vrouter.deleteVM(true)
+        await vrouter.deletevm(true)
         app.quit()
       } catch (err) {
         this.showErrModal(err)
@@ -567,6 +587,7 @@ const myApp = new Vue({
       await this.checkTrafficStatus()
       await this.checkInfos()
       await this.checkProxiesStatus()
+      this.resetProxiesForm()
     } catch (err) {
       this.showErrModal(err)
     }

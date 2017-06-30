@@ -96,13 +96,13 @@ class VRouterRemote {
     return this.remoteExec(cmd)
   }
   isSsRunning () {
-    return this.getSSProcess()
+    return this.getSsProcess()
       .then(() => {
-        return this.getSSDNSProcess()
+        return this.getSsDNSProcess()
       })
       .then(() => {
         if (this.config.firewall.currentProtocol === 'kcptun') {
-          return this.getSSOverKTProcess()
+          return this.getSsOverKTProcess()
         } else {
           return Promise.resolve('dont panic')
         }

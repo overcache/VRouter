@@ -1,4 +1,5 @@
 {
+    "version": "0.1",
     "debug": true,
     "host": {
         "ip": "10.19.28.46",

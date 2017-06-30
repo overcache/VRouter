@@ -29,7 +29,7 @@ async function buildVmHandler (vrouter) {
   vue.data.buttons = [{
     label: '终止',
     async handler () {
-      await vrouter.deleteVM(true)
+      await vrouter.deletevm(true)
       app.quit()
     }
   }]
@@ -37,9 +37,9 @@ async function buildVmHandler (vrouter) {
   vue.data.header = '构建虚拟机'
   vue.data.content = ''
   try {
-    await vrouter.buildVM()
+    await vrouter.buildvm()
     vue.data.content += `<li class="ui">等待虚拟机重新启动</li>`
-    await vrouter.startVM('headless', 30000)
+    await vrouter.startvm('headless', 30000)
     vue.hide()
     return checkRequirement(vrouter)
   } catch (err) {
@@ -55,7 +55,7 @@ async function buildVmHandler (vrouter) {
       {
         label: '退出',
         async handler () {
-          await vrouter.deleteVM(true)
+          await vrouter.deletevm(true)
           app.quit()
         }
       }
@@ -157,7 +157,7 @@ async function checkRequirement (vrouter) {
     vue.show()
     return false
   }
-  ret = await vrouter.getVMState()
+  ret = await vrouter.getvmState()
   if (ret !== 'running') {
     const waitTime = ret === 'poweroff' ? 30 : 10
     let countdown = waitTime
@@ -172,7 +172,7 @@ async function checkRequirement (vrouter) {
       let time = countdown > 0 ? --countdown : 0
       vue.data.content = `正在启动虚拟机, 请稍候...${time}`
     }, 1000)
-    await vrouter.startVM('headless', waitTime * 1000)
+    await vrouter.startvm('headless', waitTime * 1000)
     clearInterval(interval)
     vue.hide()
   }
