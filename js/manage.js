@@ -14,6 +14,8 @@ const myApp = new Vue({
   el: '#app',
   data: {
     shadowsocks: vrouter.config.shadowsocks.server,
+    // todo
+    shadowsocksr: vrouter.config.shadowsocks.server,
     kcptun: vrouter.config.kcptun.server,
     firewall: vrouter.config.firewall,
     remote: null,
@@ -33,20 +35,30 @@ const myApp = new Vue({
     },
     ui: {
       blinkIntervals: [],
+      pwdVisible: {
+        ss: true,
+        ssr: true,
+        kt: true
+      },
       hideSsPassword: true,
+      hideSsrPassword: true,
       hideKtPassword: true,
+      editable: {
+        proxies: false,
+        mode: false
+      },
       ssDisabled: true,
       ktDisabled: true,
       modeDisabled: true,
       activeLoader: false,
       btnToggleRouterPopup: '',
-      protocolTextDic: {
+      proxiesTextDic: {
         ss: '仅 Shadowsocks',
         ssr: '仅 ShadowsocksR',
         ssKt: 'Shadowsocks + Kcptun',
         ssrKt: 'ShadowsocksR + Kcptun'
       },
-      proxyModeTextDic: {
+      proxiesModeTextDic: {
         global: '全局模式',
         whitelist: '绕过白名单',
         blacklist: '仅黑名单',
@@ -56,7 +68,7 @@ const myApp = new Vue({
     errorMsg: ''
   },
   computed: {
-    /* className */
+    // className
     circleIcon () {
       return {
         ui: true,
@@ -65,6 +77,7 @@ const myApp = new Vue({
         green: this.status.currentGW === 'vrouter'
       }
     },
+
     ktOthers () {
       let ktKeys = ['address', 'port', 'key', 'crypt', 'mode']
       let others = []
@@ -75,8 +88,8 @@ const myApp = new Vue({
       })
       return others.join(';')
     },
-    proxyModeText () {
-      return this.ui.proxyModeTextDic[this.firewall.currentMode]
+    proxiesModeText () {
+      return this.ui.proxiesModeTextDic[this.firewall.currentMode]
     },
     author () {
       return fs.readJsonSync(path.join(__dirname, '..', 'package.json')).author
@@ -86,15 +99,14 @@ const myApp = new Vue({
     }
   },
   methods: {
-    formSSClass () {
-      const active = this.$refs.protocolDropdown.querySelector('.item.active.selected')
-      const selected = (active && active.dataset.value) || this.firewall.currentProtocol
-      return {
-        ui: true,
-        hidden: selected !== 'ss-kt' || selected !== 'ss'
-      }
+
+// Status Tab
+    showErrModal (err) {
+      console.log(err)
+      this.errorMsg = err
+      $(this.$refs.errorModal).modal('show')
     },
-    async btnToggleRouterHandler () {
+    async toggleVrouter () {
       $('*[data-content]').popup('hide')
       this.ui.activeLoader = true
       const to = this.status.currentGW === 'vrouter'
@@ -104,52 +116,7 @@ const myApp = new Vue({
         this.status.currentGW = to
         await this.checkTrafficStatus()
       } catch (err) {
-        console.log(err)
-        this.errorMsg = err.message
-        $(this.$refs.errorModal).modal('show')
-      } finally {
-        this.ui.activeLoader = false
-      }
-    },
-    async btnMoreHandlerModal () {
-      $(this.$refs.moreModal)
-        .modal('show')
-    },
-    async btnShutdownHandler () {
-      this.ui.activeLoader = true
-      try {
-        await vrouter.changeRouteTo('wifi')
-        await vrouter.stopVM('savestate')
-        app.quit()
-      } catch (err) {
-        this.errorMsg = err.message
-        $(this.$refs.errorModal).modal('show')
-      } finally {
-        this.ui.activeLoader = false
-      }
-      app.quit()
-    },
-    async btnDeleteHandler () {
-      this.ui.activeLoader = true
-      try {
-        await vrouter.changeRouteTo('wifi')
-        await vrouter.deleteVM(true)
-        app.quit()
-      } catch (err) {
-        this.errorMsg = err.message
-        $(this.$refs.errorModal).modal('show')
-      } finally {
-        this.ui.activeLoader = false
-      }
-    },
-    async btnResetGW () {
-      this.ui.activeLoader = true
-      try {
-        await vrouter.changeRouteTo('wifi')
-        await this.checkTrafficStatus()
-      } catch (err) {
-        this.errorMsg = err.message
-        $(this.$refs.errorModal).modal('show')
+        this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
       }
@@ -175,27 +142,6 @@ const myApp = new Vue({
         })
       }
     },
-    async checkPID () {
-      this.status.isSsRunning = await this.remote.isSsRunning()
-      this.status.isKtRunning = await this.remote.isKtRunning()
-        .then((output) => {
-          if (!output) {
-            throw Error('false')
-          }
-          return Promise.resolve('运行中')
-        })
-        .catch(() => {
-          return Promise.resolve('已停止')
-        })
-    },
-    async checkVersions () {
-      this.status.openwrtVersion = await this.remote.getOpenwrtVersion()
-      this.status.brLanIP = await this.remote.getIP('br-lan')
-      this.status.lanIP = await this.remote.getIP('eth1')
-      this.status.macAddress = await this.remote.getMacAddress('eth1')
-      this.status.ssVersion = await this.remote.getSSVersion()
-      this.status.ktVersion = await this.remote.getKTVersion()
-    },
     async checkTrafficStatus () {
       const [gw, dns] = await vrouter.getCurrentGateway()
       this.status.currentGWIP = gw
@@ -211,33 +157,27 @@ const myApp = new Vue({
       this.ui.btnToggleRouterPopup = isGWVRouter ? '停止接管流量' : '开始接管流量'
       this.toggleBlink(isGWVRouter)
     },
-    btnEditHandler () {
-      const isDiscards = !this.ui.ssDisabled
-      if (isDiscards) {
-        this.ui.ssDisabled = true
-        this.ui.hideSsPassword = true
-        this.ui.ktDisabled = true
-        this.ui.hideKtPassword = true
-        if (this.firewall.currentProtocol.indexOf('kt') >= 0) {
-          this.ui.ktDisabled = true
-          this.ui.hideKtPassword = true
-        }
-        this.resetProxyChain()
-      } else {
-        this.ui.ssDisabled = false
-        this.ui.hideSsPassword = false
-        this.ui.ktDisabled = false
-        this.ui.hideKtPassword = false
-      }
-    },
-    async saveHandler () {
-      this.ui.activeLoader = true
-      this.ui.ssDisabled = true
-      this.ui.ktDisabled = true
-      this.ui.hideKtPassword = true
-      this.ui.hideSsPassword = true
 
-      this.syncFileds()
+// Proxies Tab
+    editProxies () {
+      const editing = this.ui.editable.proxies
+      this.ui.editable.proxies = !editing
+      Object.keys(this.ui.pwdVisible).forEach((key) => {
+        this.ui.pwdVisible[key] = this.ui.editable.proxies
+      })
+      this.resetProxiesDropdown()
+    },
+    async applyProxies () {
+      this.ui.activeLoader = true
+
+      Object.keys(this.ui.pwdVisible).forEach((key) => {
+        this.ui.pwdVisible[key] = false
+      })
+      this.ui.editable.proxies = false
+
+      // 只保存当前选择的代理的配置
+      this.saveFields('proxies')
+      this.saveCurrentProxiesFields()
 
       try {
         await vrouter.saveConfig()
@@ -253,7 +193,7 @@ const myApp = new Vue({
 
         await vrouter.generateWatchdog()
         await vrouter.scpConfig('watchdog')
-        if (this.firewall.currentProtocol.indexOf('kt') >= 0) {
+        if (this.firewall.currentProxies.indexOf('kt') >= 0) {
           await vrouter.enableService('kcptun')
           await this.remote.restartKcptun()
         } else {
@@ -269,28 +209,18 @@ const myApp = new Vue({
 
         await this.refreshInfos()
       } catch (err) {
-        this.errorMsg = err.message
-        $(this.$refs.errorModal).modal('show')
+        this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
       }
     },
-
-    toggleSSPassword () {
-      this.ui.hideSsPassword = !this.ui.hideSsPassword
+    togglePwdVsblt (type) {
+      this.ui.pwdVisible[type] = !this.ui.pwdVisible[type]
     },
-    toggleKtPassword () {
-      this.ui.hideKtPassword = !this.ui.hideKtPassword
+    resetProxiesDropdown () {
+      this.$refs.proxiesText.innerHTML = this.ui.proxiesTextDic[this.firewall.currentProxies]
     },
-    resetProxyChain (set = true) {
-      const isSS = this.firewall.currentProtocol === 'ss'
-      const text = isSS ? '仅 Shadowsocks' : 'Shadowsocks + kcptun'
-      if (set) {
-        this.$refs.protocolText.innerHTML = this.ui.protocolTextDic[this.firewall.currentProtocol]
-      }
-      return text
-    },
-    protocolDropdownHandler (event) {
+    selectProxies (event) {
       const selectedText = event.target.innerHTML.trim()
       if (selectedText === '仅 Shadowsocks') {
         this.ui.ktDisabled = true
@@ -300,20 +230,64 @@ const myApp = new Vue({
         this.ui.hideKtPassword = false
       }
     },
-    syncFileds () {
-      let protocolChanged = false
+    saveCurrentProxiesFields () {
+      const currentProxies = vrouter.config.firewall.currentProxies
+      switch (currentProxies) {
+        case 'ss':
+          this.saveFields('shadowscoks')
+          break
+        case 'ssr':
+          this.saveFields('shadowsocksr')
+          break
+        case 'ssKt':
+          this.saveFields('shadowscoks')
+          this.saveFields('kcptun')
+          break
+        case 'ssrKt':
+          this.saveFields('shadowsocksr')
+          this.saveFields('kcptun')
+          break
+        default:
+          throw Error('unkown current proxies')
+      }
+    },
+    async restartCurrentProxies () {
+      const currentProxies = vrouter.config.firewall.currentProxies
+      switch (currentProxies) {
+        case 'ss':
+          vrouter.generateConfig('shadowscoks')
+          vrouter.scpConfig('shadowscoks')
+          this.remote.restartShadowsocks()
+          break
+        case 'ssr':
+          this.saveFields('ssr')
+          break
+        case 'ssKt':
+          this.saveFields('ss')
+          this.saveFields('kt')
+          break
+        case 'ssrKt':
+          this.saveFields('ssr')
+          this.saveFields('kt')
+          break
+        default:
+          throw Error('unkown current proxies')
+      }
+    },
+    saveAllFileds () {
+      let proxiesChanged = false
       let shadowsocksChanged = false
       let kcptunChanged = false
 
-      let pre = this.firewall.currentProtocol
-      if (this.$refs.protocolText.innerHTML === '仅 Shadowsocks') {
-        this.firewall.currentProtocol = 'shadowsocks'
-      } else {
-        this.firewall.currentProtocol = 'kcptun'
-      }
-      protocolChanged = pre !== this.firewall.currentProtocol
+      let pre = this.firewall.currentProxies
+      Object.keys(this.ui.proxiesTextDic).forEach((key) => {
+        if (this.ui.proxiesTextDic[key] === this.$refs.proxiesText.innerHTML.trim()) {
+          this.firewall.currentProxies = key
+        }
+      })
+      proxiesChanged = pre !== this.firewall.currentProxies
 
-      let SSKeys = ['address', 'port', 'password', 'timeout', 'method', 'fastOpen']
+      let SSKeys = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
       for (let i = 0; i < SSKeys.length; i++) {
         if (!shadowsocksChanged) {
           shadowsocksChanged = vrouter.config.shadowsocks.server[SSKeys[i]] !== this.$refs[SSKeys[i]].value.trim()
@@ -327,13 +301,10 @@ const myApp = new Vue({
         const kv = pair.split('=')
         newKt[kv[0].trim()] = kv[1].trim()
       })
-      let ktKeys = ['address', 'port', 'key', 'crypt', 'mode']
+      let ktKeys = ['ktAddress', 'ktPort', 'ktKey', 'ktCrypt', 'ktMode']
       for (let i = 0; i < ktKeys.length; i++) {
-        let temp = ktKeys[i].split('')
-        temp[0] = temp[0].toUpperCase()
-        const refKey = `kt${temp.join('')}`
-
-        newKt[ktKeys[i]] = this.$refs[refKey].value.trim()
+        const key = ktKeys.substr(2).toLowerCase()
+        newKt[key] = this.$refs[ktKeys[i]].value.trim()
       }
       if (Object.keys(this.kcptun).length !== Object.keys(newKt).length) {
         kcptunChanged = true
@@ -345,44 +316,65 @@ const myApp = new Vue({
           this.kcptun[key] = newKt[key]
         })
       }
-      return { protocolChanged, shadowsocksChanged, kcptunChanged }
+      return { proxiesChanged, shadowsocksChanged, kcptunChanged }
     },
-    resetProxyMode () {
-      this.$refs.proxyModeText.innerHTML = this.ui.proxyModeTextDic[this.firewall.currentMode]
-    },
-    btnProxyModeHandler () {
-      if (this.ui.modeDisabled) {
-        this.ui.modeDisabled = false
-      } else {
-        this.ui.modeDisabled = true
-        this.resetProxyMode()
+    saveFields (type) {
+      switch (type) {
+        case 'proxies':
+          const selected = this.$refs.proxiesDropdown.querySelector('.item.active.selected')
+          if (selected) {
+            this.firewall.currentProxies = selected.dataset.value
+          } else {
+            console.log('proxies not selected')
+          }
+          break
+        case 'shadowscoks':
+          let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
+          ssFields.forEach((field) => {
+            const key = field.substr(2).toLowerCase()
+            vrouter.config.shadowsocks.server[key] = this.$refs[field].value.trim()
+          })
+          break
+        case 'shadowsocksr':
+          let ssrFields = ['ssrAddress', 'ssrPort', 'ssrPassword', 'ssrTimeout', 'ssrMethod', 'ssrFastOpen']
+          ssrFields.forEach((field) => {
+            const key = field.substr(2).toLowerCase()
+            vrouter.config.shadowsocksr.server[key] = this.$refs[field].value.trim()
+          })
+          // vrouter.config.shadowsocksr.server.others = this.$refs.ssrOthers.value.trim()
+          break
+        case 'kcptun':
+          let ktFields = ['ktAddress', 'ktPort', 'ktKey', 'ktCrypt', 'ktMode']
+          ktFields.forEach((field) => {
+            const key = field.substr(2).toLowerCase()
+            vrouter.config.kcptun.server[key] = this.$refs[field].value.trim()
+          })
+          vrouter.config.kcptun.server.others = this.$refs.ktOthers.value.trim()
+          break
+        default:
+          throw Error('unkown fields')
       }
     },
-    async refreshInfos () {
-      $('*[data-content]').popup('hide')
-      this.ui.activeLoader = true
-      try {
-        await this.checkTrafficStatus()
-        await this.checkVersions()
-        await this.checkPID()
-      } catch (err) {
-        this.errorMsg = err.message
-        $(this.$refs.errorModal).moal('show')
-      } finally {
-        this.ui.activeLoader = false
-      }
+
+// Mode Tab
+    resetProxiesMode () {
+      this.$refs.proxiesModeText.innerHTML = this.ui.proxiesModeTextDic[this.firewall.currentMode]
     },
-    async saveProxyModeHandler () {
+    editProxiesMode () {
+      this.ui.editable.mode = !this.ui.editable.mode
+      this.resetProxiesMode()
+    },
+    async applyProxiesMode () {
       this.ui.modeDisabled = true
       this.ui.activeLoader = true
 
       let whiteList = {}
       let blackList = {}
 
-      const selectedText = this.$refs.proxyModeText.innerHTML.trim()
+      const selectedText = this.$refs.proxiesModeText.innerHTML.trim()
       let mode = null
-      Object.keys(this.ui.proxyModeTextDic).forEach((key) => {
-        if (this.ui.proxyModeTextDic[key] === selectedText) {
+      Object.keys(this.ui.proxiesModeTextDic).forEach((key) => {
+        if (this.ui.proxiesModeTextDic[key] === selectedText) {
           mode = key
         }
       })
@@ -423,40 +415,27 @@ const myApp = new Vue({
         this.ui.activeLoader = false
       }
     },
-    async restartVrouterNetwork () {
-      this.ui.activeLoader = true
-      $('*[data-content]').popup('hide')
-      await this.remote.restartNetwork()
-      this.ui.activeLoader = false
-    },
-    openExtraBlackList () {
-      if (!this.ui.modeDisabled) {
-        shell.openItem(path.join(vrouter.config.host.configDir, this.firewall.extraBlackList))
-      }
-    },
-    openExtraWhiteList () {
-      if (!this.ui.modeDisabled) {
-        shell.openItem(path.join(vrouter.config.host.configDir, this.firewall.extraWhiteList))
+    openExtraList (type) {
+      if (this.ui.editable.mode) {
+        shell.openItem(path.join(vrouter.config.host.configDir, this.firewall[`extra${type}List`]))
       }
     },
     async updateChinaIPs () {
-      if (this.ui.modeDisabled) {
-        return
-      }
-      this.ui.activeLoader = true
-      try {
-        const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.chinaIPs)
-        const url = vrouter.config.firewall.chinaIPsUrl
-        await vrouter.downloadFile(url, cfgPath)
-      } catch (error) {
-        this.errorMsg = error.message
-        $(this.$refs.errorModal).modal('show')
-      } finally {
-        this.ui.activeLoader = false
+      if (this.ui.editable.mode) {
+        this.ui.activeLoader = true
+        try {
+          const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.chinaIPs)
+          const url = vrouter.config.firewall.chinaIPsUrl
+          await vrouter.downloadFile(url, cfgPath)
+        } catch (err) {
+          this.showErrModal(err)
+        } finally {
+          this.ui.activeLoader = false
+        }
       }
     },
     async updateGfwList () {
-      if (this.ui.modeDisabled) {
+      if (!this.ui.editable.mode) {
         return
       }
       this.ui.activeLoader = true
@@ -477,58 +456,119 @@ const myApp = new Vue({
         this.ui.activeLoader = false
       }
     },
+
+// System Tab
     async guiLogin () {
-      const cmd = `VBoxManage startvm ${vrouter.config.vrouter.name} --type separate`
-      await vrouter.localExec(cmd)
-      $(this.$refs.loginModal).modal('hide')
-    },
-    async loginVRouter () {
-      const applescript = String.raw`
-      tell application "Terminal"
-          do script ("ssh root@${vrouter.config.vrouter.ip};")
-          activate
-          delay 3
-          tell application "System Events" to keystroke "root"
-          tell application "System Events" to key code 36
-      end tell
-      `
-      const cmd = `osascript -e '${applescript}'`
       try {
-        await vrouter.localExec(cmd)
+        await vrouter.guiLogin()
+        $(this.$refs.loginModal).modal('hide')
       } catch (err) {
-        console.log(err)
+        this.showErrModal(err)
       }
     },
-    async loginVRouterModal () {
-      // alert('登录后请尽量避免修改虚拟机.')
+    async loginVRouter () {
+      try {
+        await vrouter.sshLogin()
+        $(this.$refs.loginModal).modal('hide')
+      } catch (err) {
+        this.showErrModal(err)
+      }
+    },
+    async showLoginModal () {
       $('*[data-content]').popup('hide')
-      const vueApp = this
       $(this.$refs.loginModal)
-        .modal({
-          async onDeny () {
-            await vueApp.loginVRouter()
-          }
-        })
         .modal('show')
     },
-    btnConsole () {
+    toggleDevTools () {
       return getCurrentWindow().toggleDevTools()
     },
-    async btnAbout () {
+    showAboutModal () {
       $(this.$refs.aboutModal).modal('show')
     },
     goToHomepage () {
       return shell.openExternal('https://github.com/icymind/VRouter')
+    },
+    async checkInfos () {
+      this.status.openwrtVersion = await this.remote.getOpenwrtVersion()
+      this.status.brLanIP = await this.remote.getIP('br-lan')
+      this.status.lanIP = await this.remote.getIP('eth1')
+      this.status.macAddress = await this.remote.getMacAddress('eth1')
+      this.status.ssVersion = await this.remote.getSSVersion()
+      this.status.ktVersion = await this.remote.getKTVersion()
+    },
+    async refreshInfos () {
+      $('*[data-content]').popup('hide')
+      this.ui.activeLoader = true
+      try {
+        await this.checkTrafficStatus()
+        await this.checkInfos()
+        await this.checkProxiesStatus()
+      } catch (err) {
+        this.showErrModal(err)
+      } finally {
+        this.ui.activeLoader = false
+      }
+    },
+    async restartVrouterNetwork () {
+      this.ui.activeLoader = true
+      $('*[data-content]').popup('hide')
+      try {
+        await this.remote.service('network', 'restart')
+      } catch (err) {
+        this.showErrModal(err)
+      } finally {
+        this.ui.activeLoader = false
+      }
+    },
+    async shutdownVRouter () {
+      this.ui.activeLoader = true
+      try {
+        await vrouter.changeRouteTo('wifi')
+        await vrouter.stopVM('savestate')
+        app.quit()
+      } catch (err) {
+        this.showErrModal(err)
+      } finally {
+        this.ui.activeLoader = false
+      }
+    },
+    async deleteVRouter () {
+      this.ui.activeLoader = true
+      try {
+        await vrouter.changeRouteTo('wifi')
+        await vrouter.deleteVM(true)
+        app.quit()
+      } catch (err) {
+        this.showErrModal(err)
+      } finally {
+        this.ui.activeLoader = false
+      }
+    },
+    async resetGW () {
+      this.ui.activeLoader = true
+      try {
+        await vrouter.changeRouteTo('wifi')
+        await this.checkTrafficStatus()
+      } catch (err) {
+        this.showErrModal(err)
+      } finally {
+        this.ui.activeLoader = false
+      }
+    },
+    async checkProxiesStatus () {
+      // todo: review
+      this.status.isSsRunning = await this.remote.isSsRunning()
+      this.status.isKtRunning = await this.remote.isKtRunning()
     }
   },
   async mounted () {
     try {
       this.remote = await vrouter.connect()
       await this.checkTrafficStatus()
-      await this.checkVersions()
-      await this.checkPID()
+      await this.checkInfos()
+      await this.checkProxiesStatus()
     } catch (err) {
-      alert(err)
+      this.showErrModal(err)
     }
   }
 })

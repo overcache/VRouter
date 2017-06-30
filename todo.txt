@@ -1,0 +1,10 @@
+break change:
+
+- add version to config.json
+- vrouter.config.kcptun.others. need to modify generatecfg(). need to upgrade old config to the new one.
+- currentProtocol -> currentProxies. need to modify local/remote
+
+
+
+todo:
+- 校验表单

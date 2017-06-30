@@ -31,6 +31,7 @@ class VRouter {
     this.remote = null
   }
 
+  // os
   wait (time) {
     return new Promise(resolve => setTimeout(resolve, time))
   }
@@ -73,6 +74,103 @@ class VRouter {
   }
   sendKeystrokes (key = '1c 9c') {
     const cmd = `/usr/local/bin/VBoxManage controlvm ${this.config.vrouter.name} keyboardputscancode ${key}`
+    return this.localExec(cmd)
+  }
+  sshLogin () {
+    const applescript = String.raw`
+      tell application "Terminal"
+          do script ("ssh ${this.config.vrouter.username}@${this.config.vrouter.ip};")
+          activate
+          delay 3
+          tell application "System Events" to keystroke "${this.config.vrouter.password}"
+          tell application "System Events" to key code 36
+      end tell
+      `
+    const cmd = `osascript -e '${applescript}'`
+    return this.localExec(cmd)
+  }
+  async getOSXNetworkService (inf) {
+    const cmd = `/usr/sbin/networksetup -listnetworkserviceorder`
+    return this.localExec(cmd)
+      .then((output) => {
+        const reg = /\(\d+\) (.*)\n\(Hardware Port: .*?, Device: (.*)\)/g
+        while (true) {
+          const match = reg.exec(output)
+          if (!match) break
+          if (match[2] === inf) {
+            return Promise.resolve(match[1])
+          }
+        }
+        return Promise.reject(Error(`can not find NetworkService match ${inf}`))
+      })
+  }
+  async getCurrentGateway () {
+    let networkService
+
+    const inf = await this.getActiveAdapter()
+    if (inf.length > 1) {
+      return Promise.reject(Error('more than one active adapter'))
+    }
+    if (inf.length === 0) {
+      networkService = 'Wi-Fi'
+    } else {
+      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
+    }
+
+    const cmd1 = "/usr/sbin/netstat -nr | grep default | awk '{print $2}'"
+    const cmd2 = `/usr/sbin/networksetup -getdnsservers ${networkService}`
+
+    return Promise.all([
+      this.localExec(cmd1).then((output) => {
+        return Promise.resolve((output && output.trim()) || '')
+      }),
+      this.localExec(cmd2).then((output) => {
+        return Promise.resolve((output && output.trim()) || '')
+      })
+    ])
+  }
+  async changeRouteTo (dst = 'wifi') {
+    let ip
+    let networkService
+    const inf = await this.getActiveAdapter()
+    if (inf.length > 1) {
+      return Promise.reject(Error('more than one active adapter'))
+    }
+    if (inf.length === 0) {
+      networkService = 'Wi-Fi'
+    } else {
+      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
+    }
+    if (dst === 'vrouter') {
+      ip = this.config.vrouter.ip
+    } else {
+      // const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router | awk -F ": " '{print $2}'`
+      const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router`
+      ip = await this.localExec(subCmd)
+        .then((output) => {
+          const ipReg = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/ig
+          const match = ipReg.exec(output)
+          if (match && match[1]) {
+            return Promise.resolve(match[1])
+          } else {
+            return Promise.reject(Error('can not get Router IP'))
+          }
+        })
+    }
+    // const cmd = `sudo /sbin/route change default "${ip}"` +
+      // ' && ' + `sudo /usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
+    // return this.localExec(cmd)
+    // const cmd = `/sbin/route change default "${ip}"` +
+      // ' && ' + `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
+    const cmd1 = `/sbin/route change default ${ip}`
+    const cmd2 = `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
+    // https://askubuntu.com/questions/634620/when-using-and-sudo-on-the-first-command-is-the-second-command-run-as-sudo-t
+    return this.sudoExec(`bash -c "${cmd1} && ${cmd2}"`)
+  }
+
+  // vm
+  guiLogin () {
+    const cmd = `VBoxManage startvm ${this.config.vrouter.name} --type separate`
     return this.localExec(cmd)
   }
   async serialExec (cmd, msg) {
@@ -121,85 +219,7 @@ class VRouter {
       })
   }
 
-  async getOSXNetworkService (inf) {
-    const cmd = `/usr/sbin/networksetup -listnetworkserviceorder`
-    return this.localExec(cmd)
-      .then((output) => {
-        const reg = /\(\d+\) (.*)\n\(Hardware Port: .*?, Device: (.*)\)/g
-        while (true) {
-          const match = reg.exec(output)
-          if (!match) break
-          if (match[2] === inf) {
-            return Promise.resolve(match[1])
-          }
-        }
-        return Promise.reject(Error(`can not find NetworkService match ${inf}`))
-      })
-  }
-  async getCurrentGateway () {
-    let networkService
 
-    const inf = await this.getActiveAdapter()
-    if (inf.length > 1) {
-      return Promise.reject(Error('more than one active adapter'))
-    }
-    if (inf.length === 0) {
-      networkService = 'Wi-Fi'
-    } else {
-      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
-    }
-
-    const cmd1 = "/usr/sbin/netstat -nr | grep default | awk '{print $2}'"
-    const cmd2 = `/usr/sbin/networksetup -getdnsservers ${networkService}`
-
-    return Promise.all([
-      this.localExec(cmd1).then((output) => {
-        return Promise.resolve((output && output.trim()) || '')
-      }),
-      this.localExec(cmd2).then((output) => {
-        return Promise.resolve((output && output.trim()) || '')
-      })
-    ])
-  }
-
-  async changeRouteTo (dst = 'wifi') {
-    let ip
-    let networkService
-    const inf = await this.getActiveAdapter()
-    if (inf.length > 1) {
-      return Promise.reject(Error('more than one active adapter'))
-    }
-    if (inf.length === 0) {
-      networkService = 'Wi-Fi'
-    } else {
-      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
-    }
-    if (dst === 'vrouter') {
-      ip = this.config.vrouter.ip
-    } else {
-      // const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router | awk -F ": " '{print $2}'`
-      const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router`
-      ip = await this.localExec(subCmd)
-        .then((output) => {
-          const ipReg = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/ig
-          const match = ipReg.exec(output)
-          if (match && match[1]) {
-            return Promise.resolve(match[1])
-          } else {
-            return Promise.reject(Error('can not get Router IP'))
-          }
-        })
-    }
-    // const cmd = `sudo /sbin/route change default "${ip}"` +
-      // ' && ' + `sudo /usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
-    // return this.localExec(cmd)
-    // const cmd = `/sbin/route change default "${ip}"` +
-      // ' && ' + `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
-    const cmd1 = `/sbin/route change default ${ip}`
-    const cmd2 = `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
-    // https://askubuntu.com/questions/634620/when-using-and-sudo-on-the-first-command-is-the-second-command-run-as-sudo-t
-    return this.sudoExec(`bash -c "${cmd1} && ${cmd2}"`)
-  }
   async buildVM (imagePath, deleteFirst = true) {
     let image = imagePath
     if (!image) {
@@ -419,7 +439,7 @@ class VRouter {
               })
           })
           .then(() => {
-            return remote.close().catch(() => {})
+            return remote.closeConn().catch(() => {})
           })
       })
       .then(() => {
@@ -898,7 +918,6 @@ class VRouter {
           })
       })
   }
-  // need fixed. think about global mode.
   async generateIPsets (overwrite = false) {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.ipsetsFile)
     const stats = await fs.stat(cfgPath)
@@ -991,6 +1010,7 @@ class VRouter {
     return `iptables -t nat -A PREROUTING ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
 
+  // files
   async generateFWRules (m, p, overwrite = false) {
     // whitelist/blacklist/global/none
     const protocol = p || this.config.firewall.currentProtocol
@@ -1252,7 +1272,7 @@ stop() {
       })
   }
   async generateConfig (type = 'shadowsocks') {
-    if (type === 'shadowsocks') {
+    if (type === 'shadowscoks') {
       const cfgs = ['ss-client', 'ss-overKt', 'ss-dns']
       const promises = []
       cfgs.forEach((cfg) => {
