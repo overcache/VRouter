@@ -207,7 +207,7 @@
           </div>
           <div class="field">
             <label>Others<i class="help circle link icon" data-content="kcptun的其他参数, 格式'key1=value1;key2=value2', 如sndwnd=256;rcvwnd=2048;nocomp=true"></i></label>
-            <input v-bind:disabled="!ui.editable.proxies" ref="ktOthers" v-bind:value="ktOthers">
+            <input v-bind:disabled="!ui.editable.proxies" ref="ktOthers" v-bind:value="kcptun.others">
           </div>
         </div>
 
@@ -335,12 +335,17 @@
         </div>
         <div class="item">
           <div class="ui label">
-            VRouter mac 地址: <span class="detail white">{{ status.macAddress }}</span>
+            VRouter mac 地址: <span class="detail">{{ status.macAddress | uppercase }}</span>
           </div>
         </div>
         <div class="item">
           <div class="ui label">
-            shadowsocks-libev 版本: <span class="detail white">{{ status.ssVersion }}</span>
+            shadowsocks-libev 版本: <span class="detail">{{ status.ssVersion }}</span>
+          </div>
+        </div>
+        <div class="item">
+          <div class="ui label">
+            shadowsocksR-libev 版本: <span class="detail">{{ status.ssrVersion }}</span>
           </div>
         </div>
         <div class="item">
@@ -349,14 +354,32 @@
           </div>
         </div>
       </div>
-      <h4 class="ui header teal">VRouter 状态</h4>
+      <h4 class="ui header teal">代理状态</h4>
       <div class="ui list">
+        <div class="item">
+          <div class="ui label">
+            转发 DNS 查询: 
+            <span class="detail">
+              {{ firewall.enableSsDns ? (status.isSsDnsRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', firewall.enableSsDns ? (status.isSsDnsRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
+            </span>
+          </div>
+        </div>
         <div class="item">
           <div class="ui label">
             shadowsocks 进程: 
             <span class="detail">
-              {{ status.isSsRunning ? '运行中' : '已停止'  }}
-              <i v-bind:class="['ui circle icon', status.isSsRunning ? ['check', 'teal'] : 'remove']"></i>
+              {{ ['ss', 'ssKt'].includes(firewall.currentProxies)  ? (status.isSsRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', ['ss', 'ssKt'].includes(firewall.currentProxies) ? (status.isSsRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
+            </span>
+          </div>
+        </div>
+        <div class="item">
+          <div class="ui label">
+            shadowsocksR 进程: 
+            <span class="detail">
+              {{ firewall.currentProxies.includes('ssr') ? (status.isSsrRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('ssr') ? (status.isSsrRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -364,8 +387,8 @@
           <div class="ui label">
             kcptun 进程: 
             <span class="detail">
-              {{ status.isKtRunning ? '运行中' : '已停止' }}
-              <i v-bind:class="['ui circle icon', status.isKtRunning ? ['check', 'teal'] : 'remove']"></i>
+              {{ firewall.currentProxies.includes('Kt') ? (status.isKtRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('Kt') ? (status.isKtRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -414,7 +437,7 @@
       <div class="actions">
         <div class="ui red inverted button" v-on:click="guiLogin">
           <i class="remove icon"></i>
-          GUI 登入
+          VirtualBox 登入
         </div>
         <div class="ui red cancel inverted button" v-on:click="sshLogin">
           <i class="remove icon"></i>
@@ -465,6 +488,7 @@
           确定</div>
       </div>
     </div>
+    <div class="ui hidden" style="clear: both"></div>
   </div>
   <script>window.$ = window.jQuery = require("../node_modules/jquery/dist/jquery.min.js")</script>
   <script src="../node_modules/semantic-ui/dist/semantic.min.js"></script>

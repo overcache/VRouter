@@ -96,22 +96,50 @@ class VRouterRemote {
     return this.remoteExec(cmd)
   }
   isSsRunning () {
-    return this.getSsProcess()
-      .then(() => {
-        return this.getSsDNSProcess()
-      })
-      .then(() => {
-        if (this.config.firewall.currentProtocol === 'kcptun') {
-          return this.getSsOverKTProcess()
+    let cmd = ''
+    if (this.config.firewall.currentProxies === 'ss') {
+      cmd = 'ps -w| grep "[s]s-redir -c .*ss-client.json"'
+    } else {
+      cmd = 'ps -w| grep "[s]s-redir -c .*ss-over-kt.json"'
+    }
+    return this.remoteExec(cmd)
+      .then((output) => {
+        if (output) {
+          return Promise.resolve(true)
         } else {
-          return Promise.resolve('dont panic')
+          return Promise.resolve(false)
         }
       })
-      .then(() => {
-        return Promise.resolve(true)
+  }
+  getSsrVersion () {
+    const cmd = 'ssr-redir -h | grep "shadowsocks-libev" | cut -d" " -f2'
+    return this.remoteExec(cmd)
+  }
+  isSsrRunning () {
+    let cmd = ''
+    if (this.config.firewall.currentProxies === 'ssr') {
+      cmd = 'ps -w| grep "[s]sr-redir -c .*ssr-client.json"'
+    } else {
+      cmd = 'ps -w| grep "[s]sr-redir -c .*ssr-over-kt.json"'
+    }
+    return this.remoteExec(cmd)
+      .then((output) => {
+        if (output) {
+          return Promise.resolve(true)
+        } else {
+          return Promise.resolve(false)
+        }
       })
-      .catch(() => {
-        return Promise.resolve(false)
+  }
+  isSsDnsRunning () {
+    const cmd = 'ps -w| grep "[s]s-tunnel -c .*ss-dns.json"'
+    return this.remoteExec(cmd)
+      .then((output) => {
+        if (output) {
+          return Promise.resolve(true)
+        } else {
+          return Promise.resolve(false)
+        }
       })
   }
   getSsOverKtProcess () {
@@ -141,11 +169,12 @@ class VRouterRemote {
   isKtRunning () {
     const cmd = 'ps | grep "[k]cptun -c"'
     return this.remoteExec(cmd)
-      .then(() => {
-        return Promise.resolve(true)
-      })
-      .catch(() => {
-        return Promise.resolve(false)
+      .then((output) => {
+        if (!output) {
+          return Promise.resolve(false)
+        } else {
+          return Promise.resolve(true)
+        }
       })
   }
   getOpenwrtVersion () {
@@ -163,24 +192,39 @@ class VRouterRemote {
     const cmd = `cat ${file}`
     return this.remoteExec(cmd)
   }
-  async changeProtocol (p, m) {
-    // TODO: must restart shadowsocks or kt
-    const protocol = p || this.config.firewall.currentProtocol
-    const mode = m || this.config.firewall.currentMode
-    await this.local.generateConfig(protocol)
-    await this.local.generateFWRules(mode, protocol, true)
-    await this.local.scpConfig('shadowsocks')
-    await this.local.scpConfig('firewall')
-    await this.servicc('shadowsocks', 'restart')
-    await this.service('firewall', 'restart')
+  async changeProxies (proxies = this.config.firewall.currentProxies) {
+    await this.local.scpConfigAll(true)
+    switch (proxies) {
+      case 'ss':
+        await this.service('shadowsocksr', 'stop')
+        await this.service('kcptun', 'stop')
+        await this.service('shadowsocks', 'restart')
+        break
+      case 'ssr':
+        await this.service('shadowsocks', 'stop')
+        await this.service('kcptun', 'stop')
+        await this.service('shadowsocksr', 'restart')
+        break
+      case 'ssKt':
+        await this.service('shadowsocksr', 'stop')
+        await this.service('kcptun', 'start')
+        await this.service('shadowsocks', 'restart')
+        break
+      case 'ssrKt':
+        await this.service('shadowsocks', 'stop')
+        await this.service('kcptun', 'start')
+        await this.service('shadowsocksr', 'restart')
+        break
+      default:
+        throw Error('unkown proxies')
+    }
   }
-  async changeMode (m, p) {
-    const protocol = p || this.config.firewall.currentProtocol
-    const mode = m || this.config.firewall.currentMode
+
+  async changeMode (mode = this.config.firewall.currentMode, proxies = this.config.firewall.currentProxies) {
     await Promise.all([
       this.local.generateIPsets(true),
       this.local.generateDnsmasqCf('whitelist', true),
-      this.local.generateFWRules(mode, protocol, true)
+      this.local.generateFWRules(mode, proxies, true)
     ])
     await Promise.all([
       this.local.scpConfig('ipset'),

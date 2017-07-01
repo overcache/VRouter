@@ -1,5 +1,5 @@
 {
-    "version": "0.1",
+    "version": "0.2",
     "debug": true,
     "host": {
         "ip": "10.19.28.46",
@@ -16,10 +16,10 @@
         "imageUrl": "https://mirrors.tuna.tsinghua.edu.cn/openwrt/chaos_calmer/15.05.1/x86/64/openwrt-15.05.1-x86-64-combined-ext4.img.gz",
         "imageSha256": "be29223ee0caf3c5bdc3139e349890d4494a54a266a9d8dd1eb3f66877dc0e1b"
     },
-    "server": {
-        "ip": "",
-        "domain": "www.qq.com",
-        "sshPort": "22"
+    "ssDns": {
+        "dns": "ss-dns.json",
+        "dnsPort": 5353,
+        "service": "ssDns"
     },
     "shadowsocks": {
         "server": {
@@ -27,19 +27,38 @@
             "port": "4321",
             "password": "demo-paswd",
             "timeout": 300,
-            "method": "chacha20",
-            "mode": "tcp_only",
-            "fastOpen": true
+            "method": "chacha20"
         },
         "client": "ss-client.json",
-        "clientPort": 1080,
-        "dns": "ss-dns.json",
-        "dnsPort": 1081,
+        "clientPort": 1010,
+        "udp": "ss-udp.json",
+        "udpPort": 1011,
         "overKt": "ss-over-kt.json",
-        "overKtPort": 1090,
+        "overKtPort": 1012,
         "service": "shadowsocks",
         "packageUrl": "https://dl.bintray.com/aa65535/opkg/shadowsocks-libev/3.0.6/OpenWrt/x86_64/:shadowsocks-libev_3.0.6-1_x86_64.ipk",
         "packageSha256": "b6c5bd65575d36b72ce845f425c4f8f7075561717ac0fc36f2e8472d216991ba"
+    },
+    "shadowsocksr": {
+        "server": {
+            "address": "123.123.123.123",
+            "port": "4321",
+            "password": "demo-paswd",
+            "timeout": 300,
+            "method": "chacha20",
+            "protocol": "origin",
+            "protocol_param": "",
+            "obfs": "tls1.2_ticket_auth_compatible",
+            "obfs_param": "",
+            "others": ""
+        },
+        "client": "ssr-client.json",
+        "clientPort": 1020,
+        "udp": "ssr-udp.json",
+        "udpPort": 1021,
+        "overKt": "ssr-over-kt.json",
+        "overKtPort": 1022,
+        "service": "shadowsocksr"
     },
     "kcptun": {
         "server": {
@@ -48,12 +67,10 @@
             "key": "demo-secret",
             "crypt": "aes-128",
             "mode": "fast2",
-            "sndwnd": "256",
-            "rcvwnd": "2048",
-            "nocomp": "true"
+            "others": "sndwnd=256;rcvwnd=2048;nocomp=true"
         },
         "client": "kt-client.json",
-        "clientPort": 1070,
+        "clientPort": 1030,
         "service": "kcptun",
         "packageUrl": "https://github.com/xtaci/kcptun/releases/download/v20170525/kcptun-linux-amd64-20170525.tar.gz",
         "packageSha1": "b964ff8a06c921a6110c297f1f2bb711d652edfb"
@@ -74,7 +91,9 @@
         "extraWhiteList": "extra-whitelist.txt",
         "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
         "currentMode": "none",
-        "currentProtocol": "ss",
+        "currentProxies": "ss",
+        "relayUDP": false,
+        "enableSsDns": true,
         "dnsmasqFile": "custom.conf",
         "firewallFile": "firewall.user",
         "ipsetsFile": "custom.ipset",

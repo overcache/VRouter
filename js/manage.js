@@ -29,8 +29,11 @@ const myApp = new Vue({
       lanIP: '',
       macAddress: '',
       ssVersion: '',
+      ssrVersion: '',
       ktVersion: '',
+      isSsDnsRunning: true,
       isSsRunning: true,
+      isSsrRunning: true,
       isKtRunning: true
     },
     ui: {
@@ -96,8 +99,11 @@ const myApp = new Vue({
 
 // Status Tab
     showErrModal (err) {
-      console.log(err)
-      this.errorMsg = err.message
+      if (err.message === 'User did not grant permission.') {
+        return
+      }
+      console.log(err.message)
+      this.errorMsg = err.toString()
       $(this.$refs.errorModal).modal('show')
     },
     async toggleVrouter () {
@@ -123,7 +129,7 @@ const myApp = new Vue({
         icons.forEach((icon) => {
           icon.classList.remove('green')
         })
-      }, 4010)
+      }, 4100)
       if (blink) {
         icons.forEach((icon) => {
           const interval = setInterval(() => {
@@ -175,33 +181,8 @@ const myApp = new Vue({
       this.saveCurrentProxiesFields()
 
       try {
-        await vrouter.saveConfig()
-
-        // 即使ss或者kcptun配置改动, 而协议链没动, 也需要重新生成firewall配置. 不然iptables无法绕过服务器地址.
-        // 即使ss没动, 也应该重新生成配置文件, 确保虚拟机配置和当前一致
-        await vrouter.generateConfig('shadowsocks')
-        await vrouter.scpConfig('shadowsocks')
-        await this.remote.restartShadowsocks()
-
-        await vrouter.generateConfig('kcptun')
-        await vrouter.scpConfig('kcptun')
-
-        await vrouter.generateWatchdog()
-        await vrouter.scpConfig('watchdog')
-        if (this.firewall.currentProxies.indexOf('kt') >= 0) {
-          await vrouter.enableService('kcptun')
-          await this.remote.restartKcptun()
-        } else {
-          await vrouter.disabledService('kcptun')
-          await this.remote.stopKcptun()
-            .catch(e => console.log(e))
-        }
-        await vrouter.restartCrontab()
-
-        await vrouter.generateFWRules(null, null, true)
-        await vrouter.scpConfig('firewall')
-        await this.remote.restartFirewall()
-
+        await vrouter.saveCfg2File()
+        await this.remote.changeProxies()
         await this.refreshInfos()
       } catch (err) {
         this.showErrModal(err)
@@ -237,7 +218,6 @@ const myApp = new Vue({
           arr.push('kcptun')
           break
       }
-      console.log(arr)
       this.toggleProxiesForm(arr)
     },
     toggleProxiesForm (selected) {
@@ -254,13 +234,13 @@ const myApp = new Vue({
       const currentProxies = vrouter.config.firewall.currentProxies
       switch (currentProxies) {
         case 'ss':
-          this.saveFields('shadowscoks')
+          this.saveFields('shadowsocks')
           break
         case 'ssr':
           this.saveFields('shadowsocksr')
           break
         case 'ssKt':
-          this.saveFields('shadowscoks')
+          this.saveFields('shadowsocks')
           this.saveFields('kcptun')
           break
         case 'ssrKt':
@@ -275,9 +255,9 @@ const myApp = new Vue({
       const currentProxies = vrouter.config.firewall.currentProxies
       switch (currentProxies) {
         case 'ss':
-          vrouter.generateConfig('shadowscoks')
-          vrouter.scpConfig('shadowscoks')
-          this.remote.restartShadowsocks()
+          vrouter.generateConfig('shadowsocks')
+          vrouter.scpConfig('shadowsocks')
+          this.remote.service('shadowsocks', 'restart')
           break
         case 'ssr':
           this.saveFields('ssr')
@@ -348,7 +328,7 @@ const myApp = new Vue({
             console.log('proxies not selected')
           }
           break
-        case 'shadowscoks':
+        case 'shadowsocks':
           let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
           ssFields.forEach((field) => {
             const key = field.substr(2).toLowerCase()
@@ -358,7 +338,7 @@ const myApp = new Vue({
         case 'shadowsocksr':
           let ssrFields = ['ssrAddress', 'ssrPort', 'ssrPassword', 'ssrTimeout', 'ssrMethod', 'ssrFastOpen']
           ssrFields.forEach((field) => {
-            const key = field.substr(2).toLowerCase()
+            const key = field.substr(3).toLowerCase()
             vrouter.config.shadowsocksr.server[key] = this.$refs[field].value.trim()
           })
           // vrouter.config.shadowsocksr.server.others = this.$refs.ssrOthers.value.trim()
@@ -385,7 +365,7 @@ const myApp = new Vue({
       this.resetProxiesMode()
     },
     async applyProxiesMode () {
-      this.ui.modeDisabled = true
+      this.ui.editable.mode = false
       this.ui.activeLoader = true
 
       let whiteList = {}
@@ -417,20 +397,10 @@ const myApp = new Vue({
       this.firewall.selectedWL = whiteList
 
       try {
-        await vrouter.saveConfig()
-
-        await vrouter.generateIPsets(true)
-        await vrouter.scpConfig('ipset')
-        await vrouter.generateDnsmasqCf(true)
-        await vrouter.scpConfig('dnsmasq')
-        await this.remote.restartDnsmasq()
-
-        await vrouter.generateFWRules(null, null, true)
-        await vrouter.scpConfig('firewall')
-        await this.remote.restartFirewall()
-      } catch (error) {
-        this.errorMsg = error.message
-        $(this.$refs.errorModal).modal('show')
+        await vrouter.saveCfg2File()
+        await this.remote.changeMode()
+      } catch (err) {
+        this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
       }
@@ -469,9 +439,7 @@ const myApp = new Vue({
         const fpath = path.join(vrouter.config.host.configDir, 'gfwList.txt')
         await fs.outputFile(fpath, content, 'utf8')
       } catch (error) {
-        console.log(error)
-        this.errorMsg = error.message
-        $(this.$refs.errorModal).modal('show')
+        this.showErrModal(error)
       } finally {
         this.ui.activeLoader = false
       }
@@ -514,6 +482,7 @@ const myApp = new Vue({
       this.status.lanIP = await this.remote.getIP('eth1')
       this.status.macAddress = await this.remote.getMacAddress('eth1')
       this.status.ssVersion = await this.remote.getSsVersion()
+      this.status.ssrVersion = await this.remote.getSsrVersion()
       this.status.ktVersion = await this.remote.getKtVersion()
     },
     async refreshInfos () {
@@ -577,7 +546,9 @@ const myApp = new Vue({
     },
     async checkProxiesStatus () {
       // todo: review
+      this.status.isSsDnsRunning = await this.remote.isSsDnsRunning()
       this.status.isSsRunning = await this.remote.isSsRunning()
+      this.status.isSsrRunning = await this.remote.isSsrRunning()
       this.status.isKtRunning = await this.remote.isKtRunning()
     }
   },

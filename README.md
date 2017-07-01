@@ -72,7 +72,7 @@ sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
 
 #### 后台运行虚拟机, 会不会太耗能?
 
-虽然是虚拟机, 但其实非常轻量. openwrt 官网提供的镜像不足 5MB, 转化为 virtualbox 虚拟机磁盘文件, 并在虚拟机上安装必要的软件后, 磁盘空间占用不足 30M. 全天候使用内存占用在 100MB 以内, CPU 占用率一般情况下为 5% 左右 (MacBook Pro Retina, 13-inch, Mid 2014), 开启 kcptun 看油管的 1080P 时, CPU 占用率波动性较大, 在 5%~30% 之间, 目测平均值在 15% 左右.
+虽然是虚拟机, 但其实非常轻量. openwrt 官网提供的镜像不足 5MB, 转化为 virtualbox 虚拟机磁盘文件, 并在虚拟机上安装必要的软件后, 磁盘空间占用不足 30M. 全天候使用内存占用在 150MB 以内, CPU 占用率一般情况下为 5% 左右 (MacBook Pro Retina, 13-inch, Mid 2014), 开启 kcptun 看油管的 1080P 时, CPU 占用率波动性较大, 在 5%~30% 之间, 目测平均值在 15% 左右.
 
 #### 跟 surge/Specht 对比有何优劣?
 
