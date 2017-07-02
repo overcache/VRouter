@@ -480,7 +480,7 @@ class VRouter {
     if (state === 'running' && !stopFirst) {
       throw Error('vm must be stopped before delete')
     }
-    await this.stopvm('force', 3000)
+    await this.stopvm('poweroff', 3000)
     return this.localExec(cmd)
   }
   async startvm (type = 'headless', waitTime = 100) {
