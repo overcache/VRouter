@@ -1503,7 +1503,7 @@ class VRouter {
         throw Error(`unkown type: ${type}`)
     }
     const cfgPath = path.join(this.config.host.configDir, cfg)
-    return fs.writeJson(cfgPath, content)
+    return fs.writeJson(cfgPath, content, {spaces: 2})
       .then(() => {
         return Promise.resolve(cfgPath)
       })
@@ -1561,7 +1561,7 @@ class VRouter {
 
   saveCfg2File () {
     const cfgPath = path.join(this.config.host.configDir, 'config.json')
-    return fs.writeJson(cfgPath, this.config)
+    return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
   scp (src, dst) {
     if (!src) {

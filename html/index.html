@@ -107,13 +107,13 @@
                 <input v-bind:value="shadowsocks.port" v-bind:disabled="!ui.editable.proxies" ref="ssPort">
               </div>
               <div class="four wide field">
-                <label for="fast-open">Fast Open</label>
-                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.fastOpen" ref="ssFastOpen">
+                <label for="timeout">Timeout</label>
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.timeout" ref="ssTimeout">
               </div>
             </div>
           </div>
           <div class="field">
-            <div class="three fields">
+            <div class="two fields">
               <div class="eight wide icon field">
                 <label for="password">Password</label>
                 <div class="ui icon input">
@@ -121,13 +121,9 @@
                   <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.pwdVisible.ss ? 'unhide' : 'hide']" v-on:click="togglePwdVsblt('ss')"></i>
                 </div>
               </div>
-              <div class="four wide field">
+              <div class="eight wide field">
                 <label for="encrypt">Encrypt Method</label>
                 <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.method" ref="ssMethod">
-              </div>
-              <div class="four wide field">
-                <label for="timeout">Timeout</label>
-                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.timeout" ref="ssTimeout">
               </div>
             </div>
           </div>

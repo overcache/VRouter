@@ -103,7 +103,6 @@ sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
 
 ### TODO
 
-- [x] 优化黑白名单的处理
 - [ ] 增加log
 - [ ] 更新gfwlist
 - [ ] 增加转发tcp/udp的配置入口
