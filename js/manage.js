@@ -1,5 +1,5 @@
 /* eslint-env jquery */
-/* global Vue alert */
+/* global Vue */
 
 const { VRouter } = require('../js/vrouter-local.js')
 const { app, getCurrentWindow } = require('electron').remote
@@ -7,6 +7,7 @@ const { shell } = require('electron')
 const path = require('path')
 const fs = require('fs-extra')
 const os = require('os')
+const log = require('electron-log')
 
 let vrouter = new VRouter()
 
@@ -101,7 +102,7 @@ const myApp = new Vue({
       if (err.message === 'User did not grant permission.') {
         return
       }
-      console.log(err.message)
+      log.error(err)
       this.errorMsg = err.toString()
       $(this.$refs.errorModal).modal('show')
     },
@@ -112,9 +113,11 @@ const myApp = new Vue({
         ? 'wifi' : 'vrouter'
       try {
         await vrouter.changeRouteTo(to)
+        log.info(`成功将网关/DNS切换到${to}`)
         this.status.currentGW = to
         await this.checkTrafficStatus()
       } catch (err) {
+        log.error(`将网关/DNS切换到${to}失败`)
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -178,12 +181,17 @@ const myApp = new Vue({
       // 只保存当前选择的代理的配置
       this.saveFields('proxies')
       this.saveCurrentProxiesFields()
+      log.info('保存代理参数')
 
       try {
         await vrouter.saveCfg2File()
+        log.info('保存配置到文件')
         await this.remote.changeProxies()
+        log.info('更改代理工具')
         await this.refreshInfos()
+        log.info('更新进程状态')
       } catch (err) {
+        log.error('保存并应用代理失败')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -272,6 +280,7 @@ const myApp = new Vue({
         default:
           throw Error('unkown current proxies')
       }
+      log.info('重启当前代理工具')
     },
     saveAllFileds () {
       let proxiesChanged = false
@@ -393,10 +402,13 @@ const myApp = new Vue({
       })
       this.firewall.selectedWL = whiteList
 
+      log.info('收集黑白名单表单')
       try {
         await vrouter.saveCfg2File()
         await this.remote.changeMode()
+        log.info('更改代理模式')
       } catch (err) {
+        log.error('更改代理模式fail')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -414,7 +426,9 @@ const myApp = new Vue({
           const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.chinaIPs)
           const url = vrouter.config.firewall.chinaIPsUrl
           await vrouter.downloadFile(url, cfgPath)
+          log.info('更新国内IP完成')
         } catch (err) {
+          log.error('更新国内IP失败')
           this.showErrModal(err)
         } finally {
           this.ui.activeLoader = false
@@ -481,6 +495,7 @@ const myApp = new Vue({
       this.status.ssVersion = await this.remote.getSsVersion()
       this.status.ssrVersion = await this.remote.getSsrVersion()
       this.status.ktVersion = await this.remote.getKtVersion()
+      log.info('检查vrouter状态')
     },
     async refreshInfos () {
       $('*[data-content]').popup('hide')
@@ -489,6 +504,7 @@ const myApp = new Vue({
         await this.checkTrafficStatus()
         await this.checkInfos()
         await this.checkProxiesStatus()
+        log.info('刷新vrouter状态')
       } catch (err) {
         this.showErrModal(err)
       } finally {
@@ -500,7 +516,9 @@ const myApp = new Vue({
       $('*[data-content]').popup('hide')
       try {
         await this.remote.service('network', 'restart')
+        log.info('重启vrouter内部网络')
       } catch (err) {
+        log.error('重启vrouter内部网络失败')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -510,9 +528,12 @@ const myApp = new Vue({
       this.ui.activeLoader = true
       try {
         await vrouter.changeRouteTo('wifi')
+        log.info('恢复默认网关')
         await vrouter.stopvm('savestate')
+        log.info('关闭虚拟机')
         app.quit()
       } catch (err) {
+        log.info('关闭虚拟机失败')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -522,9 +543,12 @@ const myApp = new Vue({
       this.ui.activeLoader = true
       try {
         await vrouter.changeRouteTo('wifi')
+        log.info('恢复默认网关')
         await vrouter.deletevm(true)
+        log.info('删除虚拟机')
         app.quit()
       } catch (err) {
+        log.error('删除虚拟机失败')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -535,7 +559,9 @@ const myApp = new Vue({
       try {
         await vrouter.changeRouteTo('wifi')
         await this.checkTrafficStatus()
+        log.info('恢复回系统网关')
       } catch (err) {
+        log.info('恢复系统网关失败')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -547,16 +573,19 @@ const myApp = new Vue({
       this.status.isSsRunning = await this.remote.isSsRunning()
       this.status.isSsrRunning = await this.remote.isSsrRunning()
       this.status.isKtRunning = await this.remote.isKtRunning()
+      log.info('检查代理进程状态')
     }
   },
   async mounted () {
     try {
       this.remote = await vrouter.connect()
+      log.info('成功通过ssh和虚拟机保持通信')
       await this.checkTrafficStatus()
       await this.checkInfos()
       await this.checkProxiesStatus()
       this.resetProxiesForm()
     } catch (err) {
+      log.error('vue 没有挂载成功')
       this.showErrModal(err)
     }
   }
