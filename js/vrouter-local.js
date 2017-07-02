@@ -367,7 +367,7 @@ class VRouter {
               })
           })
           .then(() => {
-            if (this.config.firewall.currentProxies.substr(0, 3) === 'ssr') {
+            if (this.config.firewall.currentProxies.includes('ssr')) {
               return this.enableService('shadowsocksr')
                 .then(() => {
                   this.process.emit('build', '设置 shadowsocksr 随虚拟机启动')
@@ -1588,8 +1588,36 @@ class VRouter {
     const cfgPath = path.join(this.config.host.configDir, 'config.json')
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
-  upgradeCfg () {
+  async upgradeCfg () {
+    const template = path.join(__dirname, '..', 'config', 'config.json')
+    const newCfg = fs.readJsonSync(template)
+    const oldCfg = fs.readJsonSync(path.join(this.config.host.configDir, 'config.json'))
+    if (oldCfg.version === newCfg.version) {
+      return
+    }
+    if (!oldCfg.version) {
+      // version 0.1 to 0.2
+      const ssFields = ['address', 'port', 'password', 'timeout', 'method']
+      ssFields.forEach((field) => {
+        newCfg.shadowsocks.server[field] = oldCfg.shadowsocks.server[field]
+      })
+      const ktFields = ['address', 'port', 'key', 'crypt', 'mode']
+      const others = []
+      Object.keys(oldCfg.kcptun.server).forEach((key) => {
+        if (ktFields.includes(key)) {
+          newCfg.kcptun.server[key] = oldCfg.kcptun.kcptun.server[key]
+        } else {
+          others.push(`${key}=${oldCfg.kcptun.server[key]}}`)
+        }
+      })
+      newCfg.kcptun.server.others = others.join(';')
 
+      const thirdParty = path.join(__dirname, '..', 'third_party')
+      await this.scp(`${thirdParty}/ssr-tunnel`, '/usr/bin/')
+      await this.scp(`${thirdParty}/ssr-redir`, '/usr/bin/')
+    }
+    const cfgPath = path.join(this.config.host.configDir, 'config.json')
+    await fs.writeJson(cfgPath, newCfg, {spaces: 2})
   }
   scp (src, dst) {
     if (!src) {

@@ -91,6 +91,10 @@ class VRouterRemote {
     const cmd = `ls ${this.config.vrouter.configDir}/third_party/*.ipk | xargs opkg install`
     return this.remoteExec(cmd)
   }
+  installSsr () {
+    const cmd = `mv ${this.config.vrouter.configDir}/third_party/ssr-* /usr/bin/`
+    return this.remoteExec(cmd)
+  }
   getSsVersion () {
     const cmd = 'ss-redir -h | grep "shadowsocks-libev" | cut -d" " -f2'
     return this.remoteExec(cmd)
@@ -154,8 +158,9 @@ class VRouterRemote {
   }
   // kcptun
   installKt () {
-    const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
-      ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
+    // const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
+      // ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
+    const cmd = `mv ${this.config.vrouter.configDir}/third_party/kcptun /usr/bin/`
     return this.remoteExec(cmd)
   }
   getKtVersion () {
