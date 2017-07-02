@@ -195,7 +195,7 @@ class VRouterRemote {
   }
   async changeProxies (proxies = this.config.firewall.currentProxies) {
     // stop tunnelDns before change tunnelDns.service's file content
-    await this.service(this.config.tunnelDns.service, 'stop')
+    await this.service(this.config.tunnelDns.service, 'stop').catch(() => {})
 
     // let s = Date.now()
     await this.local.scpConfigAll(true)
@@ -204,28 +204,28 @@ class VRouterRemote {
     switch (proxies) {
       case 'ss':
         promises.push(...[
-          this.service('shadowsocksr', 'stop'),
-          this.service('kcptun', 'stop'),
+          this.service('shadowsocksr', 'stop').catch(() => {}),
+          this.service('kcptun', 'stop').catch(() => {}),
           this.service('shadowsocks', 'restart')
         ])
         break
       case 'ssr':
         promises.push(...[
-          this.service('shadowsocks', 'stop'),
-          this.service('kcptun', 'stop'),
+          this.service('shadowsocks', 'stop').catch(() => {}),
+          this.service('kcptun', 'stop').catch(() => {}),
           this.service('shadowsocksr', 'restart')
         ])
         break
       case 'ssKt':
         promises.push(...[
-          this.service('shadowsocksr', 'stop'),
+          this.service('shadowsocksr', 'stop').catch(() => {}),
           this.service('kcptun', 'restart'),
           this.service('shadowsocks', 'restart')
         ])
         break
       case 'ssrKt':
         promises.push(...[
-          this.service('shadowsocks', 'stop'),
+          this.service('shadowsocks', 'stop').catch(() => {}),
           this.service('kcptun', 'restart'),
           this.service('shadowsocksr', 'restart')
         ])

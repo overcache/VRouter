@@ -18,10 +18,13 @@ const os = require('os')
 class VRouter {
   constructor () {
     let config
+    let cfg = path.join(getAppDir(), packageJson.name, 'config.json')
     try {
-      config = fs.readJsonSync(path.join(getAppDir(), packageJson.name, 'config.json'))
+      config = fs.readJsonSync(cfg)
     } catch (err) {
-      config = fs.readJsonSync(path.join(__dirname, '..', 'config', 'config.json'))
+      const template = path.join(__dirname, '..', 'config', 'config.json')
+      config = fs.readJsonSync(template)
+      fs.copySync(template, cfg)
     }
     if (!config.host.configDir) {
       config.host.configDir = path.join(getAppDir(), packageJson.name)
@@ -272,7 +275,7 @@ class VRouter {
       .then(() => {
         return this.configvmLanIP()
           .then(() => {
-            this.process.emit('build', '配置虚拟机网络地址, 请稍候')
+            this.process.emit('build', '配置虚拟机网络地址, 请稍候10秒')
           })
           .then(() => {
             return this.wait(10000)
@@ -281,7 +284,7 @@ class VRouter {
       .then(() => {
         return this.installPackage()
           .then(() => {
-            this.process.emit('build', '安装 dnsmasq-full 以及 ipset, 等待30秒')
+            this.process.emit('build', '安装 dnsmasq-full 以及 ipset, 请稍候30秒')
           })
           .then(() => {
             return this.wait(30000)
@@ -910,7 +913,7 @@ class VRouter {
     const subCmds = []
     subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
     subCmds.push('opkg update')
-    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server')
+    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server libopenssl')
     subCmds.push('/etc/init.d/dropbear restart')
     return this.serialExec(subCmds.join(' && '), 'install packages')
       .then(() => {
@@ -1081,7 +1084,7 @@ class VRouter {
         serverIPs.push(ip)
         break
       default:
-        throw Error('unkown proxies')
+        throw Error(`unkown proxies: ${proxies}`)
     }
 
     ws.write('# com.icymind.vrouter\n')
@@ -1605,19 +1608,34 @@ class VRouter {
       const others = []
       Object.keys(this.config.kcptun.server).forEach((key) => {
         if (ktFields.includes(key)) {
-          newCfg.kcptun.server[key] = this.config.kcptun.kcptun.server[key]
+          newCfg.kcptun.server[key] = this.config.kcptun.server[key]
         } else {
-          others.push(`${key}=${this.config.kcptun.server[key]}}`)
+          others.push(`${key}=${this.config.kcptun.server[key]}`)
         }
       })
       newCfg.kcptun.server.others = others.join(';')
 
+      newCfg.firewall.currentMode = this.config.firewall.currentMode
+      const dict = {
+        'shadowsocks': 'ss',
+        'kcptun': 'ssKt'
+      }
+      newCfg.firewall.currentProxies = dict[this.config.firewall.currentProtocol]
+
+      newCfg.host.configDir = this.config.host.configDir
+      this.config = newCfg
+
       const thirdParty = path.join(__dirname, '..', 'third_party')
       await this.scp(`${thirdParty}/ssr-tunnel`, '/usr/bin/')
       await this.scp(`${thirdParty}/ssr-redir`, '/usr/bin/')
+      const remote = await this.connect()
+      await remote.remoteExec('opkg update && opkg install libopenssl')
+      await remote.service('shadowsocks', 'stop').catch(() => {})
+      await remote.service('kcptun', 'stop').catch(() => {})
+      await remote.remoteExec('rm /etc/com.icymind.vrouter/ss-dns.json').catch(() => {})
+      await remote.changeProxies()
+      await remote.closeConn()
     }
-    newCfg.host.configDir = this.config.host.configDir
-    this.config = newCfg
     return this.saveCfg2File()
   }
   scp (src, dst) {
