@@ -1591,23 +1591,23 @@ class VRouter {
   async upgradeCfg () {
     const template = path.join(__dirname, '..', 'config', 'config.json')
     const newCfg = fs.readJsonSync(template)
-    const oldCfg = fs.readJsonSync(path.join(this.config.host.configDir, 'config.json'))
-    if (oldCfg.version === newCfg.version) {
+    // const oldCfg = fs.readJsonSync(path.join(this.config.host.configDir, 'config.json'))
+    if (this.config.version === newCfg.version) {
       return
     }
-    if (!oldCfg.version) {
+    if (!this.config.version) {
       // version 0.1 to 0.2
       const ssFields = ['address', 'port', 'password', 'timeout', 'method']
       ssFields.forEach((field) => {
-        newCfg.shadowsocks.server[field] = oldCfg.shadowsocks.server[field]
+        newCfg.shadowsocks.server[field] = this.config.shadowsocks.server[field]
       })
       const ktFields = ['address', 'port', 'key', 'crypt', 'mode']
       const others = []
-      Object.keys(oldCfg.kcptun.server).forEach((key) => {
+      Object.keys(this.config.kcptun.server).forEach((key) => {
         if (ktFields.includes(key)) {
-          newCfg.kcptun.server[key] = oldCfg.kcptun.kcptun.server[key]
+          newCfg.kcptun.server[key] = this.config.kcptun.kcptun.server[key]
         } else {
-          others.push(`${key}=${oldCfg.kcptun.server[key]}}`)
+          others.push(`${key}=${this.config.kcptun.server[key]}}`)
         }
       })
       newCfg.kcptun.server.others = others.join(';')
@@ -1616,8 +1616,9 @@ class VRouter {
       await this.scp(`${thirdParty}/ssr-tunnel`, '/usr/bin/')
       await this.scp(`${thirdParty}/ssr-redir`, '/usr/bin/')
     }
-    const cfgPath = path.join(this.config.host.configDir, 'config.json')
-    await fs.writeJson(cfgPath, newCfg, {spaces: 2})
+    newCfg.host.configDir = this.config.host.configDir
+    this.config = newCfg
+    return this.saveCfg2File()
   }
   scp (src, dst) {
     if (!src) {

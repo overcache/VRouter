@@ -191,5 +191,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     json = fs.readJsonSync(cfgPath)
   }
   const vrouter = new VRouter(json)
+  await vrouter.upgradeCfg()
   checkRequirement(vrouter)
 })
