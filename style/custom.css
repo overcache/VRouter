@@ -6,14 +6,20 @@ body {
   /* font-family: Helvetica, "Source Han Serif SC"; */
   /* font-size: 8px */
 }
+.protocolSection.none {
+  display: none;
+}
 .ui.modal {
   padding: 30px;
 }
 .ui.item.menu > a.item.active {
-  color: teal;
+  color: #00B5AD;
 }
-.ui.header.dividing > a {
-  color: teal;
+.ui.header.dividing.teal > a {
+  color: #00B5AD;
+}
+.ui.header.dividing.pink > a {
+  color: #E03997;
 }
 #logo {
   background-color: #6bae7f;
