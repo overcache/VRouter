@@ -162,14 +162,14 @@
               </div>
               <div class="four wide field">
                 <label>Protocol</label>
-                <div class="ui input" v-bind:value="shadowsocksr.protocol" ref="ssrProtocol">
-                  <input v-bind:disabled="!ui.editable.proxies">
+                <div class="ui input">
+                  <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.protocol" ref="ssrProtocol">
                 </div>
               </div>
               <div class="four wide field">
                 <label>Obfs</label>
-                <div class="ui input" v-bind:value="shadowsocksr.obfs" ref="ssrObfs">
-                  <input v-bind:disabled="!ui.editable.proxies">
+                <div class="ui input">
+                  <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.obfs" ref="ssrObfs">
                 </div>
               </div>
             </div>
@@ -178,22 +178,22 @@
             <div class="three fields">
               <div class="four wide field">
                 <label>Protocol Param</label>
-                <div class="ui input" v-bind:value="shadowsocksr.ProtocolParam" ref="ssrProtocolParam">
-                  <input v-bind:disabled="!ui.editable.proxies">
+                <div class="ui input">
+                  <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.protocol_param" ref="ssrProtocolParam">
                 </div>
               </div>
               <div class="four wide field">
                 <label>Obfs Param</label>
-                <div class="ui input" v-bind:value="shadowsocksr.ObfsParam" ref="ssrObfsParam">
-                  <input v-bind:disabled="!ui.editable.proxies">
+                <div class="ui input">
+                  <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.obfs_param" ref="ssrObfsParam">
                 </div>
               </div>
               <div class="eight wide field">
                 <label>Others
                   <i class="help circle link icon" data-content="shadowsocksr 的其他参数, 格式'key1=value1;key2=value2'"></i>
                 </label>
-                <div class="ui input" v-bind:value="shadowsocksr.others" ref="ssrOthers">
-                  <input v-bind:disabled="!ui.editable.proxies">
+                <div class="ui input">
+                  <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.others" ref="ssrOthers">
                 </div>
               </div>
             </div>

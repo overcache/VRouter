@@ -14,8 +14,7 @@ const myApp = new Vue({
   el: '#app',
   data: {
     shadowsocks: vrouter.config.shadowsocks.server,
-    // todo
-    shadowsocksr: vrouter.config.shadowsocks.server,
+    shadowsocksr: vrouter.config.shadowsocksr.server,
     kcptun: vrouter.config.kcptun.server,
     firewall: vrouter.config.firewall,
     remote: null,
