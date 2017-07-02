@@ -142,27 +142,59 @@
                 <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.port" ref="ssrPort">
               </div>
               <div class="four wide field">
-                <label for="fast-open">Fast Open</label>
-                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.fastOpen" ref="ssrFastOpen">
+                <label for="timeout">Timeout</label>
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.timeout" ref="ssrTimeout">
               </div>
             </div>
           </div>
           <div class="field">
-            <div class="three fields">
-              <div class="eight wide icon field">
-                <label for="password">Password</label>
+            <div class="four fields">
+              <div class="four wide icon field">
+                <label>Password</label>
                 <div class="ui icon input">
                   <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.password" v-bind:type="ui.pwdVisible.ssr ? 'text' : 'password'" ref="ssrPassword">
                   <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.pwdVisible.ssr ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('ssr')"></i>
                 </div>
               </div>
               <div class="four wide field">
-                <label for="encrypt">Encrypt Method</label>
+                <label>Encrypt Method</label>
                 <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.method" ref="ssrMethod">
               </div>
               <div class="four wide field">
-                <label for="timeout">Timeout</label>
-                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.timeout" ref="ssrTimeout">
+                <label>Protocol</label>
+                <div class="ui input" v-bind:value="shadowsocksr.protocol" ref="ssrProtocol">
+                  <input v-bind:disabled="!ui.editable.proxies">
+                </div>
+              </div>
+              <div class="four wide field">
+                <label>Obfs</label>
+                <div class="ui input" v-bind:value="shadowsocksr.obfs" ref="ssrObfs">
+                  <input v-bind:disabled="!ui.editable.proxies">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="three fields">
+              <div class="four wide field">
+                <label>Protocol Param</label>
+                <div class="ui input" v-bind:value="shadowsocksr.ProtocolParam" ref="ssrProtocolParam">
+                  <input v-bind:disabled="!ui.editable.proxies">
+                </div>
+              </div>
+              <div class="four wide field">
+                <label>Obfs Param</label>
+                <div class="ui input" v-bind:value="shadowsocksr.ObfsParam" ref="ssrObfsParam">
+                  <input v-bind:disabled="!ui.editable.proxies">
+                </div>
+              </div>
+              <div class="eight wide field">
+                <label>Others
+                  <i class="help circle link icon" data-content="shadowsocksr 的其他参数, 格式'key1=value1;key2=value2'"></i>
+                </label>
+                <div class="ui input" v-bind:value="shadowsocksr.others" ref="ssrOthers">
+                  <input v-bind:disabled="!ui.editable.proxies">
+                </div>
               </div>
             </div>
           </div>
