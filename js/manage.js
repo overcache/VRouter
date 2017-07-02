@@ -30,7 +30,7 @@ const myApp = new Vue({
       ssVersion: '',
       ssrVersion: '',
       ktVersion: '',
-      isSsDnsRunning: true,
+      isTunnelDnsRunning: true,
       isSsRunning: true,
       isSsrRunning: true,
       isKtRunning: true
@@ -323,8 +323,6 @@ const myApp = new Vue({
           const selected = this.$refs.proxiesDropdown.querySelector('.item.active.selected')
           if (selected) {
             this.firewall.currentProxies = selected.dataset.value
-          } else {
-            console.log('proxies not selected')
           }
           break
         case 'shadowsocks':
@@ -545,7 +543,7 @@ const myApp = new Vue({
     },
     async checkProxiesStatus () {
       // todo: review
-      this.status.isSsDnsRunning = await this.remote.isSsDnsRunning()
+      this.status.isTunnelDnsRunning = await this.remote.isTunnelDnsRunning()
       this.status.isSsRunning = await this.remote.isSsRunning()
       this.status.isSsrRunning = await this.remote.isSsrRunning()
       this.status.isKtRunning = await this.remote.isKtRunning()

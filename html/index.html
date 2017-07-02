@@ -388,8 +388,8 @@
           <div class="ui label">
             转发 DNS 查询: 
             <span class="detail">
-              {{ firewall.enableSsDns ? (status.isSsDnsRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', firewall.enableSsDns ? (status.isSsDnsRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
+              {{ firewall.enableTunnelDns ? (status.isTunnelDnsRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', firewall.enableTunnelDns ? (status.isTunnelDnsRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -398,7 +398,7 @@
             shadowsocks 进程: 
             <span class="detail">
               {{ ['ss', 'ssKt'].includes(firewall.currentProxies)  ? (status.isSsRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', ['ss', 'ssKt'].includes(firewall.currentProxies) ? (status.isSsRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
+              <i v-bind:class="['ui circle icon', ['ss', 'ssKt'].includes(firewall.currentProxies) ? (status.isSsRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -407,7 +407,7 @@
             shadowsocksR 进程: 
             <span class="detail">
               {{ firewall.currentProxies.includes('ssr') ? (status.isSsrRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('ssr') ? (status.isSsrRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
+              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('ssr') ? (status.isSsrRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -416,7 +416,7 @@
             kcptun 进程: 
             <span class="detail">
               {{ firewall.currentProxies.includes('Kt') ? (status.isKtRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('Kt') ? (status.isKtRunning ? ['check', 'teal'] : 'minus') : 'toggle off']"></i>
+              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('Kt') ? (status.isKtRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>

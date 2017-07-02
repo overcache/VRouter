@@ -131,8 +131,9 @@ class VRouterRemote {
         }
       })
   }
-  isSsDnsRunning () {
-    const cmd = 'ps -w| grep "[s]s-tunnel -c .*ss-dns.json"'
+  isTunnelDnsRunning () {
+    const tunnelBinName = this.config.firewall.currentProxies.includes('ssr') ? 'sr-tunnel' : 's-tunnel'
+    const cmd = `ps -w| grep "[s]${tunnelBinName} -c .*tunnel-dns.json"`
     return this.remoteExec(cmd)
       .then((output) => {
         if (output) {
@@ -151,11 +152,6 @@ class VRouterRemote {
     const cmd = 'ps -w| grep "[s]s-redir -c .*ss-client.json"'
     return this.remoteExec(cmd)
   }
-  getSsDNSProcess () {
-    const cmd = 'ps -w| grep "[s]s-tunnel -c .*ss-dns.json"'
-    return this.remoteExec(cmd)
-  }
-
   // kcptun
   installKt () {
     const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
@@ -193,34 +189,55 @@ class VRouterRemote {
     return this.remoteExec(cmd)
   }
   async changeProxies (proxies = this.config.firewall.currentProxies) {
+    // stop tunnelDns before change tunnelDns.service's file content
+    await this.service(this.config.tunnelDns.service, 'stop')
+
+    // let s = Date.now()
     await this.local.scpConfigAll(true)
+    // console.log(`scpConfigAll time: ${(Date.now() - s) / 1000}`)
+    const promises = []
     switch (proxies) {
       case 'ss':
-        await this.service('shadowsocksr', 'stop')
-        await this.service('kcptun', 'stop')
-        await this.service('shadowsocks', 'restart')
+        promises.push(...[
+          this.service('shadowsocksr', 'stop'),
+          this.service('kcptun', 'stop'),
+          this.service('shadowsocks', 'restart')
+        ])
         break
       case 'ssr':
-        await this.service('shadowsocks', 'stop')
-        await this.service('kcptun', 'stop')
-        await this.service('shadowsocksr', 'restart')
+        promises.push(...[
+          this.service('shadowsocks', 'stop'),
+          this.service('kcptun', 'stop'),
+          this.service('shadowsocksr', 'restart')
+        ])
         break
       case 'ssKt':
-        await this.service('shadowsocksr', 'stop')
-        await this.service('kcptun', 'start')
-        await this.service('shadowsocks', 'restart')
+        promises.push(...[
+          this.service('shadowsocksr', 'stop'),
+          this.service('kcptun', 'restart'),
+          this.service('shadowsocks', 'restart')
+        ])
         break
       case 'ssrKt':
-        await this.service('shadowsocks', 'stop')
-        await this.service('kcptun', 'start')
-        await this.service('shadowsocksr', 'restart')
+        promises.push(...[
+          this.service('shadowsocks', 'stop'),
+          this.service('kcptun', 'restart'),
+          this.service('shadowsocksr', 'restart')
+        ])
         break
       default:
         throw Error('unkown proxies')
     }
-    await this.service(this.config.ssDns.service, 'restart')
-    await this.service('dnsmasq', 'restart')
-    await this.service('firewall', 'restart')
+    if (this.config.firewall.enableTunnelDns) {
+      promises.push(this.service(this.config.tunnelDns.service, 'restart'))
+    }
+    promises.push(...[
+      this.service('dnsmasq', 'restart'),
+      this.service('firewall', 'restart')
+    ])
+    // s = Date.now()
+    await Promise.all(promises)
+    // console.log(`restart/stop service time: ${(Date.now() - s) / 1000}`)
   }
 
   async changeMode (mode = this.config.firewall.currentMode, proxies = this.config.firewall.currentProxies) {

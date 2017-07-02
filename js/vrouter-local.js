@@ -1090,11 +1090,17 @@ class VRouter {
     ws.write(`/usr/sbin/ipset restore -f -! ${this.config.vrouter.configDir}/${this.config.firewall.ipsetsFile} &> /dev/null\n`)
 
     // if kcp protocol: speedup ssh
-    // if (proxy === 'kcptun' && this.config.server.sshPort) {
-      // ws.write('# speedup ssh connection if current proxy is kcptun\n')
-      // const rule = `-d ${ssServerIP} -p tcp --dport ${this.config.server.sshPort} -j REDIRECT --to-port ${redirPort}`
-      // ws.write(this.generateFWRulesHelper(rule))
-    // }
+    // if (this.config.firewall.currentProxies.includes('Kt') && this.config.server.sshPort) {
+    /*
+     * if (this.config.firewall.currentProxies.includes('Kt')) {
+     *   ws.write('# speedup ssh connection if current proxy is kcptun\n')
+     *   serverIPs.forEach((ip) => {
+     *     // const rule = `-d ${ssServerIP} -p tcp --dport ${this.config.server.sshPort} -j REDIRECT --to-port ${redirPort}`
+     *     const rule = `-d ${ip} -p tcp --dport 11235 -j REDIRECT --to-port ${redirPort}`
+     *     ws.write(this.generateFWRulesHelper(rule))
+     *   })
+     * }
+     */
 
     // bypass serverIPs
     // bypass shadowsocks server_ip
@@ -1149,7 +1155,7 @@ class VRouter {
     const dnsmasq = '53'
     return [
       `127.0.0.1#${dnsmasq}`,
-      `127.0.0.1#${this.config.ssDns.dnsPort}`
+      `127.0.0.1#${this.config.tunnelDns.dnsPort}`
     ]
   }
   async generateDnsmasqCf (overwrite = false) {
@@ -1183,7 +1189,9 @@ class VRouter {
       gfwDomains.split('\n').forEach((line) => {
         const trimLine = line.trim()
         if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
-          ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
+          if (this.config.firewall.enableTunnelDns) {
+            ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
+          }
           ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.black}\n`)
         }
       })
@@ -1197,7 +1205,9 @@ class VRouter {
         if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
           const ip = /^\d+\.\d+\.\d+\.\d+$/g
           if (!ip.test(trimLine)) {
-            ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
+            if (this.config.firewall.enableTunnelDns) {
+              ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
+            }
             ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.black}\n`)
           }
         }
@@ -1211,7 +1221,7 @@ class VRouter {
         if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
           const ip = /^\d+\.\d+\.\d+\.\d+$/g
           if (!ip.test(trimLine)) {
-            ws.write(`server=/${trimLine}/${DNSs[0]}\n`)
+            // ws.write(`server=/${trimLine}/${DNSs[0]}\n`)
             ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.white}\n`)
           }
         }
@@ -1233,10 +1243,11 @@ class VRouter {
     const proxies = p || this.config.firewall.currentProxies
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.watchdogFile)
     let content = '#!/bin/sh\n'
-    const ssDns = String.raw`
-      ssDns=$(ps -w| grep "[s]s-tunnel -c .*ss-dns.json")
-      if [[ -z "$ssDns" ]];then
-        /etc/init.d/${this.config.ssDns.service} restart
+    const tunnelBinName = proxies.substr(0, 3) === 'ssr' ? 'sr-tunnel' : 's-tunnel'
+    const tunnelDns = String.raw`
+      tunnelDns=$(ps -w| grep "[s]${tunnelBinName} -c .*tunnel-dns.json")
+      if [[ -z "$tunnelDns" ]];then
+        /etc/init.d/${this.config.tunnelDns.service} restart
       fi`
     const shadowsocks = String.raw`
       ssClient=$(ps -w| grep "[s]s-redir -c .*ss-client.json")
@@ -1265,8 +1276,8 @@ class VRouter {
           /etc/init.d/${this.config.kcptun.service} restart
       fi
       `
-    if (this.config.firewall.enableSsDns) {
-      content += ssDns
+    if (this.config.firewall.enableTunnelDns) {
+      content += tunnelDns
     }
     if (proxies.includes('Kt')) {
       if (proxies === 'ssKt') {
@@ -1288,11 +1299,12 @@ class VRouter {
       })
   }
   generateService (type = 'shadowsocks') {
-    // type=ssDns/shadowsocks/shadowsocksr/kcptun
+    // type=tunnelDns/shadowsocks/shadowsocksr/kcptun
     const cfgPath = path.join(this.config.host.configDir, this.config[type].service)
     let content = ''
     switch (type) {
-      case 'ssDns':
+      case 'tunnelDns':
+        const tunnelBinName = this.config.firewall.currentProxies.includes('ssr') ? 'ssr-tunnel' : 'ss-tunnel'
         content = String.raw`#!/bin/sh /etc/rc.common
           # Copyright (C) 2006-2011 OpenWrt.org
           START=85
@@ -1300,10 +1312,10 @@ class VRouter {
           SERVICE_WRITE_PID=1
           SERVICE_DAEMONIZE=1
           start() {
-              service_start /usr/bin/ss-tunnel -c ${this.config.vrouter.configDir}/${this.config.ssDns.dns}
+              service_start /usr/bin/${tunnelBinName} -c ${this.config.vrouter.configDir}/${this.config.tunnelDns.dns}
           }
           stop() {
-              service_stop /usr/bin/ss-tunnel
+              service_stop /usr/bin/${tunnelBinName}
           }`
         break
       case 'shadowsocks':
@@ -1362,8 +1374,9 @@ class VRouter {
           cfgs.push(this.config.shadowsocksr.overKt)
         }
         break
-      case 'ssDns':
-        cfgs.push(this.config.ssDns.dns)
+      case 'tunnelDns':
+        // generateConfigHeler('tunnel-dns.json')
+        cfgs.push(this.config.tunnelDns.dns)
         break
       case 'kcptun':
         cfgs.push(this.config.kcptun.client)
@@ -1420,7 +1433,11 @@ class VRouter {
           'timeout': this.config.shadowsocksr.server.timeout,
           'method': this.config.shadowsocksr.server.method,
           'fast_open': true,
-          'mode': 'tcp_only'
+          'mode': 'tcp_only',
+          'protocol': this.config.shadowsocksr.server.protocol,
+          'protocol_param': this.config.shadowsocksr.server.protocol_param,
+          'obfs': this.config.shadowsocksr.server.obfs,
+          'obfs_param': this.config.shadowsocksr.server.obfs_param
         }
         this.config.shadowsocksr.server.others.split(';').forEach((kv) => {
           if (kv.trim()) {
@@ -1440,7 +1457,11 @@ class VRouter {
           'timeout': 20,
           'method': this.config.shadowsocksr.server.method,
           'fast_open': true,
-          'mode': 'tcp_only'
+          'mode': 'tcp_only',
+          'protocol': this.config.shadowsocksr.server.protocol,
+          'protocol_param': this.config.shadowsocksr.server.protocol_param,
+          'obfs': this.config.shadowsocksr.server.obfs,
+          'obfs_param': this.config.shadowsocksr.server.obfs_param
         }
         this.config.shadowsocksr.server.others.split(';').forEach((kv) => {
           if (kv.trim()) {
@@ -1449,15 +1470,15 @@ class VRouter {
           }
         })
         break
-      case this.config.ssDns.dns:
-        cfg = this.config.ssDns.dns
+      case this.config.tunnelDns.dns:
+        cfg = this.config.tunnelDns.dns
         const isSsr = this.config.firewall.currentProxies.includes('ssr')
         const obj = isSsr ? this.config.shadowsocksr : this.config.shadowsocks
         content = {
           'server': obj.server.address,
           'server_port': obj.server.port,
           'local_address': '0.0.0.0',
-          'local_port': this.config.ssDns.dnsPort,
+          'local_port': this.config.tunnelDns.dnsPort,
           'password': obj.server.password,
           'timeout': obj.server.timeout,
           'method': obj.server.method,
@@ -1465,16 +1486,18 @@ class VRouter {
           'tunnel_address': '8.8.8.8:53',
           'mode': 'udp_only'
         }
-        /*
-         * if (isSsr) {
-         *   obj.server.others.split(';').forEach((kv) => {
-         *     if (kv.trim()) {
-         *       const [k, v] = kv.split('=')
-         *       content[k.trim()] = v.trim()
-         *     }
-         *   })
-         * }
-         */
+        if (isSsr) {
+          const moreFields = ['protocol', 'protocol_param', 'obfs', 'obfs_param']
+          moreFields.forEach((field) => {
+            content[field] = obj.server[field]
+          })
+          obj.server.others.split(';').forEach((kv) => {
+            if (kv.trim()) {
+              const [k, v] = kv.split('=')
+              content[k.trim()] = v.trim()
+            }
+          })
+        }
         break
       case this.config.kcptun.client:
         cfg = this.config.kcptun.client
@@ -1565,6 +1588,9 @@ class VRouter {
     const cfgPath = path.join(this.config.host.configDir, 'config.json')
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
+  upgradeCfg () {
+
+  }
   scp (src, dst) {
     if (!src) {
       throw Error('must specify src for scp')
@@ -1603,12 +1629,12 @@ class VRouter {
   }
   async scpConfig (type = 'shadowsocks', overwrite = false) {
     switch (type) {
-      case 'ssDnsService':
-        await this.generateService('ssDns')
+      case 'tunnelDnsService':
+        await this.generateService('tunnelDns')
           .then((p) => {
             return this.scp(p, '/etc/init.d/')
               .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/ssDns`)
+                return this.serialExec(`chmod +x /etc/init.d/${this.config.tunnelDns.service}`)
               })
           })
         break
@@ -1617,7 +1643,7 @@ class VRouter {
           .then((p) => {
             return this.scp(p, '/etc/init.d/')
               .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/shadowsocks`)
+                return this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocks.service}`)
               })
           })
         break
@@ -1626,7 +1652,7 @@ class VRouter {
           .then((p) => {
             return this.scp(p, '/etc/init.d/')
               .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/shadowsocksr`)
+                return this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocksr.service}`)
               })
           })
         break
@@ -1635,11 +1661,11 @@ class VRouter {
           .then((p) => {
             return this.scp(p, '/etc/init.d/')
               .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/kcptun`)
+                return this.serialExec(`chmod +x /etc/init.d/${this.config.kcptun.service}`)
               })
           })
         break
-      case 'ssDns':
+      case 'tunnelDns':
       case 'shadowsocks':
       case 'shadowsocksr':
       case 'kcptun':
@@ -1693,9 +1719,9 @@ class VRouter {
       'watchdog',
       'cron'
     ]
-    if (this.config.firewall.enableSsDns) {
-      types.push('ssDnsService')
-      types.push('ssDns')
+    if (this.config.firewall.enableTunnelDns) {
+      types.push('tunnelDnsService')
+      types.push('tunnelDns')
     }
     const proxies = this.config.firewall.currentProxies
     if (proxies.includes('Kt')) {
