@@ -218,6 +218,9 @@ class VRouterRemote {
       default:
         throw Error('unkown proxies')
     }
+    await this.service(this.config.ssDns.service, 'restart')
+    await this.service('dnsmasq', 'restart')
+    await this.service('firewall', 'restart')
   }
 
   async changeMode (mode = this.config.firewall.currentMode, proxies = this.config.firewall.currentProxies) {

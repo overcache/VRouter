@@ -1465,14 +1465,16 @@ class VRouter {
           'tunnel_address': '8.8.8.8:53',
           'mode': 'udp_only'
         }
-        if (isSsr) {
-          obj.server.others.split(';').forEach((kv) => {
-            if (kv.trim()) {
-              const [k, v] = kv.split('=')
-              content[k.trim()] = v.trim()
-            }
-          })
-        }
+        /*
+         * if (isSsr) {
+         *   obj.server.others.split(';').forEach((kv) => {
+         *     if (kv.trim()) {
+         *       const [k, v] = kv.split('=')
+         *       content[k.trim()] = v.trim()
+         *     }
+         *   })
+         * }
+         */
         break
       case this.config.kcptun.client:
         cfg = this.config.kcptun.client

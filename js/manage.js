@@ -328,14 +328,14 @@ const myApp = new Vue({
           }
           break
         case 'shadowsocks':
-          let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
+          let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod']
           ssFields.forEach((field) => {
             const key = field.substr(2).toLowerCase()
             vrouter.config.shadowsocks.server[key] = this.$refs[field].value.trim()
           })
           break
         case 'shadowsocksr':
-          let ssrFields = ['ssrAddress', 'ssrPort', 'ssrPassword', 'ssrTimeout', 'ssrMethod', 'ssrFastOpen']
+          let ssrFields = ['ssrAddress', 'ssrPort', 'ssrPassword', 'ssrTimeout', 'ssrMethod', 'ssrProtocol', 'ssrObfs', 'ssrProtocol_Param', 'ssrObfs_Param']
           ssrFields.forEach((field) => {
             const key = field.substr(3).toLowerCase()
             vrouter.config.shadowsocksr.server[key] = this.$refs[field].value.trim()
