@@ -13,7 +13,6 @@
   "dependencies": {
     "fs-extra": "^3.0.1",
     "scp2": "^0.5.0",
-    "semantic-ui": "^2.2.10",
     "ssh2": "^0.5.5",
     "sudo-prompt": "^7.1.0",
     "vue": "^2.3.4",
