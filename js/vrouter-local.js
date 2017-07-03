@@ -1630,6 +1630,7 @@ class VRouter {
       await this.scp(`${thirdParty}/ssr-tunnel`, '/usr/bin/')
       await this.scp(`${thirdParty}/ssr-redir`, '/usr/bin/')
       const remote = await this.connect()
+      await this.remoteExec('chmod +x /usr/bin/ssr-*')
       await remote.remoteExec('opkg update && opkg install libopenssl')
       await remote.service('shadowsocks', 'stop').catch(() => {})
       await remote.service('kcptun', 'stop').catch(() => {})

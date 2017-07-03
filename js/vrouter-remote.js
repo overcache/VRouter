@@ -92,7 +92,7 @@ class VRouterRemote {
     return this.remoteExec(cmd)
   }
   installSsr () {
-    const cmd = `mv ${this.config.vrouter.configDir}/third_party/ssr-* /usr/bin/`
+    const cmd = `mv ${this.config.vrouter.configDir}/third_party/ssr-* /usr/bin/ && chmod +x /usr/bin/ssr-*`
     return this.remoteExec(cmd)
   }
   getSsVersion () {
@@ -160,7 +160,7 @@ class VRouterRemote {
   installKt () {
     // const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
       // ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
-    const cmd = `mv ${this.config.vrouter.configDir}/third_party/kcptun /usr/bin/`
+    const cmd = `mv ${this.config.vrouter.configDir}/third_party/kcptun /usr/bin/ && chmod +x /usr/bin/kcptun`
     return this.remoteExec(cmd)
   }
   getKtVersion () {
