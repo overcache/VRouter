@@ -7,9 +7,22 @@ const { shell } = require('electron')
 const path = require('path')
 const fs = require('fs-extra')
 const os = require('os')
-const log = require('electron-log')
+// const log = require('electron-log')
+// log.transports.console.level = 'info'
+const winston = require('winston')
 
 let vrouter = new VRouter()
+winston.configure({
+  transports: [
+    new (winston.transports.File)({
+      filename: path.join(vrouter.config.host.configDir, 'vrouter.log'),
+      level: 'info'
+    }),
+    new (winston.transports.Console)({
+      level: 'debug'
+    })
+  ]
+})
 
 const myApp = new Vue({
   el: '#app',
@@ -102,7 +115,7 @@ const myApp = new Vue({
       if (err.message === 'User did not grant permission.') {
         return
       }
-      log.error(err)
+      winston.error(err)
       this.errorMsg = err.toString()
       $(this.$refs.errorModal).modal('show')
     },
@@ -113,11 +126,11 @@ const myApp = new Vue({
         ? 'wifi' : 'vrouter'
       try {
         await vrouter.changeRouteTo(to)
-        log.info(`成功将网关/DNS切换到${to}`)
+        winston.debug(`changed gateway/dns to: ${to}`)
         this.status.currentGW = to
         await this.checkTrafficStatus()
       } catch (err) {
-        log.error(`将网关/DNS切换到${to}失败`)
+        winston.error(`failed to change gateway/dns to ${to}`)
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -181,17 +194,14 @@ const myApp = new Vue({
       // 只保存当前选择的代理的配置
       this.saveFields('proxies')
       this.saveCurrentProxiesFields()
-      log.info('保存代理参数')
 
       try {
         await vrouter.saveCfg2File()
-        log.info('保存配置到文件')
         await this.remote.changeProxies()
-        log.info('更改代理工具')
+        winston.debug(`changed proxies to: ${this.firewall.currentProxies}`)
         await this.refreshInfos()
-        log.info('更新进程状态')
       } catch (err) {
-        log.error('保存并应用代理失败')
+        winston.error('failed to apply proxies')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -260,6 +270,7 @@ const myApp = new Vue({
     },
     async restartCurrentProxies () {
       const currentProxies = vrouter.config.firewall.currentProxies
+      winston.debug(`restart current proxies: ${currentProxies}`)
       switch (currentProxies) {
         case 'ss':
           vrouter.generateConfig('shadowsocks')
@@ -280,7 +291,6 @@ const myApp = new Vue({
         default:
           throw Error('unkown current proxies')
       }
-      log.info('重启当前代理工具')
     },
     saveAllFileds () {
       let proxiesChanged = false
@@ -402,13 +412,12 @@ const myApp = new Vue({
       })
       this.firewall.selectedWL = whiteList
 
-      log.info('收集黑白名单表单')
       try {
         await vrouter.saveCfg2File()
         await this.remote.changeMode()
-        log.info('更改代理模式')
+        winston.debug(`changed proxymode to: ${this.firewall.currentMode}`)
       } catch (err) {
-        log.error('更改代理模式fail')
+        winston.error(`failed to change proxymode: ${this.firewall.currentMode}`)
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -416,7 +425,7 @@ const myApp = new Vue({
     },
     openExtraList (type) {
       if (this.ui.editable.mode) {
-        shell.openItem(path.join(vrouter.config.host.configDir, this.firewall[`extra${type}List`]))
+        return shell.openItem(path.join(vrouter.config.host.configDir, this.firewall[`extra${type}List`]))
       }
     },
     async updateChinaIPs () {
@@ -426,9 +435,8 @@ const myApp = new Vue({
           const cfgPath = path.join(vrouter.config.host.configDir, vrouter.config.firewall.chinaIPs)
           const url = vrouter.config.firewall.chinaIPsUrl
           await vrouter.downloadFile(url, cfgPath)
-          log.info('更新国内IP完成')
         } catch (err) {
-          log.error('更新国内IP失败')
+          winston.error('failed to update chinaIPs')
           this.showErrModal(err)
         } finally {
           this.ui.activeLoader = false
@@ -478,6 +486,10 @@ const myApp = new Vue({
       $(this.$refs.loginModal)
         .modal('show')
     },
+    openLogFile () {
+      const file = path.join(vrouter.config.host.configDir, 'vrouter.log')
+      return shell.openItem(file)
+    },
     toggleDevTools () {
       return getCurrentWindow().toggleDevTools()
     },
@@ -495,7 +507,6 @@ const myApp = new Vue({
       this.status.ssVersion = await this.remote.getSsVersion()
       this.status.ssrVersion = await this.remote.getSsrVersion()
       this.status.ktVersion = await this.remote.getKtVersion()
-      log.info('检查vrouter状态')
     },
     async refreshInfos () {
       $('*[data-content]').popup('hide')
@@ -504,7 +515,6 @@ const myApp = new Vue({
         await this.checkTrafficStatus()
         await this.checkInfos()
         await this.checkProxiesStatus()
-        log.info('刷新vrouter状态')
       } catch (err) {
         this.showErrModal(err)
       } finally {
@@ -516,9 +526,9 @@ const myApp = new Vue({
       $('*[data-content]').popup('hide')
       try {
         await this.remote.service('network', 'restart')
-        log.info('重启vrouter内部网络')
+        winston.debug('restarted vrouter network')
       } catch (err) {
-        log.error('重启vrouter内部网络失败')
+        winston.error('failed to restart vrouter netowork')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -528,12 +538,12 @@ const myApp = new Vue({
       this.ui.activeLoader = true
       try {
         await vrouter.changeRouteTo('wifi')
-        log.info('恢复默认网关')
+        winston.debug('reseted gateway/dns to wifi')
         await vrouter.stopvm('savestate')
-        log.info('关闭虚拟机')
+        winston.debug('saved vm state')
         app.quit()
       } catch (err) {
-        log.info('关闭虚拟机失败')
+        winston.debug('fail to shutdownVRouter')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -543,12 +553,12 @@ const myApp = new Vue({
       this.ui.activeLoader = true
       try {
         await vrouter.changeRouteTo('wifi')
-        log.info('恢复默认网关')
+        winston.debug('reseted gateway/dns to wifi')
         await vrouter.deletevm(true)
-        log.info('删除虚拟机')
+        winston.debug('vm deleted')
         app.quit()
       } catch (err) {
-        log.error('删除虚拟机失败')
+        winston.error('fail to delete vm')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -558,10 +568,10 @@ const myApp = new Vue({
       this.ui.activeLoader = true
       try {
         await vrouter.changeRouteTo('wifi')
+        winston.debug('reseted gateway/dns to wifi')
         await this.checkTrafficStatus()
-        log.info('恢复回系统网关')
       } catch (err) {
-        log.info('恢复系统网关失败')
+        winston.debug('fail to resetGW')
         this.showErrModal(err)
       } finally {
         this.ui.activeLoader = false
@@ -573,19 +583,18 @@ const myApp = new Vue({
       this.status.isSsRunning = await this.remote.isSsRunning()
       this.status.isSsrRunning = await this.remote.isSsrRunning()
       this.status.isKtRunning = await this.remote.isKtRunning()
-      log.info('检查代理进程状态')
     }
   },
   async mounted () {
     try {
       this.remote = await vrouter.connect()
-      log.info('成功通过ssh和虚拟机保持通信')
       await this.checkTrafficStatus()
       await this.checkInfos()
       await this.checkProxiesStatus()
       this.resetProxiesForm()
+      winston.info('vrouter started')
     } catch (err) {
-      log.error('vue 没有挂载成功')
+      winston.error('vue can not mounted')
       this.showErrModal(err)
     }
   }

@@ -2,10 +2,24 @@
 /* global Vue */
 const { app, getCurrentWindow } = require('electron').remote
 const path = require('path')
-const fs = require('fs-extra')
+// const fs = require('fs-extra')
 const url = require('url')
 const { VRouter } = require('../js/vrouter-local.js')
-const { getAppDir } = require('../js/helper.js')
+// const { getAppDir } = require('../js/helper.js')
+const winston = require('winston')
+
+const vrouter = new VRouter()
+winston.configure({
+  transports: [
+    new (winston.transports.File)({
+      filename: path.join(vrouter.config.host.configDir, 'vrouter.log'),
+      level: 'error'
+    }),
+    new (winston.transports.Console)({
+      level: 'debug'
+    })
+  ]
+})
 
 function redirect () {
   window.location.replace(url.format({
@@ -22,6 +36,7 @@ function adjustModal () {
 }
 
 function buildVmListener (msg) {
+  winston.debug(msg)
   vue.data.content += `<li class="ui">${msg}</li>`
   adjustModal()
 }
@@ -29,20 +44,30 @@ async function buildVmHandler (vrouter) {
   vue.data.buttons = [{
     label: '终止',
     async handler () {
-      await vrouter.deletevm(true)
-      app.quit()
+      try {
+        winston.debug('abort building vm, delete vm now...')
+        await vrouter.deletevm(true)
+        app.quit()
+      } catch (err) {
+        winston.error(`fail to delete vm. ${err}`)
+      }
     }
   }]
   vrouter.process.on('build', buildVmListener)
   vue.data.header = '构建虚拟机'
   vue.data.content = ''
   try {
+    winston.debug('start to build vm...')
     await vrouter.buildvm()
+    winston.debug('vm builded')
     vue.data.content += `<li class="ui">等待虚拟机重新启动</li>`
+    winston.debug('starting vm...')
     await vrouter.startvm('headless', 30000)
+    winston.debug('vm started')
     vue.hide()
     return checkRequirement(vrouter)
   } catch (err) {
+    winston.error(err)
     vue.data.content += `<br>${err}`
     vue.data.buttons = [
       {
@@ -55,8 +80,14 @@ async function buildVmHandler (vrouter) {
       {
         label: '退出',
         async handler () {
-          await vrouter.deletevm(true)
-          app.quit()
+          try {
+            winston.debug('abort building vm, deleting vm now...')
+            await vrouter.deletevm(true)
+            winston.debug('vm deleted')
+            app.quit()
+          } catch (err) {
+            winston.error('fail to delete vm')
+          }
         }
       }
     ]
@@ -108,7 +139,9 @@ const vue = new Vue({
 
 async function checkRequirement (vrouter) {
   let ret = await vrouter.isVBInstalled()
+  winston.debug('virtualbox installed')
   if (!ret) {
+    winston.warn('no virtualbox installed')
     vue.data = {
       header: '检测 VirtualBox',
       content: '没有检测到 Virtualbox, 请前往<a href="https://www.virtualbox.org/"> Virtualbox 官网 </a>下载安装.',
@@ -135,6 +168,7 @@ async function checkRequirement (vrouter) {
   ret = await vrouter.isVRouterExisted()
   if (!ret) {
   // if (true) {
+    winston.warn('no vrouter vm detected.')
     vue.data = {
       header: '检测虚拟机',
       content: '没有检测到 VRouter 虚拟机, 需要下载 openwrt 官方镜像(5MB)进行构建.',
@@ -159,6 +193,7 @@ async function checkRequirement (vrouter) {
   }
   ret = await vrouter.getvmState()
   if (ret !== 'running') {
+    winston.warn(`vm not running, state: ${ret}`)
     const waitTime = ret === 'poweroff' ? 30 : 10
     let countdown = waitTime
     vue.data = {
@@ -172,7 +207,12 @@ async function checkRequirement (vrouter) {
       let time = countdown > 0 ? --countdown : 0
       vue.data.content = `正在启动虚拟机, 请稍候...${time}`
     }, 1000)
-    await vrouter.startvm('headless', waitTime * 1000)
+    try {
+      await vrouter.startvm('headless', waitTime * 1000)
+      winston.debug('vm started')
+    } catch (error) {
+      winston.error('fail to start vm')
+    }
     clearInterval(interval)
     vue.hide()
   }
@@ -198,6 +238,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     // cfgPath = path.join(__dirname, '..', 'config', 'config.json')
     // json = fs.readJsonSync(cfgPath)
   // }
-  const vrouter = new VRouter()
   checkRequirement(vrouter)
 })
