@@ -41,7 +41,7 @@ class VRouter {
   sudoExec (cmd) {
     const option = {
       name: 'VRouter',
-      icns: path.join(__dirname, '..', 'build', 'icon.icns')
+      icns: path.join(__dirname, '..', 'img', 'icon.icns')
     }
     return new Promise((resolve, reject) => {
       sudo.exec(cmd, option, (err, stdout, stderr) => {
