@@ -1,5 +1,7 @@
 ![img](./img/screenshot.jpg)
 
+[![JavaScript Style Guide](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 ### VRouter
 
 一个基于 Virtualbox 和 openwrt 构建的项目, 旨在实现 OS X / macOS 平台上的透明代理.

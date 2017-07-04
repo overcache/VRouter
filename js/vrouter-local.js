@@ -14,6 +14,13 @@ const crypto = require('crypto')
 const sudo = require('sudo-prompt')
 const { EventEmitter } = require('events')
 const os = require('os')
+let VBoxManage
+if (os.platform() === 'darwin') {
+  VBoxManage = '/usr/local/bin/VBoxManage'
+} else if (os.platform() === 'win32') {
+  const p = 'C:\\Program Files\\Oracle\\VirtualBox'
+  VBoxManage = p
+}
 
 class VRouter {
   constructor () {
@@ -76,7 +83,7 @@ class VRouter {
     })
   }
   sendKeystrokes (key = '1c 9c') {
-    const cmd = `/usr/local/bin/VBoxManage controlvm ${this.config.vrouter.name} keyboardputscancode ${key}`
+    const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} keyboardputscancode ${key}`
     return this.localExec(cmd)
   }
   sshLogin () {
@@ -205,20 +212,20 @@ class VRouter {
     const vdi = path.join(this.config.host.configDir, this.config.vrouter.name + '.vdi')
     await fs.remove(vdi)
     subCmds.push(`cat "${image}" | gunzip | ` +
-      `/usr/local/bin/VBoxManage convertfromraw --format VDI stdin "${vdi}" ${vdiSize}`)
+      `${VBoxManage} convertfromraw --format VDI stdin "${vdi}" ${vdiSize}`)
 
-    subCmds.push(`/usr/local/bin/VBoxManage createvm --name ${this.config.vrouter.name} --register`)
+    subCmds.push(`${VBoxManage} createvm --name ${this.config.vrouter.name} --register`)
 
-    subCmds.push(`/usr/local/bin/VBoxManage modifyvm ${this.config.vrouter.name} ` +
+    subCmds.push(`${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
       ` --ostype "Linux26_64" --memory "256" --cpus "1" ` +
       ` --boot1 "disk" --boot2 "none" --boot3 "none" --boot4 "none" ` +
       ` --audio "none" `)
 
-    subCmds.push(`/usr/local/bin/VBoxManage storagectl ${this.config.vrouter.name} ` +
+    subCmds.push(`${VBoxManage} storagectl ${this.config.vrouter.name} ` +
       `--name "SATA Controller" --add "sata" --portcount "4" ` +
       `--hostiocache "on" --bootable "on"`)
 
-    subCmds.push(`/usr/local/bin/VBoxManage storageattach ${this.config.vrouter.name} ` +
+    subCmds.push(`${VBoxManage} storageattach ${this.config.vrouter.name} ` +
       `--storagectl "SATA Controller" --port "1" ` +
       `--type "hdd" --nonrotational "on" --medium "${vdi}"`)
 
@@ -421,7 +428,7 @@ class VRouter {
       })
   }
   guiLogin () {
-    const cmd = `VBoxManage startvm ${this.config.vrouter.name} --type separate`
+    const cmd = `${VBoxManage} startvm ${this.config.vrouter.name} --type separate`
     return this.localExec(cmd)
   }
   async serialExec (cmd, msg) {
@@ -456,7 +463,7 @@ class VRouter {
     }
 
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
-    const pre = `echo "" |  nc -U "${serialPath}"`
+    const pre = `echo "" |  /usr/bin/nc -U "${serialPath}"`
     const serialCmd = `echo "${cmd}" | /usr/bin/nc -U '${serialPath}'`
 
     // 先执行两遍pre
@@ -471,11 +478,11 @@ class VRouter {
   }
 
   importvm (vmFile) {
-    const cmd = `/usr/local/bin/VBoxManage import ${vmFile}`
+    const cmd = `${VBoxManage} import ${vmFile}`
     return this.localExec(cmd)
   }
   async deletevm (stopFirst = false) {
-    const cmd = `/usr/local/bin/VBoxManage unregistervm ${this.config.vrouter.name} --delete`
+    const cmd = `${VBoxManage} unregistervm ${this.config.vrouter.name} --delete`
     const existed = await this.isVRouterExisted()
     if (!existed) {
       return
@@ -490,7 +497,7 @@ class VRouter {
   async startvm (type = 'headless', waitTime = 100) {
     const state = await this.getvmState()
     if (state !== 'running') {
-      const cmd = `/usr/local/bin/VBoxManage startvm --type ${type} ${this.config.vrouter.name}`
+      const cmd = `${VBoxManage} startvm --type ${type} ${this.config.vrouter.name}`
       return this.localExec(cmd)
           .then(() => {
             return this.wait(1000)
@@ -523,7 +530,7 @@ class VRouter {
               return this.wait(8000)
             })
         } else {
-          const cmd = `/usr/local/bin/VBoxManage controlvm ${this.config.vrouter.name} poweroff`
+          const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} poweroff`
           return this.localExec(cmd)
             .then(() => {
               return this.wait(waitTime)
@@ -531,7 +538,7 @@ class VRouter {
         }
       }
       if (action === 'savestate') {
-        const cmd = `/usr/local/bin/VBoxManage controlvm ${this.config.vrouter.name} savestate`
+        const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} savestate`
         return this.localExec(cmd)
           .then(() => {
             return this.wait(waitTime)
@@ -539,7 +546,7 @@ class VRouter {
       }
     } else if (vmState === 'saved') {
       if (action === 'poweroff') {
-        return this.localExec(`/usr/local/bin/VBoxManage discardstate ${this.config.vrouter.name}`)
+        return this.localExec(`${VBoxManage} discardstate ${this.config.vrouter.name}`)
           .then(() => {
             return this.wait(5000)
           })
@@ -548,16 +555,17 @@ class VRouter {
   }
 
   hidevm (action = true) {
-    const cmd = `/usr/local/bin/VBoxManage setextradata ${this.config.vrouter.name} GUI/HideFromManager ${action}`
+    const cmd = `${VBoxManage} setextradata ${this.config.vrouter.name} GUI/HideFromManager ${action}`
     return this.localExec(cmd)
   }
   lockGUIConfig (action = true) {
-    const cmd = `/usr/local/bin/VBoxManage setextradata ${this.config.vrouter.name} GUI/PreventReconfiguration ${action}`
+    const cmd = `${VBoxManage} setextradata ${this.config.vrouter.name} GUI/PreventReconfiguration ${action}`
     return this.localExec(cmd)
   }
 
   isVBInstalled () {
-    const cmd = '/usr/local/bin/VBoxManage --version'
+    const cmd = `${VBoxManage} --version`
+    console.log(cmd)
     return this.localExec(cmd)
       .then(() => {
         return Promise.resolve(true)
@@ -567,7 +575,7 @@ class VRouter {
       })
   }
   isVRouterExisted () {
-    const cmd = `/usr/local/bin/VBoxManage showvminfo ${this.config.vrouter.name}`
+    const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name}`
     return this.localExec(cmd)
       .then(() => {
         return Promise.resolve(true)
@@ -578,7 +586,7 @@ class VRouter {
   }
   getvmState () {
     // much slow than 'VBoxManage list runningvms'
-    const cmd = `/usr/local/bin/VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable | grep VMState=`
+    const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep VMState=`
     return this.localExec(cmd)
       .then((output) => {
         const state = output.trim().split('=')[1].replace(/"/g, '')
@@ -589,7 +597,7 @@ class VRouter {
     // State:           running (since 2017-06-16T02:13:09.066000000)
     // VBoxManage showvminfo com.icymind.test --machinereadable  | grep vmState
     // vmState="running"
-    const cmd = '/usr/local/bin/VBoxManage list runningvms'
+    const cmd = `${VBoxManage} list runningvms`
     return this.localExec(cmd)
       .then((stdout) => {
         const vms = stdout
@@ -641,7 +649,7 @@ class VRouter {
       })
   }
   createHostonlyInf () {
-    const cmd = `/usr/local/bin/VBoxManage hostonlyif create`
+    const cmd = `${VBoxManage} hostonlyif create`
     return this.localExec(cmd)
       .then((output) => {
         const infMatch = /Interface '(.*)'/ig.exec(output)
@@ -649,7 +657,7 @@ class VRouter {
       })
   }
   removeHostonlyInf (inf) {
-    const cmd = `/usr/local/bin/VBoxManage hostonlyif remove ${inf}`
+    const cmd = `${VBoxManage} hostonlyif remove ${inf}`
     return this.localExec(cmd)
   }
   async configHostonlyInf (inf, netmask = '255.255.255.0') {
@@ -658,7 +666,7 @@ class VRouter {
       const infs = await this.getHostonlyInf()
       iinf = infs[0] || infs[1] || await this.createHostonlyInf()
     }
-    const cmd = `/usr/local/bin/VBoxManage hostonlyif ipconfig ${iinf} --ip ${this.config.host.ip} --netmask ${netmask}`
+    const cmd = `${VBoxManage} hostonlyif ipconfig ${iinf} --ip ${this.config.host.ip} --netmask ${netmask}`
     return this.localExec(cmd)
       .then(() => {
         return Promise.resolve(iinf)
@@ -681,7 +689,7 @@ class VRouter {
         return infs
       })
       .then((infs) => {
-        const cmd = '/usr/local/bin/VBoxManage list bridgedifs'
+        const cmd = `${VBoxManage} list bridgedifs`
         return this.localExec(cmd)
           .then((bridgedIfs) => {
             return infs.map((element) => {
@@ -701,7 +709,7 @@ class VRouter {
     if (!iinf) {
       iinf = await this.configHostonlyInf()
     }
-    const cmd = `/usr/local/bin/VBoxManage modifyvm ${this.config.vrouter.name} ` +
+    const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
       ` --nic${nic} hostonly ` +
       ` --nictype${nic} "82540EM" ` +
       ` --hostonlyadapter${nic} ${iinf} ` +
@@ -728,7 +736,7 @@ class VRouter {
         iinf = arr[0]
       }
     }
-    const cmd = `/usr/local/bin/VBoxManage modifyvm ${this.config.vrouter.name} ` +
+    const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
       `--nic${nic} bridged ` +
       ` --nictype${nic} "82540EM" ` +
       `--bridgeadapter${nic} "${iinf.replace(/["']/g, '')}" ` +
@@ -741,7 +749,7 @@ class VRouter {
   }
 
   isNIC1ConfigedAsHostonly () {
-    let cmd = `/usr/local/bin/VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic1\\|hostonlyadapter1'`
+    let cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic1\\|hostonlyadapter1'`
     return this.localExec(cmd)
       .then((output) => {
         // hostonlyadapter1="vboxnet4"
@@ -771,7 +779,7 @@ class VRouter {
       })
   }
   isNIC2ConfigedAsBridged () {
-    let cmd = `/usr/local/bin/VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic2\\|bridgeadapter2'`
+    let cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic2\\|bridgeadapter2'`
     return this.localExec(cmd)
       .then((output) => {
         const infos = new Map()
@@ -825,7 +833,7 @@ class VRouter {
     // VBoxManage showvminfo com.icymind.test --machinereadable  | grep "uart\(mode\)\?1"
     // uart1="0x03f8,4"
     // uartmode1="server,/Users/simon/Library/Application Support/VRouter/serial"
-    const cmd = `/usr/local/bin/VBoxManage showvminfo ${this.config.vrouter.name} --machinereadable  | grep "uart\\(mode\\)\\?1"`
+    const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable  | grep "uart\\(mode\\)\\?1"`
     return this.localExec(cmd)
       .then((output) => {
         const infos = new Map()
@@ -840,7 +848,7 @@ class VRouter {
   async toggleSerialPort (action = 'on', num = 1) {
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${serialPath}"` : 'off'
-    const cmd = `/usr/local/bin/VBoxManage modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
+    const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
     const vmState = await this.getvmState()
     if (vmState !== 'poweroff') {
       return Promise.reject(Error('vm must be shutdown before modify'))
