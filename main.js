@@ -26,7 +26,7 @@ function createWindow () {
   })
 }
 
-function enableCopy() {
+function enableCopy () {
   if (process.platform !== 'darwin') {
     return
   }
@@ -65,4 +65,3 @@ app.on('activate', () => {
     createWindow()
   }
 })
-

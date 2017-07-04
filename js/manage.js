@@ -24,7 +24,9 @@ winston.configure({
   ]
 })
 
+/* eslint-disable */
 const myApp = new Vue({
+/* eslint-enable */
   el: '#app',
   data: {
     shadowsocks: vrouter.config.shadowsocks.server,

@@ -1,4 +1,5 @@
 /* eslint-env mocha */
+/* eslint no-unused-expressions: "off" */
 const path = require('path')
 const os = require('os')
 const fs = require('fs-extra')
@@ -9,7 +10,7 @@ const expect = chai.expect
 const { VRouter } = require(path.join(__dirname, '../js/vrouter-local.js'))
 const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'))
 // const configFile = path.join(__dirname, './config-test.json')
-const configFile = path.join(__dirname, '../config/config.json')
+// const configFile = path.join(__dirname, '../config/config.json')
 
 describe('Test ability of building VM', function () {
   this.timeout(600000)

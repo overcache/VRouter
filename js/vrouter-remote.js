@@ -1,4 +1,3 @@
-const path = require('path')
 class VRouterRemote {
   // todo: reconnect
 

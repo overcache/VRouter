@@ -1,4 +1,5 @@
 /* eslint-env mocha */
+/* eslint no-unused-expressions: "off" */
 const fs = require('fs-extra')
 const path = require('path')
 const os = require('os')
