@@ -26,7 +26,32 @@ function createWindow () {
   })
 }
 
-app.on('ready', createWindow)
+function enableCopy(){
+  if (process.platform !== 'darwin') {
+		return
+	}
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+			{
+				label: 'Edit',
+				submenu: [
+					{ role: 'undo' },
+					{ role: 'redo' },
+					{ type: 'separator' },
+					{ role: 'cut' },
+					{ role: 'copy' },
+					{ role: 'paste' },
+					{ role: 'delete' },
+					{ role: 'selectall' }
+				]
+			}
+		]))
+}
+
+app.on('ready', () => {
+  createWindow()
+  enableCopy()
+})
 
 app.on('window-all-closed', () => {
   // if (process.platform !== 'darwin') {
