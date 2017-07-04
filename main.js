@@ -26,26 +26,27 @@ function createWindow () {
   })
 }
 
-function enableCopy(){
+function enableCopy() {
   if (process.platform !== 'darwin') {
-		return
-	}
-
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-			{
-				label: 'Edit',
-				submenu: [
-					{ role: 'undo' },
-					{ role: 'redo' },
-					{ type: 'separator' },
-					{ role: 'cut' },
-					{ role: 'copy' },
-					{ role: 'paste' },
-					{ role: 'delete' },
-					{ role: 'selectall' }
-				]
-			}
-		]))
+    return
+  }
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: 'Edit',
+        submenu: [
+          { role: 'undo' },
+          { role: 'redo' },
+          { type: 'separator' },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'delete' },
+          { role: 'selectall' }
+        ]
+      }
+    ])
+  )
 }
 
 app.on('ready', () => {
