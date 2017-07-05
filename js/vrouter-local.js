@@ -1643,7 +1643,7 @@ class VRouter {
     }
     if (!this.config.version) {
       // version 0.1 to 0.2
-      const ssFields = ['address', 'port', 'password', 'timeout', 'method']
+      const ssFields = ['address', 'port', 'password', 'timeout', 'method', 'fastopen']
       ssFields.forEach((field) => {
         newCfg.shadowsocks.server[field] = this.config.shadowsocks.server[field]
       })
