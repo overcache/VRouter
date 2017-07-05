@@ -1,0 +1,18 @@
+{
+    "ecmaVersion": 6,
+    "libs": [
+        "browser"
+    ],
+    "loadEagerly": [],
+    "dontLoad": [],
+    "plugins": {
+        "complete_strings": {
+            "maxLength": 15
+        },
+        "node": {},
+        "doc_comment": {
+            "fullDocs": true,
+            "strong": true
+        }
+    }
+}
