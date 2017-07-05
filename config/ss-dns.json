@@ -6,7 +6,7 @@
     "password":"demo",
     "timeout":300,
     "method":"chacha20",
-    "fast_open": true,
+    "fast_open": false,
     "tunnel_address": "8.8.8.8:53",
     "mode": "udp_only"
 }

@@ -6,6 +6,6 @@
     "password":"demo",
     "timeout":300,
     "method":"chacha20",
-    "fast_open": true,
+    "fast_open": false,
     "mode": "tcp_only"
 }
