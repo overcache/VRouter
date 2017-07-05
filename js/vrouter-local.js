@@ -102,18 +102,16 @@ class VRouter {
   }
   async getOSXNetworkService (inf) {
     const cmd = `/usr/sbin/networksetup -listnetworkserviceorder`
-    return this.localExec(cmd)
-      .then((output) => {
-        const reg = /\(\d+\) (.*)\n\(Hardware Port: .*?, Device: (.*)\)/g
-        while (true) {
-          const match = reg.exec(output)
-          if (!match) break
-          if (match[2] === inf) {
-            return Promise.resolve(match[1])
-          }
-        }
-        return Promise.reject(Error(`can not find NetworkService match ${inf}`))
-      })
+    const output = await this.localExec(cmd)
+    const reg = /\(\d+\) (.*)\n\(Hardware Port: .*?, Device: (.*)\)/g
+    while (true) {
+      const match = reg.exec(output)
+      if (!match) break
+      if (match[2] === inf) {
+        return match[1]
+      }
+    }
+    return Error(`can not find NetworkService match ${inf}`)
   }
   async getCurrentGateway () {
     let networkService
@@ -158,16 +156,14 @@ class VRouter {
     } else {
       // const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router | awk -F ": " '{print $2}'`
       const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router`
-      ip = await this.localExec(subCmd)
-        .then((output) => {
-          const ipReg = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/ig
-          const match = ipReg.exec(output)
-          if (match && match[1]) {
-            return Promise.resolve(match[1])
-          } else {
-            return Promise.reject(Error('can not get Router IP'))
-          }
-        })
+      const output = await this.localExec(subCmd)
+      const ipReg = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/ig
+      const match = ipReg.exec(output)
+      if (match && match[1]) {
+        ip = match[1]
+      } else {
+        return Error('can not get Router IP')
+      }
     }
     const cmd1 = `/sbin/route change default ${ip}`
     const cmd2 = `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
@@ -230,210 +226,101 @@ class VRouter {
       `--storagectl "SATA Controller" --port "1" ` +
       `--type "hdd" --nonrotational "on" --medium "${vdi}"`)
 
-    return this.localExec(subCmds.join(' && '))
-      .then(() => {
-        return this.lockGUIConfig()
-      })
-      .then(() => {
-        return this.hidevm()
-      })
-      .then(() => {
-        return this.toggleSerialPort('on')
-          .then(() => {
-            this.process.emit('build', '配置虚拟机串口')
-          })
-      })
-      .then(() => {
-        return this.configvmNetwork()
-          .then(() => {
-            this.process.emit('build', '配置虚拟机网络')
-          })
-          .catch((err) => {
-            this.process.emit('err', '配置虚拟机网络失败')
-            console.log('error when configvmNetwork. continue following steps')
-            console.log(err)
-          })
-      })
-      .then(() => {
-        return this.startvm()
-          .then(() => {
-            this.process.emit('build', '开始启动虚拟机...请稍候30秒')
-          })
-          .then(() => {
-            return this.wait(30000)
-          })
-      })
-      .then(() => {
-        return this.changevmPwd()
-          .then(() => {
-            this.process.emit('build', '修改虚拟机密码')
-          })
-      })
-      .then(() => {
-        return this.configDnsmasq()
-          .then(() => {
-            this.process.emit('build', '配置Dnsmasq')
-          })
-      })
-      .then(() => {
-        return this.changevmTZ()
-          .then(() => {
-            this.process.emit('build', '修改虚拟机时区')
-          })
-      })
-      .then(() => {
-        return this.turnOnFastOpen()
-          .then(() => {
-            this.process.emit('build', '打开tcp fast open')
-          })
-      })
-      .then(() => {
-        return this.configvmLanIP()
-          .then(() => {
-            this.process.emit('build', '配置虚拟机网络地址, 请稍候10秒')
-          })
-          .then(() => {
-            return this.wait(10000)
-          })
-      })
-      .then(() => {
-        return this.installPackage()
-          .then(() => {
-            this.process.emit('build', '安装 dnsmasq-full 以及 ipset, 请稍候30秒')
-          })
-          .then(() => {
-            return this.wait(30000)
-          })
-      })
-      .then(() => {
-        const src = path.join(__dirname, '..', 'third_party')
-        const dst = this.config.vrouter.configDir + '/third_party/'
-        return this.scp(src, dst)
-          .then(() => {
-            this.process.emit('build', '拷贝 shadowsocks[r] 以及 kcptun 到虚拟机')
-          })
-          .then(() => {
-            return this.serialLog('done: scp third_party')
-          })
-      })
-      .then(() => {
-        return this.scpConfigAll()
-          .then(() => {
-            this.process.emit('build', '拷贝配置文件到虚拟机')
-          })
-          .then(() => {
-            return this.serialLog('done: scpConfigAll')
-          })
-      })
-      .then(() => {
-        return this.connect()
-          .then((remote) => {
-            this.process.emit('build', '登录虚拟机')
-            return Promise.resolve(remote)
-          })
-      })
-      .then((remote) => {
-        return this.serialLog('done: connect to vm')
-          .then(() => {
-            return remote.installKt()
-          })
-          .then(() => {
-            return this.serialLog('done: installKt')
-              .then(() => {
-                this.process.emit('build', '安装 kcptun')
-              })
-          })
-          .then(() => {
-            if (this.config.firewall.currentProxies.includes('Kt')) {
-              return this.enableService('kcptun')
-              .then(() => {
-                this.process.emit('build', '设置 kcptun 随虚拟机启动')
-              })
-              .then(() => {
-                return this.serialLog('done: enable kcptun')
-              })
-            }
-          })
-          .then(() => {
-            return remote.installSs()
-              .then(() => {
-                this.process.emit('build', '安装 shadowsocks')
-              })
-              .then(() => {
-                return this.serialLog('done: install SS')
-              })
-          })
-          .then(() => {
-            const p = this.config.firewall.currentProxies
-            if (p === 'ss' || p === 'ssKt') {
-              return this.enableService('shadowsocks')
-                .then(() => {
-                  this.process.emit('build', '设置 shadowsocks 随虚拟机启动')
-                })
-                .then(() => {
-                  return this.serialLog('done: enable SS')
-                })
-            }
-          })
-          .then(() => {
-            return remote.installSsr()
-              .then(() => {
-                this.process.emit('build', '安装 shadowsocksr')
-              })
-              .then(() => {
-                return this.serialLog('done: install ssr')
-              })
-          })
-          .then(() => {
-            if (this.config.firewall.currentProxies.includes('ssr')) {
-              return this.enableService('shadowsocksr')
-                .then(() => {
-                  this.process.emit('build', '设置 shadowsocksr 随虚拟机启动')
-                })
-                .then(() => {
-                  return this.serialLog('done: enable ssr')
-                })
-            }
-          })
-          .then(() => {
-            return this.enableService('cron')
-              .then(() => {
-                this.process.emit('build', '启用 cron 服务')
-              })
-              .then(() => {
-                return this.serialLog('done: enable cron')
-              })
-          })
-          .then(() => {
-            return this.configWatchdog()
-              .then(() => {
-                this.process.emit('build', '安装守护脚本')
-              })
-              .then(() => {
-                return this.serialLog('done: install watchdog')
-              })
-          })
-          .then(() => {
-            return this.serialLog('done: shutting down')
-              .then(() => {
-                this.process.emit('build', '保存设置, 关闭虚拟机...')
-              })
-              .then(() => {
-                return remote.shutdown()
-              })
-          })
-          .then(() => {
-            return remote.closeConn().catch(() => {})
-          })
-      })
-      .then(() => {
-        return this.wait(10000)
-      })
-      .catch((err) => {
-        console.log(err)
-        return Promise.reject(err)
-      })
+    try {
+      await this.localExec(subCmds.join(' && '))
+      await this.lockGUIConfig()
+      await this.hidevm()
+
+      await this.toggleSerialPort('on')
+      this.process.emit('build', '配置虚拟机串口')
+
+      await this.configvmNetwork()
+      this.process.emit('build', '配置虚拟机网络')
+
+      await this.startvm()
+      this.process.emit('build', '开始启动虚拟机...请稍候30秒')
+      await this.wait(30000)
+
+      await this.changevmPwd()
+      this.process.emit('build', '修改虚拟机密码')
+
+      await this.configDnsmasq()
+      this.process.emit('build', '配置Dnsmasq')
+
+      await this.changevmTZ()
+      this.process.emit('build', '修改虚拟机时区')
+
+      await this.turnOnFastOpen()
+      this.process.emit('build', '打开tcp fast open')
+
+      await this.configvmLanIP()
+      this.process.emit('build', '配置虚拟机网络地址, 请稍候10秒')
+      await this.wait(10000)
+
+      await this.installPackage()
+      this.process.emit('build', '安装 dnsmasq-full 以及 ipset, 请稍候30秒')
+      await this.wait(30000)
+
+      const src = path.join(__dirname, '..', 'third_party')
+      const dst = this.config.vrouter.configDir + '/third_party/'
+      await this.scp(src, dst)
+      this.process.emit('build', '拷贝 shadowsocks[r] 以及 kcptun 到虚拟机')
+      await this.serialLog('done: scp third_party')
+
+      await this.scpConfigAll()
+      this.process.emit('build', '拷贝配置文件到虚拟机')
+      await this.serialLog('done: scpConfigAll')
+
+      const remote = await this.connect()
+      this.process.emit('build', '登录虚拟机')
+      await this.serialLog('done: connect to vm')
+
+      await remote.installKt()
+      await this.serialLog('done: installKt')
+      this.process.emit('build', '安装 kcptun')
+      if (this.config.firewall.currentProxies.includes('Kt')) {
+        await this.enableService('kcptun')
+        this.process.emit('build', '设置 kcptun 随虚拟机启动')
+        await this.serialLog('done: enable kcptun')
+      }
+
+      await remote.installSs()
+      this.process.emit('build', '安装 shadowsocks')
+      await this.serialLog('done: install SS')
+      const p = this.config.firewall.currentProxies
+      if (p === 'ss' || p === 'ssKt') {
+        await this.enableService('shadowsocks')
+        this.process.emit('build', '设置 shadowsocks 随虚拟机启动')
+        await this.serialLog('done: enable SS')
+      }
+
+      await remote.installSsr()
+      this.process.emit('build', '安装 shadowsocksr')
+      await this.serialLog('done: install ssr')
+      if (this.config.firewall.currentProxies.includes('ssr')) {
+        await this.enableService('shadowsocksr')
+        this.process.emit('build', '设置 shadowsocksr 随虚拟机启动')
+        await this.serialLog('done: enable ssr')
+      }
+
+      await this.enableService('cron')
+      this.process.emit('build', '启用 cron 服务')
+      await this.serialLog('done: enable cron')
+
+      await this.configWatchdog()
+      this.process.emit('build', '安装守护脚本')
+      await this.serialLog('done: install watchdog')
+
+      this.process.emit('build', '保存设置, 关闭虚拟机...')
+      await this.serialLog('done: shutting down')
+      await remote.shutdown()
+      await remote.closeConn().catch(() => {})
+      await this.wait(10000)
+    } catch (error) {
+      throw error
+    }
   }
+
   guiLogin () {
     const cmd = `${VBoxManage} startvm ${this.config.vrouter.name} --type separate`
     return this.localExec(cmd)
@@ -453,9 +340,7 @@ class VRouter {
     if (state !== 'running') {
       try {
         await this.startvm()
-          .then(() => {
-            return this.wait(35000)
-          })
+        await this.wait(35000)
       } catch (err) {
         console.log(err)
         console.log('startvm error')
@@ -475,13 +360,9 @@ class VRouter {
 
     // 先执行两遍pre
     await this.localExec(pre)
-      .then(() => {
-        return this.localExec(pre)
-      })
-      .then(() => {
-        // console.log(serialCmd)
-        return this.localExec(serialCmd)
-      })
+    await this.localExec(pre)
+    // console.log(serialCmd)
+    return this.localExec(serialCmd)
   }
 
   importvm (vmFile) {
@@ -505,24 +386,13 @@ class VRouter {
     const state = await this.getvmState()
     if (state !== 'running') {
       const cmd = `${VBoxManage} startvm --type ${type} ${this.config.vrouter.name}`
-      return this.localExec(cmd)
-          .then(() => {
-            return this.wait(1000)
-              .then(() => {
-                // skip grub's waiting time
-                return this.sendKeystrokes()
-              })
-          })
-          .then(() => {
-            // skip grub's waiting time
-            return this.wait(500)
-              .then(() => {
-                return this.sendKeystrokes()
-              })
-          })
-        .then(() => {
-          return this.wait(waitTime)
-        })
+      await this.localExec(cmd)
+      await this.wait(1000)
+      await this.sendKeystrokes()
+      // skip grub's waiting time
+      await this.wait(500)
+      await this.sendKeystrokes()
+      await this.wait(waitTime)
     }
   }
   async stopvm (action = 'savestate', waitTime = 100) {
@@ -532,31 +402,23 @@ class VRouter {
       if (action === 'poweroff') {
         if (serialPortState) {
           // poweroff from inside openwrt is more safer.
-          return this.serialExec('poweroff', 'poweroff')
-            .then(() => {
-              return this.wait(8000)
-            })
+          await this.serialExec('poweroff', 'poweroff')
+          return this.wait(8000)
         } else {
           const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} poweroff`
-          return this.localExec(cmd)
-            .then(() => {
-              return this.wait(waitTime)
-            })
+          await this.localExec(cmd)
+          return this.wait(waitTime)
         }
       }
       if (action === 'savestate') {
         const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} savestate`
-        return this.localExec(cmd)
-          .then(() => {
-            return this.wait(waitTime)
-          })
+        await this.localExec(cmd)
+        return this.wait(waitTime)
       }
     } else if (vmState === 'saved') {
       if (action === 'poweroff') {
-        return this.localExec(`${VBoxManage} discardstate ${this.config.vrouter.name}`)
-          .then(() => {
-            return this.wait(5000)
-          })
+        await this.localExec(`${VBoxManage} discardstate ${this.config.vrouter.name}`)
+        return this.wait(5000)
       }
     }
   }
@@ -570,98 +432,85 @@ class VRouter {
     return this.localExec(cmd)
   }
 
-  isVBInstalled () {
+  async isVBInstalled () {
     const cmd = `${VBoxManage} --version`
-    console.log(cmd)
-    return this.localExec(cmd)
-      .then(() => {
-        return Promise.resolve(true)
-      })
-      .catch(() => {
-        return Promise.resolve(false)
-      })
+    try {
+      await this.localExec(cmd)
+      return true
+    } catch (error) {
+      return false
+    }
   }
-  isVRouterExisted () {
+  async isVRouterExisted () {
     const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name}`
-    return this.localExec(cmd)
-      .then(() => {
-        return Promise.resolve(true)
-      })
-      .catch(() => {
-        return Promise.resolve(false)
-      })
+    try {
+      await this.localExec(cmd)
+      return true
+    } catch (error) {
+      return false
+    }
   }
-  getvmState () {
+  async getvmState () {
     // much slow than 'VBoxManage list runningvms'
     const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep VMState=`
-    return this.localExec(cmd)
-      .then((output) => {
-        const state = output.trim().split('=')[1].replace(/"/g, '')
-        return state
-      })
+    const output = await this.localExec(cmd)
+    const state = output.trim().split('=')[1].replace(/"/g, '')
+    return state
   }
-  isVRouterRunning () {
+  async isVRouterRunning () {
     // State:           running (since 2017-06-16T02:13:09.066000000)
     // VBoxManage showvminfo com.icymind.test --machinereadable  | grep vmState
     // vmState="running"
     const cmd = `${VBoxManage} list runningvms`
-    return this.localExec(cmd)
-      .then((stdout) => {
-        const vms = stdout
-          .trim().split('\n')
-          .map(e => e.split(' ')[0].trim().replace(/"/g, ''))
-        if (vms.includes(this.config.vrouter.name)) {
-          return Promise.resolve(true)
-        } else {
-          return Promise.resolve(false)
-        }
-      })
+    const stdout = await this.localExec(cmd)
+    const vms = stdout
+      .trim().split('\n')
+      .map(e => e.split(' ')[0].trim().replace(/"/g, ''))
+    if (vms.includes(this.config.vrouter.name)) {
+      return true
+    } else {
+      return false
+    }
   }
 
-  getInfIP (inf) {
+  async getInfIP (inf) {
     const cmd = `/sbin/ifconfig ${inf}`
-    return this.localExec(cmd)
-      .then((output) => {
-        const ipMatch = /inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) netmask/ig.exec(output)
-        const ip = (ipMatch && ipMatch[1]) || ''
-        return Promise.resolve(ip)
-      })
+    const output = await this.localExec(cmd)
+    const ipMatch = /inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) netmask/ig.exec(output)
+    const ip = (ipMatch && ipMatch[1]) || ''
+    return ip
   }
   getAllInf () {
     const cmd = '/sbin/ifconfig'
     return this.localExec(cmd)
   }
-  getHostonlyInf () {
+  async getHostonlyInf () {
     // return [correspondingInf, firstAvailableInf]
-    return this.getAllInf()
-      .then((infs) => {
-        const reg = /^vboxnet\d+.*\n(?:\t.*\n)*/img
-        let correspondingInf = null
-        let firstAvailableInf = null
-        while (true) {
-          const result = reg.exec(infs)
-          if (!result) break
-          const infConfig = result[0]
-          const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(infConfig)
-          const nameMatch = /^(vboxnet\d+):/ig.exec(infConfig)
-          if (!ipMatch && !firstAvailableInf && nameMatch) {
-            // console.log(infConfig)
-            firstAvailableInf = nameMatch[1]
-          }
-          if (ipMatch && nameMatch && ipMatch[1] === this.config.host.ip) {
-            correspondingInf = nameMatch[1]
-          }
-        }
-        return [correspondingInf, firstAvailableInf]
-      })
+    const infs = await this.getAllInf()
+    const reg = /^vboxnet\d+.*\n(?:\t.*\n)*/img
+    let correspondingInf = null
+    let firstAvailableInf = null
+    while (true) {
+      const result = reg.exec(infs)
+      if (!result) break
+      const infConfig = result[0]
+      const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(infConfig)
+      const nameMatch = /^(vboxnet\d+):/ig.exec(infConfig)
+      if (!ipMatch && !firstAvailableInf && nameMatch) {
+        // console.log(infConfig)
+        firstAvailableInf = nameMatch[1]
+      }
+      if (ipMatch && nameMatch && ipMatch[1] === this.config.host.ip) {
+        correspondingInf = nameMatch[1]
+      }
+    }
+    return [correspondingInf, firstAvailableInf]
   }
-  createHostonlyInf () {
+  async createHostonlyInf () {
     const cmd = `${VBoxManage} hostonlyif create`
-    return this.localExec(cmd)
-      .then((output) => {
-        const infMatch = /Interface '(.*)'/ig.exec(output)
-        return infMatch && infMatch[1]
-      })
+    const output = await this.localExec(cmd)
+    const infMatch = /Interface '(.*)'/ig.exec(output)
+    return infMatch && infMatch[1]
   }
   removeHostonlyInf (inf) {
     const cmd = `${VBoxManage} hostonlyif remove ${inf}`
@@ -674,42 +523,31 @@ class VRouter {
       iinf = infs[0] || infs[1] || await this.createHostonlyInf()
     }
     const cmd = `${VBoxManage} hostonlyif ipconfig ${iinf} --ip ${this.config.host.ip} --netmask ${netmask}`
-    return this.localExec(cmd)
-      .then(() => {
-        return Promise.resolve(iinf)
-      })
+    await this.localExec(cmd)
+    return iinf
   }
 
-  getActiveAdapter () {
-    return this.getAllInf()
-      .then((output) => {
-        const reg = /^\w+:.*\n(?:\t.*\n)*/img
-        let infs = []
-        while (true) {
-          let infMatch = reg.exec(output)
-          if (!infMatch) break
-          let infConfig = infMatch[0]
-          if (!/status: active/ig.test(infConfig)) continue
-          if (!/inet \d+\.\d+\.\d+\.\d+ netmask/ig.test(infConfig)) continue
-          infs.push(/^(\w+):.*/ig.exec(infConfig)[1])
-        }
-        return infs
-      })
-      .then((infs) => {
-        const cmd = `${VBoxManage} list bridgedifs`
-        return this.localExec(cmd)
-          .then((bridgedIfs) => {
-            return infs.map((element) => {
-              const raw = String.raw`^Name:\s*(${element}.*)`
-              const reg = new RegExp(raw, 'ig')
-              const nameMatch = reg.exec(bridgedIfs)
-              return nameMatch && nameMatch[1]
-            })
-          })
-          .then((arr) => {
-            return arr.filter(element => element !== null)
-          })
-      })
+  async getActiveAdapter () {
+    const output = await this.getAllInf()
+    const reg = /^\w+:.*\n(?:\t.*\n)*/img
+    let infs = []
+    while (true) {
+      let infMatch = reg.exec(output)
+      if (!infMatch) break
+      let infConfig = infMatch[0]
+      if (!/status: active/ig.test(infConfig)) continue
+      if (!/inet \d+\.\d+\.\d+\.\d+ netmask/ig.test(infConfig)) continue
+      infs.push(/^(\w+):.*/ig.exec(infConfig)[1])
+    }
+    const cmd = `${VBoxManage} list bridgedifs`
+    const bridgedIfs = await this.localExec(cmd)
+    const arr = infs.map((element) => {
+      const raw = String.raw`^Name:\s*(${element}.*)`
+      const reg = new RegExp(raw, 'ig')
+      const nameMatch = reg.exec(bridgedIfs)
+      return nameMatch && nameMatch[1]
+    })
+    return arr.filter(element => element !== null)
   }
   async specifyHostonlyAdapter (inf, nic = '1') {
     let iinf = inf
@@ -755,63 +593,52 @@ class VRouter {
     await this.localExec(cmd)
   }
 
-  isNIC1ConfigedAsHostonly () {
+  async isNIC1ConfigedAsHostonly () {
     let cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic1\\|hostonlyadapter1'`
-    return this.localExec(cmd)
-      .then((output) => {
-        // hostonlyadapter1="vboxnet4"
-        // nic1="hostonly"
-        const infos = new Map()
-        output.trim().split('\n').map((element) => {
-          const temp = element.split('=')
-          infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
-        })
-        if (infos.get('nic1') !== 'hostonly') {
-          return Promise.reject(Error("NIC1 isn't hostonly network"))
-        }
-        if (!/^vboxnet\d+$/ig.test(infos.get('hostonlyadapter1'))) {
-          return Promise.reject(Error("NIC1 doesn't specify host-only adapter"))
-        }
-        return infos.get('hostonlyadapter1')
-      })
-      .then((inf) => {
-        return this.getInfIP(inf)
-          .then((ip) => [inf, ip])
-      })
-      .then(([inf, ip]) => {
-        if (ip !== this.config.host.ip) {
-          return Promise.reject(Error("host-only adapter doesn't config as hostIP"))
-        }
-        return inf
-      })
+    const output = await this.localExec(cmd)
+    // hostonlyadapter1="vboxnet4"
+    // nic1="hostonly"
+    const infos = new Map()
+    output.trim().split('\n').map((element) => {
+      const temp = element.split('=')
+      infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
+    })
+    if (infos.get('nic1') !== 'hostonly') {
+      return Error("NIC1 isn't hostonly network")
+    }
+    if (!/^vboxnet\d+$/ig.test(infos.get('hostonlyadapter1'))) {
+      return Error("NIC1 doesn't specify host-only adapter")
+    }
+    const inf = infos.get('hostonlyadapter1')
+    const ip = await this.getInfIP(inf)
+    if (ip !== this.config.host.ip) {
+      return Error("host-only adapter doesn't config as hostIP")
+    }
+    return inf
   }
-  isNIC2ConfigedAsBridged () {
+  async isNIC2ConfigedAsBridged () {
     let cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic2\\|bridgeadapter2'`
-    return this.localExec(cmd)
-      .then((output) => {
-        const infos = new Map()
-        output.trim().split('\n').map((element) => {
-          const temp = element.split('=')
-          infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
-        })
-        if (infos.get('nic2') !== 'bridged') {
-          return Promise.reject(Error("NIC2 isn't bridged network"))
-        }
-        const inf = infos.get('bridgeadapter2')
-        if (!inf) {
-          return Promise.reject(Error("NIC2 doesn't specify bridged adapter"))
-        }
-        cmd = `/sbin/ifconfig ${inf.trim().split(':')[0]}`
-        return this.localExec(cmd)
-          .then((infConfig) => {
-            const statusMatch = /status: active/ig.exec(infConfig)
-            if (!statusMatch) return Promise.reject(Error("bridged adapter doesn't active"))
-            return inf
-          })
-      })
+    const output = await this.localExec(cmd)
+    const infos = new Map()
+    output.trim().split('\n').map((element) => {
+      const temp = element.split('=')
+      infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
+    })
+    if (infos.get('nic2') !== 'bridged') {
+      return Error("NIC2 isn't bridged network")
+    }
+    const inf = infos.get('bridgeadapter2')
+    if (!inf) {
+      return Error("NIC2 doesn't specify bridged adapter")
+    }
+    cmd = `/sbin/ifconfig ${inf.trim().split(':')[0]}`
+    const infConfig = await this.localExec(cmd)
+    const statusMatch = /status: active/ig.exec(infConfig)
+    if (!statusMatch) return Error("bridged adapter doesn't active")
+    return inf
   }
 
-  configvmNetwork () {
+  async configvmNetwork () {
     /*
      * 1. make sure two ip in same network
      * 2. make sure vm adapters are : hostonlyif, bridged
@@ -824,33 +651,29 @@ class VRouter {
       this.config.host.ip.split('.').slice(0, 3).join('.')) {
       return Promise.reject(Error('VRouterIP and hostIP must in a same subnet'))
     }
-    return this.isNIC1ConfigedAsHostonly(this.config.vrouter.name, this.config.host.ip)
+    await this.isNIC1ConfigedAsHostonly(this.config.vrouter.name, this.config.host.ip)
       .catch(() => {
         return this.specifyHostonlyAdapter()
       })
-      .then(() => {
-        return this.isNIC2ConfigedAsBridged(this.config.vrouter.name)
-      })
+    await this.isNIC2ConfigedAsBridged(this.config.vrouter.name)
       .catch(() => {
         return this.specifyBridgeAdapter()
       })
   }
 
-  isSerialPortOn () {
+  async isSerialPortOn () {
     // VBoxManage showvminfo com.icymind.test --machinereadable  | grep "uart\(mode\)\?1"
     // uart1="0x03f8,4"
     // uartmode1="server,/Users/simon/Library/Application Support/VRouter/serial"
     const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable  | grep "uart\\(mode\\)\\?1"`
-    return this.localExec(cmd)
-      .then((output) => {
-        const infos = new Map()
-        output.trim().split('\n').map((element) => {
-          const temp = element.split('=')
-          infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
-        })
-        return infos.get('uart1') === '0x03f8,4' &&
-          infos.get('uartmode1') === `server,${path.join(this.config.host.configDir, this.config.host.serialFile)}`
-      })
+    const output = await this.localExec(cmd)
+    const infos = new Map()
+    output.trim().split('\n').map((element) => {
+      const temp = element.split('=')
+      infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
+    })
+    return infos.get('uart1') === '0x03f8,4' &&
+      infos.get('uartmode1') === `server,${path.join(this.config.host.configDir, this.config.host.serialFile)}`
   }
   async toggleSerialPort (action = 'on', num = 1) {
     const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
@@ -868,26 +691,18 @@ class VRouter {
     subCmds.push(`uci set network.lan.ipaddr='${this.config.vrouter.ip}'`)
     subCmds.push('uci commit network')
     subCmds.push('/etc/init.d/network restart')
-    return this.serialExec(subCmds.join(' && '), 'config lan ipaddr')
-      .then(() => {
-        return this.serialLog('done: configvmLanIP')
-      })
+    await this.serialExec(subCmds.join(' && '), 'config lan ipaddr')
+    return this.serialLog('done: configvmLanIP')
   }
 
-  configDnsmasq () {
+  async configDnsmasq () {
     const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.conf"
-    return this.serialExec(cmd, 'configDnsmasq')
-      .then(() => {
-        return this.serialLog('done: configDnsmasq')
-      })
+    await this.serialExec(cmd, 'configDnsmasq')
+    return this.serialLog('done: configDnsmasq')
   }
   enableService (service) {
     const cmd1 = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} enable`
-    // const cmd2 = `/etc/init.d/${service} restart`
     return this.serialExec(cmd1, `enable ${service}`)
-    // .then(() => {
-    // return this.serialExec(cmd2, `start ${service}`)
-    // })
   }
   disabledService (service) {
     const cmd = `/etc/init.d/${service} disable && /etc/init.d/${service} stop`
@@ -910,22 +725,16 @@ class VRouter {
         uci set system.@system[0].timezone='HKT-8'
         uci set system.@system[0].zonename='Asia/Hong Kong'
         uci commit system`
-    return this.serialExec(cc.trim().split('\n').map(line => line.trim()).join(' && '), 'change timezone')
-      .then(() => {
-        return this.serialLog('done: changevmTZ')
-      })
+    await this.serialExec(cc.trim().split('\n').map(line => line.trim()).join(' && '), 'change timezone')
+    return this.serialLog('done: changevmTZ')
   }
   async changevmPwd () {
-    return this.serialExec("echo -e 'root\\nroot' | (passwd root)", 'change password')
-      .then(() => {
-        return this.serialLog('done: changevmPwd')
-      })
+    await this.serialExec("echo -e 'root\\nroot' | (passwd root)", 'change password')
+    return this.serialLog('done: changevmPwd')
   }
   async turnOnFastOpen () {
-    return this.serialExec('echo "net.ipv4.tcp_fastopen = 3" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf')
-      .then(() => {
-        return this.serialLog('done: trunOn fast_open')
-      })
+    await this.serialExec('echo "net.ipv4.tcp_fastopen = 3" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf')
+    return this.serialLog('done: trunOn fast_open')
   }
   serialLog (msg) {
     const cmd = `echo '${msg}' >> /vrouter.log`
@@ -937,10 +746,8 @@ class VRouter {
     subCmds.push('opkg update')
     subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server libopenssl')
     subCmds.push('/etc/init.d/dropbear restart')
-    return this.serialExec(subCmds.join(' && '), 'install packages')
-      .then(() => {
-        return this.serialLog('done: install package && restart dropbear')
-      })
+    await this.serialExec(subCmds.join(' && '), 'install packages')
+    return this.serialLog('done: install package && restart dropbear')
   }
 
   deleteCfgFile (fileName) {
@@ -950,16 +757,15 @@ class VRouter {
         // don't panic. that's unnecessary to delete a non existed file.
       })
   }
-  getCfgContent (fileName) {
+  async getCfgContent (fileName) {
     const filePath = path.join(this.config.host.configDir, fileName)
-    return fs.readFile(filePath, 'utf8')
-      .catch(() => {
-        const template = path.join(__dirname, '../config', fileName)
-        return fs.copy(template, filePath)
-          .then(() => {
-            return fs.readFile(filePath, 'utf8')
-          })
-      })
+    try {
+      return fs.readFile(filePath, 'utf8')
+    } catch (error) {
+      const template = path.join(__dirname, '../config', fileName)
+      await fs.copy(template, filePath)
+      return fs.readFile(filePath, 'utf8')
+    }
   }
   async generateIPsets (overwrite = false) {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.ipsetsFile)
@@ -1256,15 +1062,13 @@ class VRouter {
     ws.end()
     return promise
   }
-  generateCronJob () {
+  async generateCronJob () {
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.cronFile)
     const content = `* * * * * ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}\n`
-    return fs.outputFile(cfgPath, content, 'utf8')
-      .then(() => {
-        return Promise.resolve(cfgPath)
-      })
+    await fs.outputFile(cfgPath, content, 'utf8')
+    return cfgPath
   }
-  generateWatchdog (p) {
+  async generateWatchdog (p) {
     const proxies = p || this.config.firewall.currentProxies
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.watchdogFile)
     let content = '#!/bin/sh\n'
@@ -1318,12 +1122,10 @@ class VRouter {
         content += shadowsocksr
       }
     }
-    return fs.outputFile(cfgPath, content, 'utf8')
-      .then(() => {
-        return Promise.resolve(cfgPath)
-      })
+    await fs.outputFile(cfgPath, content, 'utf8')
+    return cfgPath
   }
-  generateService (type = 'shadowsocks') {
+  async generateService (type = 'shadowsocks') {
     // type=tunnelDns/shadowsocks/shadowsocksr/kcptun
     const cfgPath = path.join(this.config.host.configDir, this.config[type].service)
     let content = ''
@@ -1379,10 +1181,8 @@ class VRouter {
       default:
         throw Error(`unkown service type: ${type}`)
     }
-    return fs.outputFile(cfgPath, content)
-      .then(() => {
-        return Promise.resolve(cfgPath)
-      })
+    await fs.outputFile(cfgPath, content)
+    return cfgPath
   }
   async generateConfig (type = 'shadowsocks') {
     const cfgs = []
@@ -1415,7 +1215,7 @@ class VRouter {
     })
     return Promise.all(promises)
   }
-  generateConfigHeler (type = 'ss-client.json') {
+  async generateConfigHeler (type = 'ss-client.json') {
     let cfg
     let fastopen
     let content = {}
@@ -1574,10 +1374,8 @@ class VRouter {
         throw Error(`unkown type: ${type}`)
     }
     const cfgPath = path.join(this.config.host.configDir, cfg)
-    return fs.writeJson(cfgPath, content, {spaces: 2})
-      .then(() => {
-        return Promise.resolve(cfgPath)
-      })
+    await fs.writeJson(cfgPath, content, {spaces: 2})
+    return cfgPath
   }
 
   downloadFile (src, dest) {
@@ -1703,102 +1501,70 @@ class VRouter {
       })
     })
   }
-  copyTemplate (fileName) {
+  async copyTemplate (fileName) {
     const template = path.join(__dirname, '..', 'config', fileName)
     const dest = path.join(this.config.host.configDir, fileName)
-    return fs.stat(dest)
-      .then(() => {
-        return Promise.resolve(dest)
-      })
-      .catch(() => {
-        console.log(`${dest} not exist, copy template to it.`)
-        return fs.copy(template, dest)
-          .then(() => {
-            return Promise.resolve(dest)
-          })
-      })
+    try {
+      await fs.stat(dest)
+      return dest
+    } catch (error) {
+      console.log(`${dest} not exist, copy template to it.`)
+      await fs.copy(template, dest)
+      return dest
+    }
   }
   async scpConfig (type = 'shadowsocks', overwrite = false) {
+    let p
     switch (type) {
       case 'tunnelDnsService':
-        await this.generateService('tunnelDns')
-          .then((p) => {
-            return this.scp(p, '/etc/init.d/')
-              .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/${this.config.tunnelDns.service}`)
-              })
-          })
+        p = await this.generateService('tunnelDns')
+        await this.scp(p, '/etc/init.d/')
+        await this.serialExec(`chmod +x /etc/init.d/${this.config.tunnelDns.service}`)
         break
       case 'ssService':
-        await this.generateService('shadowsocks')
-          .then((p) => {
-            return this.scp(p, '/etc/init.d/')
-              .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocks.service}`)
-              })
-          })
+        p = await this.generateService('shadowsocks')
+        await this.scp(p, '/etc/init.d/')
+        await this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocks.service}`)
         break
       case 'ssrService':
-        await this.generateService('shadowsocksr')
-          .then((p) => {
-            return this.scp(p, '/etc/init.d/')
-              .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocksr.service}`)
-              })
-          })
+        p = await this.generateService('shadowsocksr')
+        await this.scp(p, '/etc/init.d/')
+        await this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocksr.service}`)
         break
       case 'ktService':
-        await this.generateService('kcptun')
-          .then((p) => {
-            return this.scp(p, '/etc/init.d/')
-              .then(() => {
-                return this.serialExec(`chmod +x /etc/init.d/${this.config.kcptun.service}`)
-              })
-          })
+        p = await this.generateService('kcptun')
+        await this.scp(p, '/etc/init.d/')
+        await this.serialExec(`chmod +x /etc/init.d/${this.config.kcptun.service}`)
         break
       case 'tunnelDns':
       case 'shadowsocks':
       case 'shadowsocksr':
       case 'kcptun':
-        await this.generateConfig(type)
-          .then(async (p) => {
-            for (let i = 0; i < p.length; i++) {
-              await this.scp(p[i], this.config.vrouter.configDir)
-            }
-          })
+        p = await this.generateConfig(type)
+        for (let i = 0; i < p.length; i++) {
+          await this.scp(p[i], this.config.vrouter.configDir)
+        }
         break
       case 'dnsmasq':
-        await this.generateDnsmasqCf(overwrite)
-          .then((p) => {
-            return this.scp(p, '/etc/dnsmasq.d/')
-          })
+        p = await this.generateDnsmasqCf(overwrite)
+        await this.scp(p, '/etc/dnsmasq.d/')
         break
       case 'ipset':
-        await this.generateIPsets(overwrite)
-          .then((p) => {
-            return this.scp(p, this.config.vrouter.configDir)
-          })
+        p = await this.generateIPsets(overwrite)
+        await this.scp(p, this.config.vrouter.configDir)
         break
       case 'firewall':
-        await this.generateFWRules(null, null, overwrite)
-          .then((p) => {
-            return this.scp(p, '/etc/')
-          })
+        p = await this.generateFWRules(null, null, overwrite)
+        await this.scp(p, '/etc/')
         break
       case 'watchdog':
-        await this.generateWatchdog()
-          .then((p) => {
-            return this.scp(p, this.config.vrouter.configDir)
-              .then(() => {
-                return this.serialExec(`chmod +x ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`)
-              })
-          })
+        p = await this.generateWatchdog()
+        await this.scp(p, this.config.vrouter.configDir)
+        await this.serialExec(`chmod +x ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`)
         break
       case 'cron':
-        await this.generateCronJob()
-          .then((p) => {
-            return this.scp(p, this.config.vrouter.configDir)
-          })
+        p = await this.generateCronJob()
+        await this.scp(p, this.config.vrouter.configDir)
         break
     }
   }
@@ -1830,31 +1596,26 @@ class VRouter {
       await this.scpConfig(types[i], overwrite)
     }
   }
-  connect (startFirst) {
-    return this.getvmState()
-      .then((state) => {
-        if (state !== 'running') {
-          return Promise.reject(Error("vm doesn't running."))
-        }
+  async connect (startFirst) {
+    const state = await this.getvmState()
+    if (state !== 'running') {
+      return Error("vm doesn't running.")
+    }
+    return new Promise((resolve, reject) => {
+      const conn = new Client()
+      conn.on('ready', () => {
+        resolve(new VRouterRemote(conn, this.config, this))
+      }).connect({
+        host: this.config.vrouter.ip,
+        port: this.config.vrouter.port,
+        username: this.config.vrouter.username,
+        password: this.config.vrouter.password,
+        keepaliveInterval: 60000,
+        readyTimeout: 1500
       })
-      .then(() => {
-        return new Promise((resolve, reject) => {
-          const conn = new Client()
-          conn.on('ready', () => {
-            resolve(new VRouterRemote(conn, this.config, this))
-          }).connect({
-            host: this.config.vrouter.ip,
-            port: this.config.vrouter.port,
-            username: this.config.vrouter.username,
-            password: this.config.vrouter.password,
-            keepaliveInterval: 60000,
-            readyTimeout: 1500
-          })
-        })
-      })
+    })
   }
 }
-
 module.exports = {
   VRouter
 }

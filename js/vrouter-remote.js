@@ -63,14 +63,12 @@ class VRouterRemote {
   }
 
   // network
-  getIP (inf) {
+  async getIP (inf) {
     const cmd = `ifconfig ${inf} | grep 'inet addr'`
-    return this.remoteExec(cmd)
-      .then((output) => {
-        const reg = /^inet addr:(\d+.\d+.\d+.\d+)/
-        const match = reg.exec(output.trim())
-        return Promise.resolve((match && match[1]) || '')
-      })
+    const output = await this.remoteExec(cmd)
+    const reg = /^inet addr:(\d+.\d+.\d+.\d+)/
+    const match = reg.exec(output.trim())
+    return (match && match[1]) || ''
   }
   getMacAddress (inf = 'eth1') {
     const cmd = `cat /sys/class/net/${inf}/address`
@@ -98,53 +96,47 @@ class VRouterRemote {
     const cmd = 'ss-redir -h | grep "shadowsocks-libev" | cut -d" " -f2'
     return this.remoteExec(cmd)
   }
-  isSsRunning () {
+  async isSsRunning () {
     let cmd = ''
     if (this.config.firewall.currentProxies === 'ss') {
       cmd = 'ps -w| grep "[s]s-redir -c .*ss-client.json"'
     } else {
       cmd = 'ps -w| grep "[s]s-redir -c .*ss-over-kt.json"'
     }
-    return this.remoteExec(cmd)
-      .then((output) => {
-        if (output) {
-          return Promise.resolve(true)
-        } else {
-          return Promise.resolve(false)
-        }
-      })
+    const output = await this.remoteExec(cmd)
+    if (output) {
+      return true
+    } else {
+      return false
+    }
   }
   getSsrVersion () {
     const cmd = 'ssr-redir -h | grep "shadowsocks-libev" | cut -d" " -f2'
     return this.remoteExec(cmd)
   }
-  isSsrRunning () {
+  async isSsrRunning () {
     let cmd = ''
     if (this.config.firewall.currentProxies === 'ssr') {
       cmd = 'ps -w| grep "[s]sr-redir -c .*ssr-client.json"'
     } else {
       cmd = 'ps -w| grep "[s]sr-redir -c .*ssr-over-kt.json"'
     }
-    return this.remoteExec(cmd)
-      .then((output) => {
-        if (output) {
-          return Promise.resolve(true)
-        } else {
-          return Promise.resolve(false)
-        }
-      })
+    const output = await this.remoteExec(cmd)
+    if (output) {
+      return true
+    } else {
+      return false
+    }
   }
-  isTunnelDnsRunning () {
+  async isTunnelDnsRunning () {
     const tunnelBinName = this.config.firewall.currentProxies.includes('ssr') ? 'sr-tunnel' : 's-tunnel'
     const cmd = `ps -w| grep "[s]${tunnelBinName} -c .*tunnel-dns.json"`
-    return this.remoteExec(cmd)
-      .then((output) => {
-        if (output) {
-          return Promise.resolve(true)
-        } else {
-          return Promise.resolve(false)
-        }
-      })
+    const output = await this.remoteExec(cmd)
+    if (output) {
+      return true
+    } else {
+      return false
+    }
   }
   getSsOverKtProcess () {
     const cmd = 'ps -w| grep "[s]s-redir -c .*ss-over-kt.json"'
@@ -166,25 +158,21 @@ class VRouterRemote {
     const cmd = 'kcptun --version | cut -d" " -f3'
     return this.remoteExec(cmd)
   }
-  isKtRunning () {
+  async isKtRunning () {
     const cmd = 'ps | grep "[k]cptun -c"'
-    return this.remoteExec(cmd)
-      .then((output) => {
-        if (!output) {
-          return Promise.resolve(false)
-        } else {
-          return Promise.resolve(true)
-        }
-      })
+    const output = await this.remoteExec(cmd)
+    if (output) {
+      return true
+    } else {
+      return false
+    }
   }
-  getOpenwrtVersion () {
+  async getOpenwrtVersion () {
     const cmd = 'cat /etc/banner'
-    return this.remoteExec(cmd)
-      .then((output) => {
-        const reg = /^ *(\w+ \w+ \(.*\)) *$/mg
-        const match = reg.exec(output)
-        return Promise.resolve((match && match[1]) || '')
-      })
+    const output = await this.remoteExec(cmd)
+    const reg = /^ *(\w+ \w+ \(.*\)) *$/mg
+    const match = reg.exec(output)
+    return (match && match[1]) || ''
   }
 
   // proxies
