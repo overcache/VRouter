@@ -1403,49 +1403,62 @@ class VRouter {
     })
     return Promise.all(promises)
   }
-  generateConfigHeler (type = 'ss-client') {
+  generateConfigHeler (type = 'ss-client.json') {
     let cfg
+    let fastopen
     let content = {}
     switch (type) {
       case this.config.shadowsocks.client:
         cfg = this.config.shadowsocks.client
+        fastopen = this.config.shadowsocks.server.fastopen
+        if (typeof fastopen === 'string') {
+          fastopen = fastopen === 'true'
+        }
         content = {
           'server': this.config.shadowsocks.server.address,
-          'server_port': this.config.shadowsocks.server.port,
+          'server_port': parseInt(this.config.shadowsocks.server.port),
           'local_address': '0.0.0.0',
-          'local_port': this.config.shadowsocks.clientPort,
+          'local_port': parseInt(this.config.shadowsocks.clientPort),
           'password': this.config.shadowsocks.server.password,
-          'timeout': this.config.shadowsocks.server.timeout,
+          'timeout': parseInt(this.config.shadowsocks.server.timeout),
           'method': this.config.shadowsocks.server.method,
-          'fast_open': false,
+          'fast_open': fastopen,
           'mode': 'tcp_only'
         }
         break
       case this.config.shadowsocks.overKt:
         cfg = this.config.shadowsocks.overKt
+        fastopen = this.config.shadowsocks.server.fastopen
+        if (typeof fastopen === 'string') {
+          fastopen = fastopen === 'true'
+        }
         content = {
           'server': '127.0.0.1',
-          'server_port': this.config.kcptun.clientPort,
+          'server_port': parseInt(this.config.kcptun.clientPort),
           'local_address': '0.0.0.0',
-          'local_port': this.config.shadowsocks.overKtPort,
+          'local_port': parseInt(this.config.shadowsocks.overKtPort),
           'password': this.config.shadowsocks.server.password,
           'timeout': 20,
           'method': this.config.shadowsocks.server.method,
-          'fast_open': false,
+          'fast_open': fastopen,
           'mode': 'tcp_only'
         }
         break
       case this.config.shadowsocksr.client:
         cfg = this.config.shadowsocksr.client
+        fastopen = this.config.shadowsocksr.server.fastopen
+        if (typeof fastopen === 'string') {
+          fastopen = fastopen === 'true'
+        }
         content = {
           'server': this.config.shadowsocksr.server.address,
-          'server_port': this.config.shadowsocksr.server.port,
+          'server_port': parseInt(this.config.shadowsocksr.server.port),
           'local_address': '0.0.0.0',
-          'local_port': this.config.shadowsocksr.clientPort,
+          'local_port': parseInt(this.config.shadowsocksr.clientPort),
           'password': this.config.shadowsocksr.server.password,
-          'timeout': this.config.shadowsocksr.server.timeout,
+          'timeout': parseInt(this.config.shadowsocksr.server.timeout),
           'method': this.config.shadowsocksr.server.method,
-          'fast_open': false,
+          'fast_open': fastopen,
           'mode': 'tcp_only',
           'protocol': this.config.shadowsocksr.server.protocol,
           'protocol_param': this.config.shadowsocksr.server.protocol_param,
@@ -1461,15 +1474,19 @@ class VRouter {
         break
       case this.config.shadowsocksr.overKt:
         cfg = this.config.shadowsocksr.overKt
+        fastopen = this.config.shadowsocksr.server.fastopen
+        if (typeof fastopen === 'string') {
+          fastopen = fastopen === 'true'
+        }
         content = {
           'server': '127.0.0.1',
-          'server_port': this.config.kcptun.clientPort,
+          'server_port': parseInt(this.config.kcptun.clientPort),
           'local_address': '0.0.0.0',
-          'local_port': this.config.shadowsocksr.overKtPort,
+          'local_port': parseInt(this.config.shadowsocksr.overKtPort),
           'password': this.config.shadowsocksr.server.password,
           'timeout': 20,
           'method': this.config.shadowsocksr.server.method,
-          'fast_open': false,
+          'fast_open': fastopen,
           'mode': 'tcp_only',
           'protocol': this.config.shadowsocksr.server.protocol,
           'protocol_param': this.config.shadowsocksr.server.protocol_param,
@@ -1487,15 +1504,19 @@ class VRouter {
         cfg = this.config.tunnelDns.dns
         const isSsr = this.config.firewall.currentProxies.includes('ssr')
         const obj = isSsr ? this.config.shadowsocksr : this.config.shadowsocks
+        fastopen = obj.server.fastopen
+        if (typeof fastopen === 'string') {
+          fastopen = fastopen === 'true'
+        }
         content = {
           'server': obj.server.address,
-          'server_port': obj.server.port,
+          'server_port': parseInt(obj.server.port),
           'local_address': '0.0.0.0',
-          'local_port': this.config.tunnelDns.dnsPort,
+          'local_port': parseInt(this.config.tunnelDns.dnsPort),
           'password': obj.server.password,
-          'timeout': obj.server.timeout,
+          'timeout': parseInt(obj.server.timeout),
           'method': obj.server.method,
-          'fast_open': false,
+          'fast_open': fastopen,
           'tunnel_address': '8.8.8.8:53',
           'mode': 'udp_only'
         }

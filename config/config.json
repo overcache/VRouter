@@ -27,7 +27,8 @@
             "port": "8989",
             "password": "demo-paswd",
             "timeout": 300,
-            "method": "chacha20"
+            "method": "chacha20",
+            "fastopen": false
         },
         "client": "ss-client.json",
         "clientPort": 1010,
@@ -50,7 +51,8 @@
             "protocol_param": "32",
             "obfs": "tls1.2_ticket_auth",
             "obfs_param": "",
-            "others": ""
+            "others": "",
+            "fastopen": false
         },
         "client": "ssr-client.json",
         "clientPort": 1020,

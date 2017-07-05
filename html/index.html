@@ -121,9 +121,13 @@
                   <i id="password-icon" class="link icon" v-bind:class="['ui link icon', ui.pwdVisible.ss ? 'unhide' : 'hide']" v-on:click="togglePwdVsblt('ss')"></i>
                 </div>
               </div>
-              <div class="eight wide field">
-                <label for="encrypt">Encrypt Method</label>
+              <div class="four wide field">
+                <label>Encrypt Method</label>
                 <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.method" ref="ssMethod">
+              </div>
+              <div class="four wide field">
+                <label>Fast Open</label>
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocks.fastopen" ref="ssFastOpen">
               </div>
             </div>
           </div>
@@ -188,7 +192,11 @@
                   <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.obfs_param" ref="ssrObfs_Param">
                 </div>
               </div>
-              <div class="eight wide field">
+              <div class="four wide field">
+                <label>Fast Open</label>
+                <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.fastopen" ref="ssrFastOpen">
+              </div>
+              <div class="four wide field">
                 <label>Others
                   <i class="help circle link icon" data-content="shadowsocksr 的其他参数, 格式'key1=value1;key2=value2'"></i>
                 </label>

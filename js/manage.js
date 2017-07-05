@@ -294,50 +294,6 @@ const myApp = new Vue({
           throw Error('unkown current proxies')
       }
     },
-    saveAllFileds () {
-      let proxiesChanged = false
-      let shadowsocksChanged = false
-      let kcptunChanged = false
-
-      let pre = this.firewall.currentProxies
-      Object.keys(this.ui.proxiesTextDic).forEach((key) => {
-        if (this.ui.proxiesTextDic[key] === this.$refs.proxiesText.innerHTML.trim()) {
-          this.firewall.currentProxies = key
-        }
-      })
-      proxiesChanged = pre !== this.firewall.currentProxies
-
-      let SsKeys = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
-      for (let i = 0; i < SsKeys.length; i++) {
-        if (!shadowsocksChanged) {
-          shadowsocksChanged = vrouter.config.shadowsocks.server[SsKeys[i]] !== this.$refs[SsKeys[i]].value.trim()
-        }
-        vrouter.config.shadowsocks.server[SsKeys[i]] = this.$refs[SsKeys[i]].value.trim()
-      }
-
-      const newKt = {}
-      let ktOthers = this.$refs.ktOthers.value
-      ktOthers.split(';').forEach((pair) => {
-        const kv = pair.split('=')
-        newKt[kv[0].trim()] = kv[1].trim()
-      })
-      let ktKeys = ['ktAddress', 'ktPort', 'ktKey', 'ktCrypt', 'ktMode']
-      for (let i = 0; i < ktKeys.length; i++) {
-        const key = ktKeys.substr(2).toLowerCase()
-        newKt[key] = this.$refs[ktKeys[i]].value.trim()
-      }
-      if (Object.keys(this.kcptun).length !== Object.keys(newKt).length) {
-        kcptunChanged = true
-      } else {
-        Object.keys(newKt).forEach((key) => {
-          if (!kcptunChanged) {
-            kcptunChanged = newKt[key] !== this.kcptun[key]
-          }
-          this.kcptun[key] = newKt[key]
-        })
-      }
-      return { proxiesChanged, shadowsocksChanged, kcptunChanged }
-    },
     saveFields (type) {
       switch (type) {
         case 'proxies':
@@ -347,14 +303,14 @@ const myApp = new Vue({
           }
           break
         case 'shadowsocks':
-          let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod']
+          let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
           ssFields.forEach((field) => {
-            const key = field.substr(2).toLowerCase()
+            let key = field.substr(2).toLowerCase()
             vrouter.config.shadowsocks.server[key] = this.$refs[field].value.trim()
           })
           break
         case 'shadowsocksr':
-          let ssrFields = ['ssrAddress', 'ssrPort', 'ssrPassword', 'ssrTimeout', 'ssrMethod', 'ssrProtocol', 'ssrObfs', 'ssrProtocol_Param', 'ssrObfs_Param']
+          let ssrFields = ['ssrAddress', 'ssrPort', 'ssrPassword', 'ssrTimeout', 'ssrMethod', 'ssrFastOpen', 'ssrProtocol', 'ssrObfs', 'ssrProtocol_Param', 'ssrObfs_Param']
           ssrFields.forEach((field) => {
             const key = field.substr(3).toLowerCase()
             vrouter.config.shadowsocksr.server[key] = this.$refs[field].value.trim()
