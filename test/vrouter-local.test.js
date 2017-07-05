@@ -558,6 +558,7 @@ describe('Test ability of modify vm', function () {
   it('changeDnsmasq')
   it('enableService')
   it('changeVMTZ')
+  it('turnOnFastOpen')
   it('changeVMPasswd')
   it('serialLog')
   it('installPackage')

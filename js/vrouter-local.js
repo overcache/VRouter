@@ -282,6 +282,12 @@ class VRouter {
           })
       })
       .then(() => {
+        return this.turnOnFastOpen()
+          .then(() => {
+            this.process.emit('build', '打开tcp fast open')
+          })
+      })
+      .then(() => {
         return this.configvmLanIP()
           .then(() => {
             this.process.emit('build', '配置虚拟机网络地址, 请稍候10秒')
@@ -913,6 +919,12 @@ class VRouter {
     return this.serialExec("echo -e 'root\\nroot' | (passwd root)", 'change password')
       .then(() => {
         return this.serialLog('done: changevmPwd')
+      })
+  }
+  async turnOnFastOpen () {
+    return this.serialExec('echo "net.ipv4.tcp_fastopen = 3" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf')
+      .then(() => {
+        return this.serialLog('done: trunOn fast_open')
       })
   }
   serialLog (msg) {
