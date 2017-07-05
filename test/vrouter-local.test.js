@@ -1047,7 +1047,7 @@ stop() {
     "password":"a-test-passwd",
     "timeout":300,
     "method":"chacha20",
-    "fast_open": true,
+    "fast_open": false,
     "mode": "tcp_only"
 }`
         return expect(data).to.equal(expectContent)
@@ -1091,7 +1091,7 @@ stop() {
     "password":     "a-test-passwd",
     "timeout":      20,
     "method":       "chacha20",
-    "fast_open":    true,
+    "fast_open":    false,
     "mode":         "tcp_only"
 }`
         return expect(data).to.equal(expectContent)
@@ -1135,7 +1135,7 @@ stop() {
     "password":"a-test-passwd",
     "timeout":300,
     "method":"chacha20",
-    "fast_open": true,
+    "fast_open": false,
     "tunnel_address": "8.8.8.8:53",
     "mode": "udp_only"
 }`

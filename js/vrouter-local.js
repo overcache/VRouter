@@ -14,12 +14,13 @@ const crypto = require('crypto')
 const sudo = require('sudo-prompt')
 const { EventEmitter } = require('events')
 const os = require('os')
+
 let VBoxManage
+
 if (os.platform() === 'darwin') {
   VBoxManage = '/usr/local/bin/VBoxManage'
 } else if (os.platform() === 'win32') {
-  const p = 'C:\\Program Files\\Oracle\\VirtualBox'
-  VBoxManage = p
+  VBoxManage = 'C:\\Program Files\\Oracle\\VirtualBox'
 }
 
 class VRouter {
@@ -1416,7 +1417,7 @@ class VRouter {
           'password': this.config.shadowsocks.server.password,
           'timeout': this.config.shadowsocks.server.timeout,
           'method': this.config.shadowsocks.server.method,
-          'fast_open': true,
+          'fast_open': false,
           'mode': 'tcp_only'
         }
         break
@@ -1430,7 +1431,7 @@ class VRouter {
           'password': this.config.shadowsocks.server.password,
           'timeout': 20,
           'method': this.config.shadowsocks.server.method,
-          'fast_open': true,
+          'fast_open': false,
           'mode': 'tcp_only'
         }
         break
@@ -1444,7 +1445,7 @@ class VRouter {
           'password': this.config.shadowsocksr.server.password,
           'timeout': this.config.shadowsocksr.server.timeout,
           'method': this.config.shadowsocksr.server.method,
-          'fast_open': true,
+          'fast_open': false,
           'mode': 'tcp_only',
           'protocol': this.config.shadowsocksr.server.protocol,
           'protocol_param': this.config.shadowsocksr.server.protocol_param,
@@ -1468,7 +1469,7 @@ class VRouter {
           'password': this.config.shadowsocksr.server.password,
           'timeout': 20,
           'method': this.config.shadowsocksr.server.method,
-          'fast_open': true,
+          'fast_open': false,
           'mode': 'tcp_only',
           'protocol': this.config.shadowsocksr.server.protocol,
           'protocol_param': this.config.shadowsocksr.server.protocol_param,
@@ -1494,7 +1495,7 @@ class VRouter {
           'password': obj.server.password,
           'timeout': obj.server.timeout,
           'method': obj.server.method,
-          'fast_open': true,
+          'fast_open': false,
           'tunnel_address': '8.8.8.8:53',
           'mode': 'udp_only'
         }
