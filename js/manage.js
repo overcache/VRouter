@@ -475,6 +475,9 @@ const myApp = new Vue({
         this.showErrModal(err)
       }
     },
+    webLogin () {
+      shell.openExternal(`http://${vrouter.config.vrouter.ip}`)
+    },
     async sshLogin () {
       try {
         await vrouter.sshLogin()
