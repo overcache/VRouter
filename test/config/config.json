@@ -1,0 +1,107 @@
+{
+    "version": "0.2",
+    "debug": true,
+    "host": {
+        "ip": "10.19.28.46",
+        "configDir": "",
+        "serialFile": "serial"
+    },
+    "vrouter": {
+        "name": "vrouter",
+        "ip": "10.19.28.37",
+        "port": 22,
+        "username": "root",
+        "password": "root",
+        "configDir": "/etc/com.icymind.vrouter",
+        "imageUrl": "https://mirrors.tuna.tsinghua.edu.cn/openwrt/chaos_calmer/15.05.1/x86/64/openwrt-15.05.1-x86-64-combined-ext4.img.gz",
+        "imageSha256": "be29223ee0caf3c5bdc3139e349890d4494a54a266a9d8dd1eb3f66877dc0e1b"
+    },
+    "tunnelDns": {
+        "dns": "tunnel-dns.json",
+        "dnsPort": 5353,
+        "service": "tunnelDns"
+    },
+    "shadowsocks": {
+        "server": {
+            "address": "123.123.123.123",
+            "port": "8989",
+            "password": "demo-paswd",
+            "timeout": 300,
+            "method": "chacha20",
+            "fastopen": false
+        },
+        "client": "ss-client.json",
+        "clientPort": 1010,
+        "udp": "ss-udp.json",
+        "udpPort": 1011,
+        "overKt": "ss-over-kt.json",
+        "overKtPort": 1012,
+        "service": "shadowsocks",
+        "packageUrl": "https://dl.bintray.com/aa65535/opkg/shadowsocks-libev/3.0.6/OpenWrt/x86_64/:shadowsocks-libev_3.0.6-1_x86_64.ipk",
+        "packageSha256": "b6c5bd65575d36b72ce845f425c4f8f7075561717ac0fc36f2e8472d216991ba"
+    },
+    "shadowsocksr": {
+        "server": {
+            "address": "123.123.123.123",
+            "port": "9999",
+            "password": "demo-paswd",
+            "timeout": 300,
+            "method": "chacha20",
+            "protocol": "auth_aes128_md5",
+            "protocol_param": "32",
+            "obfs": "tls1.2_ticket_auth",
+            "obfs_param": "",
+            "others": "",
+            "fastopen": false
+        },
+        "client": "ssr-client.json",
+        "clientPort": 1020,
+        "udp": "ssr-udp.json",
+        "udpPort": 1021,
+        "overKt": "ssr-over-kt.json",
+        "overKtPort": 1022,
+        "service": "shadowsocksr",
+        "packageUrl": "https://github.com/ywb94/openwrt-ssr/releases/download/V1.2.1/luci-app-shadowsocksR_1.2.1.rar"
+    },
+    "kcptun": {
+        "server": {
+            "address": "123.123.123.123",
+            "port": "5555",
+            "key": "demo-secret",
+            "crypt": "aes-128",
+            "mode": "fast2",
+            "others": "sndwnd=256;rcvwnd=2048;nocomp=true"
+        },
+        "client": "kt-client.json",
+        "clientPort": 1030,
+        "service": "kcptun",
+        "packageUrl": "https://github.com/xtaci/kcptun/releases/download/v20170525/kcptun-linux-amd64-20170525.tar.gz",
+        "packageSha1": "b964ff8a06c921a6110c297f1f2bb711d652edfb"
+    },
+    "firewall": {
+        "ipsets": {
+            "black": "BLACKLIST",
+            "white": "WHITELIST",
+            "lan": "LAN"
+        },
+        "gfwDomains": "gfw-domains.txt",
+        "gfwListUrl": "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt",
+        "extraBlackList": "extra-blacklist.txt",
+        "selectedBL": {"gfwDomains":true, "extraBlackList":true},
+        "chinaIPs": "china-ips.txt",
+        "chinaIPsUrl": "https://raw.githubusercontent.com/17mon/china_ip_list/master/china_ip_list.txt",
+        "lanNetworks": "lan-networks.txt",
+        "extraWhiteList": "extra-whitelist.txt",
+        "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
+        "currentMode": "none",
+        "currentProxies": "ss",
+        "relayUDP": false,
+        "enableTunnelDns": true,
+        "dnsmasqFile": "custom.conf",
+        "firewallFile": "firewall.user",
+        "ipsetsFile": "custom.ipset",
+        "watchdogFile": "watchdog",
+        "cronFile": "vrouter-cron"
+    },
+    "third_party": "third_party"
+}

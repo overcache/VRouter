@@ -138,15 +138,6 @@ class VRouterRemote {
       return false
     }
   }
-  getSsOverKtProcess () {
-    const cmd = 'ps -w| grep "[s]s-redir -c .*ss-over-kt.json"'
-    return this.remoteExec(cmd)
-  }
-  getSsProcess () {
-    // const cmd = 'ps | grep "[s]s-redir -c .*ss-client.json"'
-    const cmd = 'ps -w| grep "[s]s-redir -c .*ss-client.json"'
-    return this.remoteExec(cmd)
-  }
   // kcptun
   installKt () {
     // const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +

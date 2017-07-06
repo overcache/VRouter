@@ -14,6 +14,7 @@ const crypto = require('crypto')
 const sudo = require('sudo-prompt')
 const { EventEmitter } = require('events')
 const os = require('os')
+const winston = require('winston')
 
 let VBoxManage
 
@@ -24,22 +25,37 @@ if (os.platform() === 'darwin') {
 }
 
 class VRouter {
-  constructor () {
+  constructor (cfgObj) {
     let config
     let cfg = path.join(getAppDir(), packageJson.name, 'config.json')
-    try {
-      config = fs.readJsonSync(cfg)
-    } catch (err) {
-      const template = path.join(__dirname, '..', 'config', 'config.json')
-      config = fs.readJsonSync(template)
-      fs.copySync(template, cfg)
-    }
-    if (!config.host.configDir) {
-      config.host.configDir = path.join(getAppDir(), packageJson.name)
+    if (!cfgObj) {
+      try {
+        config = fs.readJsonSync(cfg)
+      } catch (err) {
+        const template = path.join(__dirname, '..', 'config', 'config.json')
+        config = fs.readJsonSync(template)
+        fs.copySync(template, cfg)
+      }
+      if (!config.host.configDir) {
+        config.host.configDir = path.join(getAppDir(), packageJson.name)
+      }
+    } else {
+      config = cfgObj
     }
     this.config = config
     this.process = new EventEmitter()
     this.remote = null
+    winston.configure({
+      transports: [
+        new (winston.transports.File)({
+          filename: path.join(this.config.host.configDir, 'vrouter.log'),
+          level: 'info'
+        }),
+        new (winston.transports.Console)({
+          level: 'debug'
+        })
+      ]
+    })
   }
 
   // os
@@ -111,7 +127,7 @@ class VRouter {
         return match[1]
       }
     }
-    return Error(`can not find NetworkService match ${inf}`)
+    throw Error(`can not find NetworkService match ${inf}`)
   }
   async getCurrentGateway () {
     let networkService
@@ -162,7 +178,7 @@ class VRouter {
       if (match && match[1]) {
         ip = match[1]
       } else {
-        return Error('can not get Router IP')
+        throw Error('can not get Router IP')
       }
     }
     const cmd1 = `/sbin/route change default ${ip}`
@@ -604,15 +620,15 @@ class VRouter {
       infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
     })
     if (infos.get('nic1') !== 'hostonly') {
-      return Error("NIC1 isn't hostonly network")
+      throw Error("NIC1 isn't hostonly network")
     }
     if (!/^vboxnet\d+$/ig.test(infos.get('hostonlyadapter1'))) {
-      return Error("NIC1 doesn't specify host-only adapter")
+      throw Error("NIC1 doesn't specify host-only adapter")
     }
     const inf = infos.get('hostonlyadapter1')
     const ip = await this.getInfIP(inf)
     if (ip !== this.config.host.ip) {
-      return Error("host-only adapter doesn't config as hostIP")
+      throw Error("host-only adapter doesn't config as hostIP")
     }
     return inf
   }
@@ -625,16 +641,16 @@ class VRouter {
       infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
     })
     if (infos.get('nic2') !== 'bridged') {
-      return Error("NIC2 isn't bridged network")
+      throw Error("NIC2 isn't bridged network")
     }
     const inf = infos.get('bridgeadapter2')
     if (!inf) {
-      return Error("NIC2 doesn't specify bridged adapter")
+      throw Error("NIC2 doesn't specify bridged adapter")
     }
     cmd = `/sbin/ifconfig ${inf.trim().split(':')[0]}`
     const infConfig = await this.localExec(cmd)
     const statusMatch = /status: active/ig.exec(infConfig)
-    if (!statusMatch) return Error("bridged adapter doesn't active")
+    if (!statusMatch) throw Error("bridged adapter doesn't active")
     return inf
   }
 
@@ -653,10 +669,12 @@ class VRouter {
     }
     await this.isNIC1ConfigedAsHostonly(this.config.vrouter.name, this.config.host.ip)
       .catch(() => {
+        winston.debug(`isNIC1ConfigedAsHostonly return false. vrouter: ${this.config.vrouter.name}, hostip: ${this.config.host.ip}`)
         return this.specifyHostonlyAdapter()
       })
     await this.isNIC2ConfigedAsBridged(this.config.vrouter.name)
       .catch(() => {
+        winston.debug(`isNIC2ConfigedAsBridged return false. vrouter: ${this.config.vrouter.name}, hostip: ${this.config.host.ip}`)
         return this.specifyBridgeAdapter()
       })
   }
@@ -721,7 +739,7 @@ class VRouter {
   }
   async changevmTZ () {
     const cc = String.raw`
-        uci set system.@system[0].hostname='VRouter'
+        uci set system.@system[0].hostname='${this.config.vrouter.name}'
         uci set system.@system[0].timezone='HKT-8'
         uci set system.@system[0].zonename='Asia/Hong Kong'
         uci commit system`
@@ -760,9 +778,11 @@ class VRouter {
   async getCfgContent (fileName) {
     const filePath = path.join(this.config.host.configDir, fileName)
     try {
-      return fs.readFile(filePath, 'utf8')
+      const content = await fs.readFile(filePath, 'utf8')
+      return content
     } catch (error) {
       const template = path.join(__dirname, '../config', fileName)
+      winston.debug(`can not find ${filePath}, copy template ${template} to appdir`)
       await fs.copy(template, filePath)
       return fs.readFile(filePath, 'utf8')
     }
@@ -772,7 +792,7 @@ class VRouter {
     const stats = await fs.stat(cfgPath)
       .catch(() => null)
     if (stats && stats.isFile() && !overwrite) {
-      return Promise.resolve(cfgPath)
+      return cfgPath
     }
     const ws = fs.createWriteStream(cfgPath)
     const promise = new Promise((resolve, reject) => {
@@ -792,6 +812,7 @@ class VRouter {
     // "selectedBL": {"gfwDomains":true, "extraBlackList":true},
     // "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
     if (this.config.firewall.selectedWL.lanNetworks) {
+      winston.debug(`getCfgContent: ${this.config.firewall.lanNetworks}`)
       const lan = await this.getCfgContent(this.config.firewall.lanNetworks)
       lan.split('\n').forEach((line) => {
         const trimLine = line.trim()
@@ -1508,7 +1529,7 @@ class VRouter {
       await fs.stat(dest)
       return dest
     } catch (error) {
-      console.log(`${dest} not exist, copy template to it.`)
+      winston.debug(`copy template: ${fileName}`)
       await fs.copy(template, dest)
       return dest
     }
@@ -1533,6 +1554,7 @@ class VRouter {
         break
       case 'ktService':
         p = await this.generateService('kcptun')
+        winston.debug(`generateService-kcptun for proxies: ${this.config.firewall.currentProxies}`)
         await this.scp(p, '/etc/init.d/')
         await this.serialExec(`chmod +x /etc/init.d/${this.config.kcptun.service}`)
         break
@@ -1551,6 +1573,7 @@ class VRouter {
         break
       case 'ipset':
         p = await this.generateIPsets(overwrite)
+        winston.debug('generated ipset')
         await this.scp(p, this.config.vrouter.configDir)
         break
       case 'firewall':
@@ -1599,7 +1622,7 @@ class VRouter {
   async connect (startFirst) {
     const state = await this.getvmState()
     if (state !== 'running') {
-      return Error("vm doesn't running.")
+      throw Error("vm doesn't running.")
     }
     return new Promise((resolve, reject) => {
       const conn = new Client()
