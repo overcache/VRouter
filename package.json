@@ -11,6 +11,7 @@
   "author": "icymind (icymindt@gmail.com)",
   "license": "GPL",
   "dependencies": {
+    "electron": "^1.7.4",
     "fs-extra": "^3.0.1",
     "scp2": "^0.5.0",
     "ssh2": "^0.5.5",
@@ -20,11 +21,9 @@
   },
   "devDependencies": {
     "chai": "^4.0.2",
-    "chai-as-promised": "^7.0.0",
-    "electron": "^1.7.3",
-    "electron-builder": "^19.10.0",
-    "mocha": "^3.4.2",
-    "rewire": "^2.5.2"
+    "chai-as-promised": "^7.1.1",
+    "electron-builder": "^19.13.0",
+    "mocha": "^3.4.2"
   },
   "build": {
     "appId": "com.icymind.vrouter",
