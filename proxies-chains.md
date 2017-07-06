@@ -23,10 +23,10 @@ package => ss-redir:1011 => ss-server
 ## ssr
 
 - tcp
-package => ss-redir:1020 => ss-server
+package => ssr-redir:1020 => ssr-server
 
 - udp
-package => ss-redir:1021 => ss-server
+package => ssr-redir:1021 => ssr-server
 
 ## ssrKt
 
