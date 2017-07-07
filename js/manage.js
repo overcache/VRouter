@@ -172,7 +172,7 @@ const myApp = new Vue({
       }
       const isGWVRouter = this.status.currentGW === 'vrouter'
       this.ui.btnToggleRouterPopup = isGWVRouter ? '停止接管流量' : '开始接管流量'
-      this.toggleBlink(isGWVRouter)
+      // this.toggleBlink(isGWVRouter)
     },
 
 // Proxies Tab
