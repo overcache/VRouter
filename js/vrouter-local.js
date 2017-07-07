@@ -274,12 +274,15 @@ class VRouter {
       await this.wait(10000)
 
       await this.installPackage()
-      this.process.emit('build', '安装 dnsmasq-full 以及 ipset, 请稍候30秒')
-      await this.wait(30000)
+      this.process.emit('build', '更新软件源并安装必要软件包, 请稍候60秒')
+      await this.wait(60000)
 
       const src = path.join(__dirname, '..', 'third_party')
       const dst = this.config.vrouter.configDir + '/third_party/'
       await this.scp(src, dst)
+        .catch((error) => {
+          throw error
+        })
       this.process.emit('build', '拷贝 shadowsocks[r] 以及 kcptun 到虚拟机')
       await this.serialLog('done: scp third_party')
 
