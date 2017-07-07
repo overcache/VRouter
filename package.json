@@ -11,7 +11,6 @@
   "author": "icymind (icymindt@gmail.com)",
   "license": "GPL",
   "dependencies": {
-    "electron": "^1.7.4",
     "fs-extra": "^3.0.1",
     "scp2": "^0.5.0",
     "ssh2": "^0.5.5",
@@ -20,6 +19,7 @@
     "winston": "^2.3.1"
   },
   "devDependencies": {
+    "electron": "^1.7.4",
     "chai": "^4.0.2",
     "chai-as-promised": "^7.1.1",
     "electron-builder": "^19.13.0",
