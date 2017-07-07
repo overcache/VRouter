@@ -418,7 +418,12 @@ class VRouter {
     const serialPortState = await this.isSerialPortOn()
     const vmState = await this.getvmState()
     if (vmState === 'running') {
-      if (action === 'poweroff') {
+      winston.debug(`about to stop vm. current State: ${vmState}. action: ${action}`)
+      if (action === 'force') {
+        const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} poweroff`
+        await this.localExec(cmd)
+        return this.wait(waitTime)
+      } else if (action === 'poweroff') {
         if (serialPortState) {
           // poweroff from inside openwrt is more safer.
           await this.serialExec('poweroff', 'poweroff')
@@ -428,8 +433,7 @@ class VRouter {
           await this.localExec(cmd)
           return this.wait(waitTime)
         }
-      }
-      if (action === 'savestate') {
+      } else if (action === 'savestate') {
         const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} savestate`
         await this.localExec(cmd)
         return this.wait(waitTime)
@@ -1504,7 +1508,7 @@ class VRouter {
     }
     return this.saveCfg2File()
   }
-  scp (src, dst) {
+  async scp (src, dst) {
     if (!src) {
       throw Error('must specify src for scp')
     }

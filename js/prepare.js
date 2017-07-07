@@ -45,11 +45,17 @@ async function buildVmHandler (vrouter) {
     label: '终止',
     async handler () {
       try {
+        vue.hide()
+        document.getElementById('loader').classList.add('active')
         winston.debug('abort building vm, delete vm now...')
-        await vrouter.deletevm(true)
+        await vrouter.stopvm('force', 5000)
+        await vrouter.deletevm()
         app.quit()
       } catch (err) {
         winston.error(`fail to delete vm. ${err}`)
+        // document.getElementById('modal').style.display = 'block'
+        vue.show()
+        document.getElementById('loader').classList.remove('active')
       }
     }
   }]
@@ -81,12 +87,12 @@ async function buildVmHandler (vrouter) {
         label: '退出',
         async handler () {
           try {
-            winston.debug('abort building vm, deleting vm now...')
-            await vrouter.deletevm(true)
-            winston.debug('vm deleted')
+            await vrouter.stopvm('force', 5000)
+            await vrouter.deletevm()
             app.quit()
           } catch (err) {
-            winston.error('fail to delete vm')
+            console.log(err)
+            console.log('fail to delete vm')
           }
         }
       }
@@ -228,15 +234,5 @@ async function checkRequirement (vrouter) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // let cfgPath
-  // let json
-  // try {
-    // cfgPath = path.join(getAppDir(), 'VRouter', 'config.json')
-    // json = fs.readJsonSync(cfgPath)
-  // } catch (err) {
-    // console.log('使用config.json模板')
-    // cfgPath = path.join(__dirname, '..', 'config', 'config.json')
-    // json = fs.readJsonSync(cfgPath)
-  // }
   checkRequirement(vrouter)
 })
