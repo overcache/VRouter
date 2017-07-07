@@ -1,6 +1,6 @@
 {
   "name": "VRouter",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "oxs transparent proxy.",
   "main": "main.js",
   "scripts": {
@@ -31,6 +31,5 @@
     "mac": {
       "target": "dmg"
     }
-  },
-  "false": {}
+  }
 }
