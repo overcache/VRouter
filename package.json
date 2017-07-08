@@ -1,6 +1,6 @@
 {
   "name": "VRouter",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "oxs transparent proxy.",
   "main": "main.js",
   "scripts": {
@@ -12,7 +12,6 @@
   "license": "GPL",
   "dependencies": {
     "fs-extra": "^3.0.1",
-    "scp2": "^0.5.0",
     "ssh2": "^0.5.5",
     "sudo-prompt": "^7.1.0",
     "vue": "^2.3.4",
@@ -31,5 +30,6 @@
     "mac": {
       "target": "dmg"
     }
-  }
+  },
+  "false": {}
 }

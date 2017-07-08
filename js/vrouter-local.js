@@ -1,6 +1,5 @@
 const { exec } = require('child_process')
 const Client = require('ssh2').Client
-const scpClient = require('scp2')
 const { URL } = require('url')
 const http = require('http')
 const https = require('https')
@@ -274,25 +273,48 @@ class VRouter {
       await this.wait(10000)
 
       await this.installPackage()
-      this.process.emit('build', '更新软件源并安装必要软件包, 请稍候60秒')
-      await this.wait(60000)
+      this.process.emit('build', '更新软件源并安装必要软件包, 请稍候20-60秒')
+      await this.wait(20000)
+      // return this.serialLog('done: install package && restart dropbear')
+
+      let remote
+      let retry = -1
+      while (true) {
+        try {
+          retry += 1
+          remote = await this.connect()
+          const output = await remote.remoteExec('tail -n 1 /vrouter.log')
+          if (output === 'done: install package && restart dropbear') {
+            winston.debug('安装软件包完成')
+            this.process.emit('build', '安装软件包完成')
+            break
+          } else {
+            throw Error('未完成')
+          }
+        } catch (err) {
+          if (retry >= 4) {
+            throw Error('未能安装软件包, 请确保网络通畅后重试')
+          }
+          winston.debug('安装软件包未完成, 10秒后重试')
+          // this.process.emit('buid', '无法登录到虚拟机, 10秒后重试')
+          await this.wait(10000)
+        }
+      }
+      this.process.emit('build', '成功登录虚拟机')
+      await this.serialLog('done: connect to vm')
 
       const src = path.join(__dirname, '..', 'third_party')
       const dst = this.config.vrouter.configDir + '/third_party/'
-      await this.scp(src, dst)
+      await remote.scp(src, dst)
         .catch((error) => {
           throw error
         })
       this.process.emit('build', '拷贝 shadowsocks[r] 以及 kcptun 到虚拟机')
       await this.serialLog('done: scp third_party')
 
-      await this.scpConfigAll()
+      await remote.scpConfigAll()
       this.process.emit('build', '拷贝配置文件到虚拟机')
       await this.serialLog('done: scpConfigAll')
-
-      const remote = await this.connect()
-      this.process.emit('build', '登录虚拟机')
-      await this.serialLog('done: connect to vm')
 
       await remote.installKt()
       await this.serialLog('done: installKt')
@@ -1495,10 +1517,10 @@ class VRouter {
       this.config = newCfg
 
       const thirdParty = path.join(__dirname, '..', 'third_party')
-      await this.scp(`${thirdParty}/ssr-tunnel`, '/usr/bin/')
-      await this.scp(`${thirdParty}/ssr-redir`, '/usr/bin/')
       const remote = await this.connect()
-      await this.remoteExec('chmod +x /usr/bin/ssr-*')
+      await remote.scp(`${thirdParty}/ssr-tunnel`, '/usr/bin/')
+      await remote.scp(`${thirdParty}/ssr-redir`, '/usr/bin/')
+      await remote.remoteExec('chmod +x /usr/bin/ssr-*')
       await remote.remoteExec('opkg update && opkg install libopenssl')
       await remote.service('shadowsocks', 'stop').catch(() => {})
       await remote.service('kcptun', 'stop').catch(() => {})
@@ -1507,27 +1529,6 @@ class VRouter {
       await remote.closeConn()
     }
     return this.saveCfg2File()
-  }
-  async scp (src, dst) {
-    if (!src) {
-      throw Error('must specify src for scp')
-    }
-    let dest = dst || this.config.vrouter.configDir
-    const opt = {
-      host: this.config.vrouter.ip,
-      username: this.config.vrouter.username,
-      password: this.config.vrouter.password,
-      path: dest
-    }
-    return new Promise((resolve, reject) => {
-      scpClient.scp(src, opt, (err) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(dest)
-        }
-      })
-    })
   }
   async copyTemplate (fileName) {
     const template = path.join(__dirname, '..', 'config', fileName)
@@ -1541,91 +1542,6 @@ class VRouter {
       return dest
     }
   }
-  async scpConfig (type = 'shadowsocks', overwrite = false) {
-    let p
-    switch (type) {
-      case 'tunnelDnsService':
-        p = await this.generateService('tunnelDns')
-        await this.scp(p, '/etc/init.d/')
-        await this.serialExec(`chmod +x /etc/init.d/${this.config.tunnelDns.service}`)
-        break
-      case 'ssService':
-        p = await this.generateService('shadowsocks')
-        await this.scp(p, '/etc/init.d/')
-        await this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocks.service}`)
-        break
-      case 'ssrService':
-        p = await this.generateService('shadowsocksr')
-        await this.scp(p, '/etc/init.d/')
-        await this.serialExec(`chmod +x /etc/init.d/${this.config.shadowsocksr.service}`)
-        break
-      case 'ktService':
-        p = await this.generateService('kcptun')
-        winston.debug(`generateService-kcptun for proxies: ${this.config.firewall.currentProxies}`)
-        await this.scp(p, '/etc/init.d/')
-        await this.serialExec(`chmod +x /etc/init.d/${this.config.kcptun.service}`)
-        break
-      case 'tunnelDns':
-      case 'shadowsocks':
-      case 'shadowsocksr':
-      case 'kcptun':
-        p = await this.generateConfig(type)
-        for (let i = 0; i < p.length; i++) {
-          await this.scp(p[i], this.config.vrouter.configDir)
-        }
-        break
-      case 'dnsmasq':
-        p = await this.generateDnsmasqCf(overwrite)
-        await this.scp(p, '/etc/dnsmasq.d/')
-        break
-      case 'ipset':
-        p = await this.generateIPsets(overwrite)
-        winston.debug('generated ipset')
-        await this.scp(p, this.config.vrouter.configDir)
-        break
-      case 'firewall':
-        p = await this.generateFWRules(null, null, overwrite)
-        await this.scp(p, '/etc/')
-        break
-      case 'watchdog':
-        p = await this.generateWatchdog()
-        await this.scp(p, this.config.vrouter.configDir)
-        await this.serialExec(`chmod +x ${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`)
-        break
-      case 'cron':
-        p = await this.generateCronJob()
-        await this.scp(p, this.config.vrouter.configDir)
-        break
-    }
-  }
-  async scpConfigAll (overwrite) {
-    const types = [
-      'dnsmasq',
-      'ipset',
-      'firewall',
-      'watchdog',
-      'cron'
-    ]
-    if (this.config.firewall.enableTunnelDns) {
-      types.push('tunnelDnsService')
-      types.push('tunnelDns')
-    }
-    const proxies = this.config.firewall.currentProxies
-    if (proxies.includes('Kt')) {
-      types.push('kcptun')
-      types.push('ktService')
-    }
-    if (proxies.substr(0, 3) === 'ssr') {
-      types.push('shadowsocksr')
-      types.push('ssrService')
-    } else if (proxies.substr(0, 2) === 'ss') {
-      types.push('shadowsocks')
-      types.push('ssService')
-    }
-    for (let i = 0; i < types.length; i += 1) {
-      await this.scpConfig(types[i], overwrite)
-    }
-  }
   async connect (startFirst) {
     const state = await this.getvmState()
     if (state !== 'running') {
@@ -1634,7 +1550,13 @@ class VRouter {
     return new Promise((resolve, reject) => {
       const conn = new Client()
       conn.on('ready', () => {
-        resolve(new VRouterRemote(conn, this.config, this))
+        conn.sftp((err, sftp) => {
+          if (err) {
+            reject(err)
+          } else {
+            resolve(new VRouterRemote(conn, sftp, this.config, this))
+          }
+        })
       }).connect({
         host: this.config.vrouter.ip,
         port: this.config.vrouter.port,

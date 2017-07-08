@@ -276,7 +276,7 @@ const myApp = new Vue({
       switch (currentProxies) {
         case 'ss':
           vrouter.generateConfig('shadowsocks')
-          vrouter.scpConfig('shadowsocks')
+          this.remote.scpConfig('shadowsocks')
           this.remote.service('shadowsocks', 'restart')
           break
         case 'ssr':

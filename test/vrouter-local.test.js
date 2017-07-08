@@ -267,29 +267,6 @@ describe('Test suite for VRouter', function () {
         }
       })
     })
-    it('scp', function () {
-      const tempName = `${Date.now()}`
-      const tempFile = path.join(os.tmpdir(), tempName)
-      return fs.outputFile(tempFile, tempName)
-        .then(() => {
-          return vrouter.scp(tempFile, '/')
-        })
-        .then(() => {
-          return vrouter.connect()
-        })
-        .then((remote) => {
-          return remote.remoteExec(`cat /${tempName}`)
-            .then((output) => {
-              expect(output).to.be.equal(tempName)
-            })
-            .then(() => {
-              return remote.remoteExec(`rm /${tempName}`)
-            })
-            .then(() => {
-              return remote.closeConn()
-            })
-        })
-    })
     it("configvmLanIP should config vm's br-lan with vrouter.ip", function () {
       // need fixed
       // When test alone, it pass test
@@ -320,34 +297,6 @@ describe('Test suite for VRouter', function () {
             })
         })
       return expect(promise).to.be.fulfilled
-    })
-    it('scpConfig', function () {
-      const file = '/etc' +
-        '/' + vrouter.config.firewall.firewallFile
-      return vrouter.connect()
-        .then((remote) => {
-          return remote.remoteExec(`mv ${file} ${file}+backup`)
-            .then(() => {
-              return expect(remote.remoteExec(`cat ${file}`))
-                .to.eventually.be.empty
-            })
-            .then(() => {
-              return vrouter.scpConfig('firewall')
-            })
-            .then(() => {
-              return expect(remote.remoteExec(`cat ${file}`))
-                .to.eventually.not.be.empty
-            })
-            .then(() => {
-              return remote.remoteExec(`mv ${file}+backup ${file}`)
-            })
-            .catch(() => {
-              return remote.remoteExec(`mv ${file}+backup ${file}`)
-            })
-            .then(() => {
-              return remote.closeConn()
-            })
-        })
     })
   })
 
@@ -1157,7 +1106,6 @@ stop() {
           return fs.move(cfgPath + 'backup', cfgPath).catch(() => {})
         })
     })
-    it('scpConfigAll')
     it('saveConfig', function () {
       return vrouter.saveConfig()
     })
@@ -1181,6 +1129,15 @@ stop() {
 
     it('connect should return a VRouterRemote object with correct properties', function () {
       return expect(remote instanceof VRouterRemote).to.be.true
+    })
+    it('scpConfig', async function () {
+      const file = `/etc/${vrouter.config.firewall.firewallFile}`
+      await remote.remoteExec(`mv ${file} ${file}+backup`)
+      await expect(remote.remoteExec(`cat ${file}`)).to.be.rejected
+      await remote.scpConfig('firewall')
+      await expect(remote.remoteExec(`cat ${file}`))
+        .to.eventually.not.be.empty
+      await remote.remoteExec(`mv ${file}+backup ${file}`)
     })
     it('remoteExec should be rejected when execute bad commands', function () {
       const promise = remote.remoteExec('non-existed')
@@ -1221,7 +1178,7 @@ stop() {
       const tempFile = path.join(os.tmpdir(), tempName)
 
       await fs.outputFile(tempFile, tempContent)
-      await expect(vrouter.scp(tempFile, '/'))
+      await expect(remote.scp(tempFile, '/'))
         .to.be.fulfilled
       const output = await remote.getFile(`/${tempName}`)
       expect(output).to.equal(tempContent)
