@@ -791,7 +791,7 @@ class VRouter {
     const subCmds = []
     subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
     subCmds.push('opkg update')
-    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server libopenssl')
+    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server libopenssl rng-tools')
     subCmds.push('/etc/init.d/dropbear restart')
     await this.serialExec(subCmds.join(' && '), 'install packages')
     return this.serialLog('done: install package && restart dropbear')
