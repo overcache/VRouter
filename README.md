@@ -53,6 +53,12 @@ sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
 /usr/sbin/networksetup -getdnsservers Wi-Fi
 ```
 
+### 当前版本的不足
+
+- 暂时不能在多网卡(wifi + 有线)的机器上使用
+- MacBook 盒盖再打开之后, 网关会被系统恢复到默认状态, 但是dns没有被恢复. 这种情况下, 需要再次点击"启用"或者"暂停", 以恢复网关和DNS的一致性
+- UI 长时间没有关闭的话, 可能会和后台的虚拟机失去连接(虚拟机仍在正常工作, 但是 UI 无法对虚拟机进行操作), 关闭 UI 再打开即可
+
 ### FAQ
 
 #### 为什么不直接用 shadowsocks 等客户端?
