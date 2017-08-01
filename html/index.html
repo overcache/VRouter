@@ -118,7 +118,7 @@
                 <label for="password">Password</label>
                 <div class="ui icon input">
                   <input v-bind:value="shadowsocks.password" v-bind:type="ui.pwdVisible.ss ? 'text' : 'password'" v-bind:disabled="!ui.editable.proxies" ref="ssPassword">
-                  <i id="password-icon" v-bind:class="['ui icon', ui.pwdVisible.ss ? 'hide' : 'unhide', !ui.editable.proxies ? 'link' : '']" v-on:click="togglePwdVsblt('ss')"></i>
+                  <i v-if="!ui.editable.proxies" id="password-icon" v-bind:class="['ui link icon', ui.pwdVisible.ss ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('ss')"></i>
                 </div>
               </div>
               <div class="four wide field">
@@ -157,7 +157,7 @@
                 <label>Password</label>
                 <div class="ui icon input">
                   <input v-bind:disabled="!ui.editable.proxies" v-bind:value="shadowsocksr.password" v-bind:type="ui.pwdVisible.ssr ? 'text' : 'password'" ref="ssrPassword">
-                  <i id="password-icon" v-bind:class="['ui icon', ui.pwdVisible.ssr ? 'hide' : 'unhide', !ui.editable.proxies ? 'link' : '']" v-on:click="togglePwdVsblt('ssr')"></i>
+                  <i v-if="!ui.editable.proxies" id="password-icon" v-bind:class="['ui link icon', ui.pwdVisible.ssr ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('ssr')"></i>
                 </div>
               </div>
               <div class="four wide field">
@@ -232,7 +232,7 @@
                 <label for="password">Key</label>
                 <div class="ui icon input">
                   <input v-bind:value="kcptun.key" v-bind:type="ui.pwdVisible.kt ? 'text' : 'password'" v-bind:disabled="!ui.editable.proxies" ref="ktKey">
-                  <i v-bind:class="['ui icon', ui.pwdVisible.kt ? 'hide' : 'unhide', !ui.editable.proxies ? 'link' : '']" v-on:click="togglePwdVsblt('kt')"></i>
+                  <i v-if="!ui.editable.proxies" v-bind:class="['ui link icon', ui.pwdVisible.kt ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('kt')"></i>
                 </div>
               </div>
               <div class="eight wide field">
