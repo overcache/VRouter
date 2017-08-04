@@ -357,6 +357,9 @@ class VRouter {
       await remote.shutdown()
       await remote.closeConn().catch(() => {})
       await this.wait(10000)
+
+      this.process.emit('build', '在宿主安装守护脚本, 维持dns和网关的一致.')
+      await this.installNwWatchdog()
     } catch (error) {
       throw error
     }
@@ -594,6 +597,21 @@ class VRouter {
     })
     return arr.filter(element => element !== null)
   }
+
+  async installNwWatchdog () {
+    await this.generateNetworkSh()
+    await this.localExec(`chmod +x "${path.join(this.config.host.configDir, this.config.host.networkSh)}"`)
+    await this.generateNetworkPlist()
+    await this.sudoExec(`cp "${path.join(this.config.host.configDir, this.config.host.networkPlist)}" /Library/LaunchDaemons`)
+    await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
+    await this.sudoExec(`launchctl bootstrap system /Library/LaunchDaemons/${this.config.host.networkPlist}`)
+  }
+  async removeNwWatchdog () {
+    await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
+    await this.sudoExec(`rm /Library/LaunchDaemons/${this.config.host.networkPlist}`).catch(e => {})
+    await this.sudoExec(`rm "${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}"`).catch(e => {})
+  }
+
   async specifyHostonlyAdapter (inf, nic = '1') {
     let iinf = inf
     if (!iinf) {
@@ -1425,6 +1443,118 @@ class VRouter {
     }
     const cfgPath = path.join(this.config.host.configDir, cfg)
     await fs.writeJson(cfgPath, content, {spaces: 2})
+    return cfgPath
+  }
+
+  async generateNetworkPlist () {
+    const content = String.raw`
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+      <dict>
+        <key>Label</key>
+        <string>${this.config.host.networkPlistName}</string>
+
+        <key>ProgramArguments</key>
+        <array>
+            <string>${path.join(this.config.host.configDir, this.config.host.networkSh)}</string>
+        </array>
+
+        <key>WatchPaths</key>
+        <array>
+            <string>/etc/resolv.conf</string>
+            <string>/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist</string>
+            <string>/Library/Preferences/SystemConfiguration/com.apple.airport.preferences.plist</string>
+        </array>
+
+        <key>RunAtLoad</key>
+        <true/>
+        <key>StandardErrorPath</key>
+        <string>${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}</string>
+        <key>StandardOutPath</key>
+        <string>${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}</string>
+      </dict>
+    </plist>`
+
+    const cfgPath = path.join(this.config.host.configDir, this.config.host.networkPlist)
+    await fs.outputFile(cfgPath, content, 'utf8')
+    return cfgPath
+  }
+
+  async generateNetworkSh () {
+    // TODO: reduce log size
+    const username = await this.localExec('whoami')
+    const content = String.raw`#!/bin/bash
+    echo "$(date)"
+    echo "Network change"
+    echo "==============="
+scutil_query() {
+    key=$1
+
+    scutil<<EOT
+    open
+    get $key
+    d.show
+    close
+EOT
+}
+
+get_primary_service() {
+    local SERVICE_GUID=$(scutil_query State:/Network/Global/IPv4 | grep "PrimaryService" | awk '{print $3}')
+
+    local SERVICE_NAME=$(scutil_query Setup:/Network/Service/$SERVICE_GUID | grep "UserDefinedName" | awk -F': ' '{print $2}')
+
+    echo $SERVICE_NAME
+}
+
+get_primary_router() {
+    local ROUTER_IP=$(scutil_query State:/Network/Global/IPv4 | grep "Router" | awk '{print $3}')
+    echo $ROUTER_IP
+}
+
+VROUTERIP="${this.config.vrouter.ip}"
+VROUTERNAME="${this.config.vrouter.name}"
+
+# current router
+ROUTERIP=$(get_primary_router)
+echo "ROUTERIP: $ROUTERIP"
+INTERFACE=$(get_primary_service)
+echo "INTERFACE: $INTERFACE"
+
+# check gateway & dns
+GATEWAY=$(route -n get default | grep gateway | awk '{print $2}')
+echo "GATEWAY: $GATEWAY"
+DNS=$(/usr/sbin/networksetup -getdnsservers $INTERFACE)
+# echo "DNS: $DNS"
+
+# check vm status
+VMSTATE=$(su ${username.trim()} -c "/usr/local/bin/VBoxManage list runningvms | grep $VROUTERNAME")
+echo "VMState: $VMSTATE"
+
+# change route/dns
+if [[ $GATEWAY ==  $VROUTERIP && $DNS != $VROUTERIP ]]; then
+    if [[ -z $VMSTATE ]]; then
+        echo "# vm is stopped. reset gateway to router"
+        sudo /sbin/route change default $ROUTERIP
+    else
+        echo "# vm is running. change dns to vrouter"
+        sudo /usr/sbin/networksetup -setdnsservers $INTERFACE $VROUTERIP
+    fi
+fi
+
+if [[ $GATEWAY != $VROUTERIP && $DNS == $VROUTERIP ]]; then
+    if [[ -z $VMSTATE ]]; then
+        echo "# vm is stopped. reset DNS to router"
+        sudo /usr/sbin/networksetup -setdnsservers $INTERFACE $ROUTERIP
+    else
+        echo "#vm is running. change gateway to vrouter"
+        sudo /sbin/route change default $VROUTERIP
+    fi
+fi
+echo ""`
+
+    const cfgPath = path.join(this.config.host.configDir, this.config.host.networkSh)
+    await fs.outputFile(cfgPath, content, 'utf8')
     return cfgPath
   }
 

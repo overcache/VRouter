@@ -1258,11 +1258,13 @@ stop() {
     })
     it('gateway should be wifi.ip after changeRouteTo wifi', async function () {
       if (os.platform() === 'darwin') {
-        const ip = '192.168.1.1'
+        const ip = await vrouter.localExec("networksetup -getinfo Wi-Fi | grep ^Router | awk '{print $2}'")
         await vrouter.changeRouteTo('wifi')
         const output = await vrouter.getCurrentGateway()
         expect(output).to.be.deep.equal([ip, ip])
       }
+    })
+    it.skip('test installNwWatchdog/removeNwWatchdog', function () {
     })
   })
 })

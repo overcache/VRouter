@@ -515,6 +515,7 @@ const myApp = new Vue({
       try {
         await vrouter.changeRouteTo('wifi')
         winston.debug('reseted gateway/dns to wifi')
+        await vrouter.removeNwWatchdog()
         await vrouter.deletevm(true)
         winston.debug('vm deleted')
         app.quit()

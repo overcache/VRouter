@@ -4,7 +4,10 @@
     "host": {
         "ip": "10.19.28.46",
         "configDir": "",
-        "serialFile": "serial"
+        "serialFile": "serial",
+        "networkPlist": "network-watchdog-vrouter.plist",
+        "networkPlistName": "com.icymind.vrouter",
+        "networkSh": "network-watchdog-vrouter.sh"
     },
     "vrouter": {
         "name": "vrouter",
