@@ -40,6 +40,7 @@ const myApp = new Vue({
       currentDns: '',
       currentDnsIP: '',
       openwrtVersion: '',
+      bridgeAdapter: '',
       brLanIP: '',
       lanIP: '',
       macAddress: '',
@@ -125,7 +126,7 @@ const myApp = new Vue({
       $('*[data-content]').popup('hide')
       this.ui.activeLoader = true
       const to = this.status.currentGW === 'vrouter'
-        ? 'wifi' : 'vrouter'
+        ? 'default' : 'vrouter'
       try {
         await vrouter.changeRouteTo(to)
         winston.debug(`changed gateway/dns to: ${to}`)
@@ -167,8 +168,8 @@ const myApp = new Vue({
         this.status.currentGW = 'vrouter'
         this.status.currentDns = 'vrouter'
       } else {
-        this.status.currentGW = 'wifi'
-        this.status.currentDns = 'wifi'
+        this.status.currentGW = 'default'
+        this.status.currentDns = 'default'
       }
       const isGWVRouter = this.status.currentGW === 'vrouter'
       this.ui.btnToggleRouterPopup = isGWVRouter ? '停止接管流量' : '开始接管流量'
@@ -462,6 +463,7 @@ const myApp = new Vue({
     },
     async checkInfos () {
       this.status.openwrtVersion = await this.remote.getOpenwrtVersion()
+      this.status.bridgeAdapter = await vrouter.changeBridgeAdapter()
       this.status.brLanIP = await this.remote.getIP('br-lan')
       this.status.lanIP = await this.remote.getIP('eth1')
       this.status.macAddress = await this.remote.getMacAddress('eth1')
@@ -473,6 +475,7 @@ const myApp = new Vue({
       $('*[data-content]').popup('hide')
       this.ui.activeLoader = true
       try {
+        await vrouter.changeBridgeAdapter()
         await this.checkTrafficStatus()
         await this.checkInfos()
         await this.checkProxiesStatus()
@@ -498,8 +501,8 @@ const myApp = new Vue({
     async shutdownVRouter () {
       this.ui.activeLoader = true
       try {
-        await vrouter.changeRouteTo('wifi')
-        winston.debug('reseted gateway/dns to wifi')
+        await vrouter.changeRouteTo('default')
+        winston.debug('reseted gateway/dns to default')
         await vrouter.stopvm('savestate')
         winston.debug('saved vm state')
         app.quit()
@@ -513,8 +516,8 @@ const myApp = new Vue({
     async deleteVRouter () {
       this.ui.activeLoader = true
       try {
-        await vrouter.changeRouteTo('wifi')
-        winston.debug('reseted gateway/dns to wifi')
+        await vrouter.changeRouteTo('default')
+        winston.debug('reseted gateway/dns to default')
         await vrouter.removeNwWatchdog()
         await vrouter.deletevm(true)
         winston.debug('vm deleted')
@@ -529,8 +532,8 @@ const myApp = new Vue({
     async resetGW () {
       this.ui.activeLoader = true
       try {
-        await vrouter.changeRouteTo('wifi')
-        winston.debug('reseted gateway/dns to wifi')
+        await vrouter.changeRouteTo('default')
+        winston.debug('reseted gateway/dns to default')
         await this.checkTrafficStatus()
       } catch (err) {
         winston.debug('fail to resetGW')
@@ -549,6 +552,7 @@ const myApp = new Vue({
   },
   async mounted () {
     try {
+      await vrouter.changeBridgeAdapter()
       this.remote = await vrouter.connect()
       await this.checkTrafficStatus()
       await this.checkInfos()

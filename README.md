@@ -15,7 +15,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 前提条件: 
 
 1. 因为需要转发DNS查询, 所以Shadowsocks/Shadowsocks 的服务端需要开启 udp 转发: 如果是服务端是用命令行启动, 请确保带了 `-u` 参数; 如果是用配置文件, 请确保配置文件包含: `"mode": "tcp_and_udp"`
-2. 确保上游路由器开启了DHCP.
+2. 确保上游路由器开启了DHCP, 或者给 VRouter(mac地址: 080027a8b841) 分配一个静态 IP.
 
 使用:
 
@@ -52,11 +52,6 @@ sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
 # 确认DNS已恢复
 /usr/sbin/networksetup -getdnsservers Wi-Fi
 ```
-
-### 当前版本的不足
-
-- 暂时不能在多网卡(wifi + 有线)的机器上使用
-- macOS 从休眠中恢复时, VRouter UI 可能会和后台的虚拟机失去连接(虚拟机仍在正常工作, 但是 UI 无法对虚拟机进行操作), 关闭 UI 再打开即可
 
 ### FAQ
 

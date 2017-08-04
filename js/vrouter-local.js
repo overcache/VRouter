@@ -129,24 +129,18 @@ class VRouter {
     throw Error(`can not find NetworkService match ${inf}`)
   }
   async getCurrentGateway () {
-    let networkService
-
-    const inf = await this.getActiveAdapter()
-    if (inf.length > 1) {
-      return Promise.reject(Error('more than one active adapter'))
-    }
-    if (inf.length === 0) {
-      networkService = 'Wi-Fi'
-    } else {
-      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
+    let info
+    try {
+      info = await this.getActiveAdapter()
+    } catch (error) {
+      return ['', '']
     }
 
-    const cmd1 = "/usr/sbin/netstat -nr | grep default | awk '{print $2}'"
-    const cmd2 = `/usr/sbin/networksetup -getdnsservers ${networkService}`
+    const cmd1 = "/sbin/route -n get default | grep gateway | awk '{print $2}'"
+    const cmd2 = `/usr/sbin/networksetup -getdnsservers "${info[0]}"`
 
     return Promise.all([
       this.localExec(cmd1).then((output) => {
-        output = output.replace(/(\r?\n|\r).+/, '')
         return Promise.resolve((output && output.trim()) || '')
       }),
       this.localExec(cmd2).then((output) => {
@@ -154,36 +148,59 @@ class VRouter {
       })
     ])
   }
-  async changeRouteTo (dst = 'wifi') {
+  async changeRouteTo (dst) {
     let ip
-    let networkService
-    const inf = await this.getActiveAdapter()
-    if (inf.length > 1) {
-      return Promise.reject(Error('more than one active adapter'))
-    }
-    if (inf.length === 0) {
-      networkService = 'Wi-Fi'
-    } else {
-      networkService = await this.getOSXNetworkService(inf[0].split(':')[0].trim())
-    }
+    const info = await this.getActiveAdapter()
+
     if (dst === 'vrouter') {
       ip = this.config.vrouter.ip
     } else {
-      // const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router | awk -F ": " '{print $2}'`
-      const subCmd = `/usr/sbin/networksetup -getinfo ${networkService} | grep Router`
-      const output = await this.localExec(subCmd)
-      const ipReg = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/ig
-      const match = ipReg.exec(output)
-      if (match && match[1]) {
-        ip = match[1]
-      } else {
-        throw Error('can not get Router IP')
-      }
+      ip = info[2]
     }
     const cmd1 = `/sbin/route change default ${ip}`
-    const cmd2 = `/usr/sbin/networksetup -setdnsservers ${networkService} "${ip}"`
+    const cmd2 = `/usr/sbin/networksetup -setdnsservers "${info[0]}" "${ip}"`
     // https://askubuntu.com/questions/634620/when-using-and-sudo-on-the-first-command-is-the-second-command-run-as-sudo-t
-    return this.sudoExec(`bash -c "${cmd1} && ${cmd2}"`)
+    return this.sudoExec(`bash -c '${cmd1} && ${cmd2}'`)
+  }
+  async getActiveAdapter () {
+    let cmd = String.raw`cat <<EOF | scutil
+open
+get State:/Network/Global/IPv4
+d.show
+EOF`
+    const output = await this.localExec(cmd)
+
+    const infReg = /PrimaryInterface : (.*)$/mg
+    const inf = infReg.exec(output)[1]
+
+    const serviceReg = /PrimaryService : (.*)$/mg
+    const service = serviceReg.exec(output)[1]
+
+    const routerReg = /Router : (.*)$/mg
+    const router = routerReg.exec(output)[1]
+
+    cmd = String.raw`cat <<EOF | scutil | grep "UserDefinedName" | awk -F': ' '{print $2}'
+open
+get Setup:/Network/Service/${service}
+d.show
+EOF`
+    const serviceName = await this.localExec(cmd)
+
+    return [serviceName.trim(), inf, router]
+  }
+
+  async installNwWatchdog () {
+    await this.generateNetworkSh()
+    await this.localExec(`chmod +x "${path.join(this.config.host.configDir, this.config.host.networkSh)}"`)
+    await this.generateNetworkPlist()
+    await this.sudoExec(`cp "${path.join(this.config.host.configDir, this.config.host.networkPlist)}" /Library/LaunchDaemons`)
+    await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
+    await this.sudoExec(`launchctl bootstrap system /Library/LaunchDaemons/${this.config.host.networkPlist}`)
+  }
+  async removeNwWatchdog () {
+    await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
+    await this.sudoExec(`rm /Library/LaunchDaemons/${this.config.host.networkPlist}`).catch(e => {})
+    await this.sudoExec(`rm "${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}"`).catch(e => {})
   }
 
   // vm
@@ -231,7 +248,7 @@ class VRouter {
     subCmds.push(`${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
       ` --ostype "Linux26_64" --memory "256" --cpus "1" ` +
       ` --boot1 "disk" --boot2 "none" --boot3 "none" --boot4 "none" ` +
-      ` --audio "none" `)
+      ` --audio "none" --vram "16"`)
 
     subCmds.push(`${VBoxManage} storagectl ${this.config.vrouter.name} ` +
       `--name "SATA Controller" --add "sata" --portcount "4" ` +
@@ -575,43 +592,6 @@ class VRouter {
     return iinf
   }
 
-  async getActiveAdapter () {
-    const output = await this.getAllInf()
-    const reg = /^\w+:.*\n(?:\t.*\n)*/img
-    let infs = []
-    while (true) {
-      let infMatch = reg.exec(output)
-      if (!infMatch) break
-      let infConfig = infMatch[0]
-      if (!/status: active/ig.test(infConfig)) continue
-      if (!/inet \d+\.\d+\.\d+\.\d+ netmask/ig.test(infConfig)) continue
-      infs.push(/^(\w+):.*/ig.exec(infConfig)[1])
-    }
-    const cmd = `${VBoxManage} list bridgedifs`
-    const bridgedIfs = await this.localExec(cmd)
-    const arr = infs.map((element) => {
-      const raw = String.raw`^Name:\s*(${element}.*)`
-      const reg = new RegExp(raw, 'ig')
-      const nameMatch = reg.exec(bridgedIfs)
-      return nameMatch && nameMatch[1]
-    })
-    return arr.filter(element => element !== null)
-  }
-
-  async installNwWatchdog () {
-    await this.generateNetworkSh()
-    await this.localExec(`chmod +x "${path.join(this.config.host.configDir, this.config.host.networkSh)}"`)
-    await this.generateNetworkPlist()
-    await this.sudoExec(`cp "${path.join(this.config.host.configDir, this.config.host.networkPlist)}" /Library/LaunchDaemons`)
-    await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
-    await this.sudoExec(`launchctl bootstrap system /Library/LaunchDaemons/${this.config.host.networkPlist}`)
-  }
-  async removeNwWatchdog () {
-    await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
-    await this.sudoExec(`rm /Library/LaunchDaemons/${this.config.host.networkPlist}`).catch(e => {})
-    await this.sudoExec(`rm "${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}"`).catch(e => {})
-  }
-
   async specifyHostonlyAdapter (inf, nic = '1') {
     let iinf = inf
     if (!iinf) {
@@ -631,29 +611,54 @@ class VRouter {
   }
   async specifyBridgeAdapter (inf, nic = '2') {
     // VBoxManage modifyvm com.icymind.vrouter --nic2 bridged --bridgeadapter1 en0
-    let iinf = inf
-    if (!iinf) {
-      let arr = await this.getActiveAdapter()
-      if (arr.length === 0) {
-        // return Promise.resolve('en0: Wi-Fi (AirPort)')
-        iinf = 'en0: Wi-Fi (AirPort)'
-      } else if (arr.length > 1) {
-        console.log(arr)
-        return Promise.reject(Error(`more than one active adapter: ${arr}`))
-      } else {
-        iinf = arr[0]
+    let service
+    if (!inf) {
+      try {
+        let info = await this.getActiveAdapter()
+        service = info[0]
+      } catch (error) {
+        service = 'Wi-Fi'
       }
     }
+
+    const subCmd = `${VBoxManage} list bridgedifs | grep "${service}"`
+    const output = await this.localExec(subCmd)
+    const raw = String.raw`^Name:\s*(.*)`
+    const reg = new RegExp(raw, 'mg')
+    const iinf = reg.exec(output)[1]
+
     const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
       `--nic${nic} bridged ` +
       ` --nictype${nic} "82540EM" ` +
       `--bridgeadapter${nic} "${iinf.replace(/["']/g, '')}" ` +
-      `--cableconnected${nic} "on"`
+      `--cableconnected${nic} "on" ` +
+      `--macaddress${nic} "080027a8b841"`
     const vmState = await this.getvmState()
     if (vmState !== 'poweroff') {
       return Promise.reject(Error('vm must be shutdown before modify'))
     }
     await this.localExec(cmd)
+  }
+
+  async changeBridgeAdapter (nic = '2') {
+    const info = await this.getActiveAdapter()
+    let subCmd = `${VBoxManage} list bridgedifs | grep "${info[0]}"`
+    let output = await this.localExec(subCmd)
+    const raw = String.raw`^Name:\s*(.*)`
+    let reg = new RegExp(raw, 'mg')
+    const activeBridge = reg.exec(output)[1]
+
+    subCmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep bridgeadapter`
+    output = await this.localExec(subCmd)
+    reg = /^bridgeadapter2="(.*)"/mg
+    const specifyBridge = reg.exec(output)[1]
+
+    if (activeBridge !== specifyBridge) {
+      winston.info(`PrimaryInterface change from ${specifyBridge} to ${activeBridge}. now change vm's bridged to ${activeBridge}`)
+      const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} nic${nic} bridged "${activeBridge}"`
+      await this.localExec(cmd)
+    }
+    return activeBridge
   }
 
   async isNIC1ConfigedAsHostonly () {
@@ -1524,7 +1529,7 @@ echo "INTERFACE: $INTERFACE"
 # check gateway & dns
 GATEWAY=$(route -n get default | grep gateway | awk '{print $2}')
 echo "GATEWAY: $GATEWAY"
-DNS=$(/usr/sbin/networksetup -getdnsservers $INTERFACE)
+DNS=$(/usr/sbin/networksetup -getdnsservers "$INTERFACE")
 # echo "DNS: $DNS"
 
 # check vm status
@@ -1538,14 +1543,14 @@ if [[ $GATEWAY ==  $VROUTERIP && $DNS != $VROUTERIP ]]; then
         sudo /sbin/route change default $ROUTERIP
     else
         echo "# vm is running. change dns to vrouter"
-        sudo /usr/sbin/networksetup -setdnsservers $INTERFACE $VROUTERIP
+        sudo /usr/sbin/networksetup -setdnsservers "$INTERFACE" "$VROUTERIP"
     fi
 fi
 
 if [[ $GATEWAY != $VROUTERIP && $DNS == $VROUTERIP ]]; then
     if [[ -z $VMSTATE ]]; then
         echo "# vm is stopped. reset DNS to router"
-        sudo /usr/sbin/networksetup -setdnsservers $INTERFACE $ROUTERIP
+        sudo /usr/sbin/networksetup -setdnsservers "$INTERFACE" "$ROUTERIP"
     else
         echo "#vm is running. change gateway to vrouter"
         sudo /sbin/route change default $VROUTERIP
