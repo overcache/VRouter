@@ -51,6 +51,7 @@ Vue.component('profile', {
   <div v-bind:class="['ui blurring message dimmable', profiles.activedProfile === index ? 'positive' : '']" v-bind:id="index">
     <div class="header">{{ profile.name }}</div>
     <div class="list">
+      <li>{{ (profile.shadowsocks && profile.shadowsocks.address) || profile.shadowsocksr.address }}:{{ (profile.shadowsocks && profile.shadowsocks.port) || profile.shadowsocksr.port }}</li>
       <li>代理: {{ proxiesTextDict[profile.proxies] }}</li>
       <li>模式: {{ proxiesModeTextDict[profile.mode] }}</li>
     </div>
@@ -127,7 +128,7 @@ const myApp = new Vue({
       proxiesModeTextDic: {
         global: '全局模式',
         whitelist: '绕过白名单',
-        blacklist: '仅黑名单',
+        blacklist: '仅代理黑名单',
         none: '无代理'
       }
     },
