@@ -24,11 +24,64 @@ winston.configure({
   ]
 })
 
+Vue.component('profile', {
+  props: ['profiles', 'profile', 'index', 'proxiesTextDict', 'proxiesModeTextDict'],
+  methods: {
+    applyProfile () {
+      const element = document.querySelector('#profiles .ui.message.dimmed')
+      this.profiles.activedProfile = parseInt(element.id)
+      $(element).dimmer('hide')
+    },
+    editProfile () {
+      const id = document.querySelector('#profiles .ui.message.dimmed').id
+      console.log(`edit id: ${id}`)
+    },
+    deleteProfile () {
+      const element = document.querySelector('#profiles .ui.message.dimmed')
+      this.profiles.profiles.splice(parseInt(element.id), 1)
+      if (this.profiles.activedProfile === parseInt(element.id)) {
+        this.profiles.activedProfile = 0
+      } else if (this.profiles.activedProfile > parseInt(element.id)) {
+        this.profiles.activedProfile -= 1
+      }
+      $(element).dimmer('hide')
+    }
+  },
+  template: String.raw`
+  <div v-bind:class="['ui blurring message dimmable', profiles.activedProfile === index ? 'positive' : '']" v-bind:id="index">
+    <div class="header">{{ profile.name }}</div>
+    <div class="list">
+      <li>代理: {{ proxiesTextDict[profile.proxies] }}</li>
+      <li>模式: {{ proxiesModeTextDict[profile.mode] }}</li>
+    </div>
+    <div class="ui dimmer">
+      <div class="content">
+        <div class="center">
+          <div class="ui green icon labeled button" v-on:click="applyProfile">
+            <i class="ui check icon"></i>
+            应用
+          </div>
+          <div class="ui teal icon labeled button" v-on:click="editProfile">
+            <i class="ui write icon"></i>
+            编辑
+          </div>
+          <div class="ui red icon labeled button" v-on:click="deleteProfile">
+            <i class="ui remove icon"></i>
+            删除
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  `
+})
+
 /* eslint-disable */
 const myApp = new Vue({
 /* eslint-enable */
   el: '#app',
   data: {
+    profiles: vrouter.config.profiles,
     shadowsocks: vrouter.config.shadowsocks.server,
     shadowsocksr: vrouter.config.shadowsocksr.server,
     kcptun: vrouter.config.kcptun.server,
@@ -55,13 +108,13 @@ const myApp = new Vue({
     ui: {
       blinkIntervals: [],
       pwdVisible: {
-        ss: false,
-        ssr: false,
-        kt: false
+        ss: true,
+        ssr: true,
+        kt: true
       },
       editable: {
-        proxies: false,
-        mode: false
+        proxies: true,
+        mode: true
       },
       activeLoader: false,
       btnToggleRouterPopup: '',
@@ -121,6 +174,21 @@ const myApp = new Vue({
       winston.error(err)
       this.errorMsg = err.toString()
       $(this.$refs.errorModal).modal('show')
+    },
+    editProfile () {
+      $(this.$refs.profileModal)
+        .modal({
+          dimmerSettings: {
+            opacity: 0.2
+          },
+          detachable: false,
+          closable: false
+        })
+        .modal('show')
+    },
+    showProfileBtns (event) {
+      // console.log(event.target)
+      // event.target.visibility = 'hidden'
     },
     async toggleVrouter () {
       $('*[data-content]').popup('hide')
@@ -241,6 +309,7 @@ const myApp = new Vue({
       this.toggleProxiesForm(arr)
     },
     toggleProxiesForm (selected) {
+      winston.debug(`current proxies: ${selected}`)
       const proxies = ['shadowsocks', 'shadowsocksr', 'kcptun']
       proxies.forEach((proxy) => {
         if (selected.includes(proxy)) {
@@ -383,9 +452,9 @@ const myApp = new Vue({
       }
     },
     openExtraList (type) {
-      if (this.ui.editable.mode) {
-        return shell.openItem(path.join(vrouter.config.host.configDir, this.firewall[`extra${type}List`]))
-      }
+      // if (this.ui.editable.mode) {
+      return shell.openItem(path.join(vrouter.config.host.configDir, this.firewall[`extra${type}List`]))
+      // }
     },
     async updateChinaIPs () {
       if (this.ui.editable.mode) {
@@ -570,4 +639,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('.tabular.menu .item').tab()
   $('.dropdown').dropdown()
   $('*[data-content]').popup()
+  $('#profileModal').modal({
+    dimmerSettings: {
+      opacity: 0.2
+    },
+    detachable: false,
+    closable: false
+  })
+  $('#profiles .ui.message').dimmer({
+    opacity: 0,
+    on: 'hover',
+    duration: 10
+  })
 })
