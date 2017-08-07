@@ -51,13 +51,13 @@
         <div class="ui label">
           代理: 
           <div class="detail">
-            {{ ui.proxiesTextDic[firewall.currentProxies] }}
+            {{ ui.proxiesTextDict[profiles.profiles[profiles.activedProfile].proxies] }}
           </div>
         </div>
         <div class="ui label">
           模式: 
           <div class="detail">
-            {{ ui.proxiesModeTextDic[firewall.currentMode] }}
+            {{ ui.proxiesModeTextDict[profiles.profiles[profiles.activedProfile].mode] }}
           </div>
         </div>
       </div>
@@ -76,7 +76,7 @@
       </div>
       <div class="ui divider hidden"></div>
       <div id="profiles">
-        <profile v-bind:profiles="profiles" v-bind:profile="profile" v-bind:index="index" v-bind:proxies-text-dict="ui.proxiesTextDic" v-bind:proxies-mode-text-dict="ui.proxiesModeTextDic" v-bind:editing-profile="editingProfile" v-bind:toggle-profile-editor="toggleProfileEditor" :delete-profile="deleteProfile" :edit-profile="editProfile" :apply-profile="applyProfile" v-for="(profile, index) in profiles.profiles"></profile>
+        <profile v-bind:profiles="profiles" v-bind:profile="profile" v-bind:index="index" v-bind:proxies-text-dict="ui.proxiesTextDict" v-bind:proxies-mode-text-dict="ui.proxiesModeTextDict" v-bind:editing-profile="editingProfile" v-bind:toggle-profile-editor="toggleProfileEditor" :delete-profile="deleteProfile" :edit-profile="editProfile" :apply-profile="applyProfile" v-for="(profile, index) in profiles.profiles"></profile>
       </div>
       <div class="ui divider hidden"></div>
       <div class="ui green labeled icon button right floated" v-on:click="openExtraList('White')">
@@ -162,8 +162,8 @@
           <div class="ui label">
             转发 DNS 查询: 
             <span class="detail">
-              {{ firewall.enableTunnelDns ? (status.isTunnelDnsRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', firewall.enableTunnelDns ? (status.isTunnelDnsRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
+              {{ profiles.profiles[profiles.activedProfile].enableTunnelDns ? (status.isTunnelDnsRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', profiles.profiles[profiles.activedProfile].enableTunnelDns ? (status.isTunnelDnsRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -171,8 +171,8 @@
           <div class="ui label">
             shadowsocks 进程: 
             <span class="detail">
-              {{ ['ss', 'ssKt'].includes(firewall.currentProxies)  ? (status.isSsRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', ['ss', 'ssKt'].includes(firewall.currentProxies) ? (status.isSsRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
+              {{ ['ss', 'ssKt'].includes(profiles.profiles[profiles.activedProfile].proxies)  ? (status.isSsRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', ['ss', 'ssKt'].includes(profiles.profiles[profiles.activedProfile].proxies) ? (status.isSsRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -180,8 +180,8 @@
           <div class="ui label">
             shadowsocksR 进程: 
             <span class="detail">
-              {{ firewall.currentProxies.includes('ssr') ? (status.isSsrRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('ssr') ? (status.isSsrRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
+              {{ profiles.profiles[profiles.activedProfile].proxies.includes('ssr') ? (status.isSsrRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', profiles.profiles[profiles.activedProfile].proxies.includes('ssr') ? (status.isSsrRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -189,8 +189,8 @@
           <div class="ui label">
             kcptun 进程: 
             <span class="detail">
-              {{ firewall.currentProxies.includes('Kt') ? (status.isKtRunning ? '运行中' : '已停止') : '未启用'  }}
-              <i v-bind:class="['ui circle icon', firewall.currentProxies.includes('Kt') ? (status.isKtRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
+              {{ profiles.profiles[profiles.activedProfile].proxies.includes('Kt') ? (status.isKtRunning ? '运行中' : '已停止') : '未启用'  }}
+              <i v-bind:class="['ui circle icon', profiles.profiles[profiles.activedProfile].proxies.includes('Kt') ? (status.isKtRunning ? ['check', 'teal'] : ['minus', 'red']) : 'toggle off']"></i>
             </span>
           </div>
         </div>
@@ -309,19 +309,19 @@
           <div id="proxies-chains" class="ui selection dropdown">
             <input type="hidden" name="proxies-chains">
             <i class="ui dropdown icon"></i>
-            <div class="text" ref="proxiesText" v-text="ui.proxiesTextDic[editingProfile.proxies]"></div>
+            <div class="text" ref="proxiesText" v-text="ui.proxiesTextDict[editingProfile.proxies]"></div>
             <div class="ui menu" ref="proxiesDropdown">
               <div class="item" data-value="ss" v-on:click="selectProxies">
-                {{ ui.proxiesTextDic.ss }}
+                {{ ui.proxiesTextDict.ss }}
               </div>
               <div class="item" data-value="ssr" v-on:click="selectProxies">
-                {{ ui.proxiesTextDic.ssr }}
+                {{ ui.proxiesTextDict.ssr }}
               </div>
               <div class="item" data-value="ssKt" v-on:click="selectProxies">
-                {{ ui.proxiesTextDic.ssKt }}
+                {{ ui.proxiesTextDict.ssKt }}
               </div>
               <div class="item" data-value="ssrKt" v-on:click="selectProxies">
-                {{ ui.proxiesTextDic.ssrKt }}
+                {{ ui.proxiesTextDict.ssrKt }}
               </div>
             </div>
           </div>
@@ -351,8 +351,7 @@
                 <div class="eight wide icon field">
                   <label for="password">Password</label>
                   <div class="ui icon input">
-                    <input v-model="editingProfile.shadowsocks.password" v-bind:type="ui.pwdVisible.ss ? 'text' : 'password'" v-bind:disabled="!ui.editable.proxies" ref="ssPassword">
-                    <i v-if="!ui.editable.proxies" id="password-icon" v-bind:class="['ui link icon', ui.pwdVisible.ss ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('ss')"></i>
+                    <input v-model="editingProfile.shadowsocks.password"  ref="ssPassword">
                   </div>
                 </div>
                 <div class="four wide field">
@@ -377,11 +376,11 @@
                 </div>
                 <div class="four wide field">
                   <label for="server-port">Server Port</label>
-                  <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.port" ref="ssrPort">
+                  <input v-model="editingProfile.shadowsocksr.port" ref="ssrPort">
                 </div>
                 <div class="four wide field">
                   <label for="timeout">Timeout</label>
-                  <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.timeout" ref="ssrTimeout">
+                  <input v-model="editingProfile.shadowsocksr.timeout" ref="ssrTimeout">
                 </div>
               </div>
             </div>
@@ -390,24 +389,23 @@
                 <div class="four wide icon field">
                   <label>Password</label>
                   <div class="ui icon input">
-                    <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.password" v-bind:type="ui.pwdVisible.ssr ? 'text' : 'password'" ref="ssrPassword">
-                    <i v-if="!ui.editable.proxies" id="password-icon" v-bind:class="['ui link icon', ui.pwdVisible.ssr ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('ssr')"></i>
+                    <input v-model="editingProfile.shadowsocksr.password" ref="ssrPassword">
                   </div>
                 </div>
                 <div class="four wide field">
                   <label>Encrypt Method</label>
-                  <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.method" ref="ssrMethod">
+                  <input v-model="editingProfile.shadowsocksr.method" ref="ssrMethod">
                 </div>
                 <div class="four wide field">
                   <label>Protocol</label>
                   <div class="ui input">
-                    <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.protocol" ref="ssrProtocol">
+                    <input v-model="editingProfile.shadowsocksr.protocol" ref="ssrProtocol">
                   </div>
                 </div>
                 <div class="four wide field">
                   <label>Obfs</label>
                   <div class="ui input">
-                    <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.obfs" ref="ssrObfs">
+                    <input v-model="editingProfile.shadowsocksr.obfs" ref="ssrObfs">
                   </div>
                 </div>
               </div>
@@ -417,25 +415,25 @@
                 <div class="four wide field">
                   <label>Protocol Param</label>
                   <div class="ui input">
-                    <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.protocol_param" ref="ssrProtocol_Param">
+                    <input v-model="editingProfile.shadowsocksr.protocol_param" ref="ssrProtocol_Param">
                   </div>
                 </div>
                 <div class="four wide field">
                   <label>Obfs Param</label>
                   <div class="ui input">
-                    <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.obfs_param" ref="ssrObfs_Param">
+                    <input v-model="editingProfile.shadowsocksr.obfs_param" ref="ssrObfs_Param">
                   </div>
                 </div>
                 <div class="four wide field">
                   <label>Fast Open</label>
-                  <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.fastopen" ref="ssrFastOpen">
+                  <input v-model="editingProfile.shadowsocksr.fastopen" ref="ssrFastOpen">
                 </div>
                 <div class="four wide field">
                   <label>Others
                     <i class="help circle link icon" data-content="shadowsocksr 的其他参数, 格式'key1=value1;key2=value2'"></i>
                   </label>
                   <div class="ui input">
-                    <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.shadowsocksr.others" ref="ssrOthers">
+                    <input v-model="editingProfile.shadowsocksr.others" ref="ssrOthers">
                   </div>
                 </div>
               </div>
@@ -448,15 +446,15 @@
               <div class="three fields">
                 <div class="eight wide field">
                   <label for="server">Server</label>
-                  <input v-model="editingProfile.kcptun.address" v-bind:disabled="!ui.editable.proxies" ref="ktAddress">
+                  <input v-model="editingProfile.kcptun.address" ref="ktAddress">
                 </div>
                 <div class="four wide field">
                   <label for="server-port">Server Port</label>
-                  <input v-model="editingProfile.kcptun.port" v-bind:disabled="!ui.editable.proxies" ref="ktPort">
+                  <input v-model="editingProfile.kcptun.port" ref="ktPort">
                 </div>
                 <div class="four wide field">
                   <label for="fast-open">Mode</label>
-                  <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.kcptun.mode" ref="ktMode">
+                  <input v-model="editingProfile.kcptun.mode" ref="ktMode">
                 </div>
               </div>
             </div>
@@ -465,19 +463,18 @@
                 <div class="eight wide icon field">
                   <label for="password">Key</label>
                   <div class="ui icon input">
-                    <input v-model="editingProfile.kcptun.key" v-bind:type="ui.pwdVisible.kt ? 'text' : 'password'" v-bind:disabled="!ui.editable.proxies" ref="ktKey">
-                    <i v-if="!ui.editable.proxies" v-bind:class="['ui link icon', ui.pwdVisible.kt ? 'hide' : 'unhide']" v-on:click="togglePwdVsblt('kt')"></i>
+                    <input v-model="editingProfile.kcptun.key" ref="ktKey">
                   </div>
                 </div>
                 <div class="eight wide field">
                   <label for="encrypt">Encrypt Method</label>
-                  <input v-bind:disabled="!ui.editable.proxies" v-model="editingProfile.kcptun.crypt" ref="ktCrypt">
+                  <input v-model="editingProfile.kcptun.crypt" ref="ktCrypt">
                 </div>
               </div>
             </div>
             <div class="field">
               <label>Others<i class="help circle link icon" data-content="kcptun的其他参数, 格式'key1=value1;key2=value2', 如sndwnd=256;rcvwnd=2048;nocomp=true"></i></label>
-              <input v-bind:disabled="!ui.editable.proxies" ref="ktOthers" v-model="editingProfile.kcptun.others">
+              <input ref="ktOthers" v-model="editingProfile.kcptun.others">
             </div>
           </div>
           <div class="ui divider hidden"></div>
@@ -485,15 +482,15 @@
 
           <div>
             <label>模式</label>
-            <div id="bypass-mode" v-bind:class="['ui selection dropdown', ui.editable.mode || 'disabled']">
+            <div id="bypass-mode" v-bind:class="['ui selection dropdown']">
               <input type="hidden" name="bypass-mode">
               <i class="ui dropdown icon"></i>
-              <div class="text" v-text="ui.proxiesModeTextDic[editingProfile.mode]" ref="proxiesModeText"></div>
+              <div class="text" v-text="ui.proxiesModeTextDict[editingProfile.mode]" ref="proxiesModeText"></div>
               <div class="menu">
-                <div class="item" data-value="global">{{ ui.proxiesModeTextDic.global }}</div>
-                <div class="item" data-value="whitelist">{{ ui.proxiesModeTextDic.whitelist }}</div>
-                <div class="item" data-value="blacklist">{{ ui.proxiesModeTextDic.blacklist }}</div>
-                <div class="item" data-value="none">{{ ui.proxiesModeTextDic.none }}</div>
+                <div class="item" data-value="global">{{ ui.proxiesModeTextDict.global }}</div>
+                <div class="item" data-value="whitelist">{{ ui.proxiesModeTextDict.whitelist }}</div>
+                <div class="item" data-value="blacklist">{{ ui.proxiesModeTextDict.blacklist }}</div>
+                <div class="item" data-value="none">{{ ui.proxiesModeTextDict.none }}</div>
               </div>
             </div>
           </div>
@@ -507,7 +504,7 @@
             </div>
             <div class="item">
               <div class="ui checkbox">
-                <input type="checkbox" name="extraBlackList" v-bind:disabled="!ui.editable.mode" v-bind:checked="editingProfile.selectedBL && editingProfile.selectedBL.extraBlackList" ref="extraBlackList">
+                <input type="checkbox" name="extraBlackList" v-bind:checked="editingProfile.selectedBL && editingProfile.selectedBL.extraBlackList" ref="extraBlackList">
                 <label>自定义黑名单</label>
               </div>
             </div>
@@ -522,7 +519,7 @@
             </div>
             <div class="item">
               <div class="ui checkbox">
-                <input type="checkbox" name="chinaIPs" v-bind:checked="editingProfile.selectedWL && editingProfile.selectedWL.chinaIPs" v-bind:disabled="!ui.editable.mode" ref="chinaIPs">
+                <input type="checkbox" name="chinaIPs" v-bind:checked="editingProfile.selectedWL && editingProfile.selectedWL.chinaIPs" ref="chinaIPs">
                 <label>
                   国内 IP
                   <i class="ui refresh icon link" data-content="更新 IP 数据库" v-on:click="updateChinaIPs"></i>
@@ -531,7 +528,7 @@
             </div>
             <div class="item">
               <div class="ui checkbox">
-                <input type="checkbox" name="extraWhiteList" v-bind:disabled="!ui.editable.mode" v-bind:checked="editingProfile.selectedWL && editingProfile.selectedWL.extraWhiteList" ref="extraWhiteList">
+                <input type="checkbox" name="extraWhiteList" v-bind:checked="editingProfile.selectedWL && editingProfile.selectedWL.extraWhiteList" ref="extraWhiteList">
                 <label>自定义白名单</label>
               </div>
             </div>

@@ -67,10 +67,6 @@ const myApp = new Vue({
       shadowsocksr: {},
       kcptun: {}
     },
-    shadowsocks: vrouter.config.shadowsocks.server,
-    shadowsocksr: vrouter.config.shadowsocksr.server,
-    kcptun: vrouter.config.kcptun.server,
-    firewall: vrouter.config.firewall,
     remote: null,
     status: {
       currentGW: '',
@@ -91,25 +87,15 @@ const myApp = new Vue({
       isKtRunning: true
     },
     ui: {
-      blinkIntervals: [],
-      pwdVisible: {
-        ss: true,
-        ssr: true,
-        kt: true
-      },
-      editable: {
-        proxies: true,
-        mode: true
-      },
       activeLoader: false,
       btnToggleRouterPopup: '',
-      proxiesTextDic: {
+      proxiesTextDict: {
         ss: 'Shadowsocks',
         ssr: 'ShadowsocksR',
         ssKt: 'Shadowsocks + Kcptun',
         ssrKt: 'ShadowsocksR + Kcptun'
       },
-      proxiesModeTextDic: {
+      proxiesModeTextDict: {
         global: '全局模式',
         whitelist: '绕过白名单',
         blacklist: '仅代理黑名单',
@@ -138,9 +124,6 @@ const myApp = new Vue({
         }
       })
       return others.join(';')
-    },
-    proxiesModeText () {
-      return this.ui.proxiesModeTextDic[this.firewall.currentMode]
     },
     author () {
       return fs.readJsonSync(path.join(__dirname, '..', 'package.json')).author
@@ -242,6 +225,7 @@ const myApp = new Vue({
       this.profiles.activedProfile = index
       await vrouter.saveCfg2File()
       await this.remote.applyProfile(index)
+      await this.refreshInfos()
       this.ui.activeLoader = false
     },
     initDimmer () {
@@ -312,27 +296,6 @@ const myApp = new Vue({
         this.ui.activeLoader = false
       }
     },
-    async toggleBlink (blink) {
-      const icons = [...this.$el.querySelectorAll('#status-tab .ui.circle.icon')]
-      this.ui.blinkIntervals.forEach(intrvl => clearInterval(intrvl))
-      this.ui.blinkIntervals.length = 0
-      setTimeout(() => {
-        icons.forEach((icon) => {
-          icon.classList.remove('green')
-        })
-      }, 4100)
-      if (blink) {
-        icons.forEach((icon) => {
-          const interval = setInterval(() => {
-            setTimeout(() => {
-              $(icon).transition('pulse')
-              icon.classList.toggle('green')
-            }, Math.random() * 3900)
-          }, 4000)
-          this.ui.blinkIntervals.push(interval)
-        })
-      }
-    },
     async checkTrafficStatus () {
       const [gw, dns] = await vrouter.getCurrentGateway()
       this.status.currentGWIP = gw
@@ -350,44 +313,8 @@ const myApp = new Vue({
     },
 
 // Proxies Tab
-    editProxies () {
-      const editing = this.ui.editable.proxies
-      this.ui.editable.proxies = !editing
-      Object.keys(this.ui.pwdVisible).forEach((key) => {
-        this.ui.pwdVisible[key] = this.ui.editable.proxies
-      })
-      this.resetProxiesDropdown()
-      this.resetProxiesForm()
-    },
-    async applyProxies () {
-      this.ui.activeLoader = true
-
-      Object.keys(this.ui.pwdVisible).forEach((key) => {
-        this.ui.pwdVisible[key] = false
-      })
-      this.ui.editable.proxies = false
-
-      // 只保存当前选择的代理的配置
-      this.saveFields('proxies')
-      this.saveCurrentProxiesFields()
-
-      try {
-        await vrouter.saveCfg2File()
-        await this.remote.changeProxies()
-        winston.debug(`changed proxies to: ${this.firewall.currentProxies}`)
-        await this.refreshInfos()
-      } catch (err) {
-        winston.error('failed to apply proxies')
-        this.showErrModal(err)
-      } finally {
-        this.ui.activeLoader = false
-      }
-    },
-    togglePwdVsblt (type) {
-      this.ui.pwdVisible[type] = !this.ui.pwdVisible[type]
-    },
     resetProxiesDropdown () {
-      this.$refs.proxiesText.innerHTML = this.ui.proxiesTextDic[this.editingProfile.proxies]
+      this.$refs.proxiesText.innerHTML = this.ui.proxiesTextDict[this.editingProfile.proxies]
       const items = document.querySelectorAll('#proxies-chains .menu .item')
       ;[...items].forEach((item) => {
         if (item.dataset.value === this.editingProfile.proxies) {
@@ -434,57 +361,6 @@ const myApp = new Vue({
         }
       })
     },
-    saveCurrentProxiesFields () {
-      // const currentProxies = vrouter.config.firewall.currentProxies
-      switch (this.editingProfile.proxies) {
-        case 'ss':
-          this.saveFields('shadowsocks')
-          delete this.editingProfile['shadowsocksr']
-          delete this.editingProfile['kcptun']
-          break
-        case 'ssr':
-          this.saveFields('shadowsocksr')
-          delete this.editingProfile['shadowsocks']
-          delete this.editingProfile['kcptun']
-          break
-        case 'ssKt':
-          this.saveFields('shadowsocks')
-          this.saveFields('kcptun')
-          delete this.editingProfile['shadowsocksr']
-          break
-        case 'ssrKt':
-          this.saveFields('shadowsocksr')
-          this.saveFields('kcptun')
-          delete this.editingProfile['shadowsocks']
-          break
-        default:
-          throw Error('unkown current proxies')
-      }
-    },
-    async restartCurrentProxies () {
-      const currentProxies = vrouter.config.firewall.currentProxies
-      winston.debug(`restart current proxies: ${currentProxies}`)
-      switch (currentProxies) {
-        case 'ss':
-          vrouter.generateConfig('shadowsocks')
-          this.remote.scpConfig('shadowsocks')
-          this.remote.service('shadowsocks', 'restart')
-          break
-        case 'ssr':
-          this.saveFields('ssr')
-          break
-        case 'ssKt':
-          this.saveFields('ss')
-          this.saveFields('kt')
-          break
-        case 'ssrKt':
-          this.saveFields('ssr')
-          this.saveFields('kt')
-          break
-        default:
-          throw Error('unkown current proxies')
-      }
-    },
     saveFields (type) {
       switch (type) {
         case 'proxies':
@@ -506,30 +382,6 @@ const myApp = new Vue({
             this.editingProfile.selectedWL[ref] = this.$refs[ref].checked
           })
           break
-        case 'shadowsocks':
-          let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
-          ssFields.forEach((field) => {
-            let key = field.substr(2).toLowerCase()
-            this.editingProfile.shadowsocks.server[key] = this.$refs[field].value.trim()
-            // vrouter.config.shadowsocks.server[key] = this.$refs[field].value.trim()
-          })
-          break
-        case 'shadowsocksr':
-          let ssrFields = ['ssrAddress', 'ssrPort', 'ssrPassword', 'ssrTimeout', 'ssrMethod', 'ssrFastOpen', 'ssrProtocol', 'ssrObfs', 'ssrProtocol_Param', 'ssrObfs_Param']
-          ssrFields.forEach((field) => {
-            const key = field.substr(3).toLowerCase()
-            vrouter.config.shadowsocksr.server[key] = this.$refs[field].value.trim()
-          })
-          // vrouter.config.shadowsocksr.server.others = this.$refs.ssrOthers.value.trim()
-          break
-        case 'kcptun':
-          let ktFields = ['ktAddress', 'ktPort', 'ktKey', 'ktCrypt', 'ktMode']
-          ktFields.forEach((field) => {
-            const key = field.substr(2).toLowerCase()
-            vrouter.config.kcptun.server[key] = this.$refs[field].value.trim()
-          })
-          vrouter.config.kcptun.server.others = this.$refs.ktOthers.value.trim()
-          break
         default:
           throw Error('unkown fields')
       }
@@ -537,7 +389,7 @@ const myApp = new Vue({
 
 // Mode Tab
     resetProxiesMode () {
-      this.$refs.proxiesModeText.innerHTML = this.ui.proxiesModeTextDic[this.editingProfile.mode]
+      this.$refs.proxiesModeText.innerHTML = this.ui.proxiesModeTextDict[this.editingProfile.mode]
       const items = document.querySelectorAll('#bypass-mode .menu .item')
       ;[...items].forEach((item) => {
         if (item.dataset.value === this.editingProfile.mode) {
@@ -548,53 +400,6 @@ const myApp = new Vue({
           item.classList.remove('selected')
         }
       })
-    },
-    editProxiesMode () {
-      this.ui.editable.mode = !this.ui.editable.mode
-      this.resetProxiesMode()
-    },
-    async applyProxiesMode () {
-      this.ui.editable.mode = false
-      this.ui.activeLoader = true
-
-      let whiteList = {}
-      let blackList = {}
-
-      const selectedText = this.$refs.proxiesModeText.innerHTML.trim()
-      let mode = null
-      Object.keys(this.ui.proxiesModeTextDic).forEach((key) => {
-        if (this.ui.proxiesModeTextDic[key] === selectedText) {
-          mode = key
-        }
-      })
-      this.firewall.currentMode = mode
-
-      const blackListRef = ['gfwDomains', 'extraBlackList']
-      blackListRef.forEach((ref) => {
-        if (this.$refs[ref].checked) {
-          blackList[ref] = true
-        }
-      })
-      this.firewall.selectedBL = blackList
-
-      const whiteListRef = ['chinaIPs', 'lanNetworks', 'extraWhiteList']
-      whiteListRef.forEach((ref) => {
-        if (this.$refs[ref].checked) {
-          whiteList[ref] = true
-        }
-      })
-      this.firewall.selectedWL = whiteList
-
-      try {
-        await vrouter.saveCfg2File()
-        await this.remote.changeMode()
-        winston.debug(`changed proxymode to: ${this.firewall.currentMode}`)
-      } catch (err) {
-        winston.error(`failed to change proxymode: ${this.firewall.currentMode}`)
-        this.showErrModal(err)
-      } finally {
-        this.ui.activeLoader = false
-      }
     },
     openExtraList (type) {
       // if (this.ui.editable.mode) {

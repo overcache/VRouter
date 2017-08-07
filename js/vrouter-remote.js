@@ -139,7 +139,7 @@ class VRouterRemote {
       'watchdog',
       'cron'
     ]
-    if (this.config.firewall.enableTunnelDns) {
+    if (this.config.profiles.profiles[this.config.profiles.activedProfile].enableTunnelDns) {
       types.push('tunnelDnsService')
       types.push('tunnelDns')
     }
@@ -333,7 +333,7 @@ class VRouterRemote {
       default:
         throw Error('unkown proxies')
     }
-    if (this.config.firewall.enableTunnelDns) {
+    if (this.config.profiles.profiles[this.config.profiles.activedProfile].enableTunnelDns) {
       promises.push(this.service(this.config.tunnelDns.service, 'restart'))
     }
     promises.push(...[

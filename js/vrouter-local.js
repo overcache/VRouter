@@ -840,6 +840,8 @@ EOF`
     }
   }
   async generateIPsets (overwrite = false) {
+    const profile = this.config.profiles.profiles[this.config.profiles.activedProfile]
+
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.ipsetsFile)
     const stats = await fs.stat(cfgPath)
       .catch(() => null)
@@ -863,7 +865,7 @@ EOF`
 
     // "selectedBL": {"gfwDomains":true, "extraBlackList":true},
     // "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
-    if (this.config.firewall.selectedWL.lanNetworks) {
+    if (profile.selectedWL.lanNetworks) {
       winston.debug(`getCfgContent: ${this.config.firewall.lanNetworks}`)
       const lan = await this.getCfgContent(this.config.firewall.lanNetworks)
       lan.split('\n').forEach((line) => {
@@ -874,7 +876,7 @@ EOF`
       })
     }
 
-    if (this.config.firewall.selectedWL.chinaIPs) {
+    if (profile.selectedWL.chinaIPs) {
       const chinaIPs = await this.getCfgContent(this.config.firewall.chinaIPs)
       chinaIPs.split('\n').forEach((line) => {
         const trimLine = line.trim()
@@ -884,7 +886,7 @@ EOF`
       })
     }
 
-    if (this.config.firewall.selectedWL.extraWhiteList) {
+    if (profile.selectedWL.extraWhiteList) {
       const extraList = await this.getCfgContent(this.config.firewall.extraWhiteList)
       extraList.split('\n').forEach((line) => {
         const trimLine = line.trim()
@@ -897,7 +899,7 @@ EOF`
       })
     }
 
-    if (this.config.firewall.selectedBL.extraBlackList) {
+    if (profile.selectedBL.extraBlackList) {
       // add extra_blocked_ips to blacklist_ipset
       const extraList = await this.getCfgContent(this.config.firewall.extraBlackList)
       extraList.split('\n').forEach((line) => {
@@ -1065,6 +1067,7 @@ EOF`
     ]
   }
   async generateDnsmasqCf (overwrite = false) {
+    const profile = this.config.profiles.profiles[this.config.profiles.activedProfile]
     const DNSs = this.getDNSServer()
     const cfgPath = path.join(this.config.host.configDir, this.config.firewall.dnsmasqFile)
 
@@ -1089,12 +1092,12 @@ EOF`
       ws.end()
       return promise
     }
-    if (this.config.firewall.selectedBL.gfwDomains) {
+    if (profile.selectedBL.gfwDomains) {
       const gfwDomains = await this.getCfgContent(this.config.firewall.gfwDomains)
       gfwDomains.split('\n').forEach((line) => {
         const trimLine = line.trim()
         if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
-          if (this.config.firewall.enableTunnelDns) {
+          if (profile.enableTunnelDns) {
             ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
           }
           ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.black}\n`)
@@ -1102,7 +1105,7 @@ EOF`
       })
     }
 
-    if (this.config.firewall.selectedBL.extraBlackList) {
+    if (profile.selectedBL.extraBlackList) {
       // add extra_blocked_ips to blacklist_ipset
       const extraList = await this.getCfgContent(this.config.firewall.extraBlackList)
       extraList.split('\n').forEach((line) => {
@@ -1110,7 +1113,7 @@ EOF`
         if (!/^#/ig.test(trimLine) && !/^$/ig.test(trimLine)) {
           const ip = /^\d+\.\d+\.\d+\.\d+$/g
           if (!ip.test(trimLine)) {
-            if (this.config.firewall.enableTunnelDns) {
+            if (profile.enableTunnelDns) {
               ws.write(`server=/${trimLine}/${DNSs[1]}\n`)
             }
             ws.write(`ipset=/${trimLine}/${this.config.firewall.ipsets.black}\n`)
@@ -1119,7 +1122,7 @@ EOF`
       })
     }
 
-    if (this.config.firewall.selectedWL.extraWhiteList) {
+    if (profile.selectedWL.extraWhiteList) {
       const extraList = await this.getCfgContent(this.config.firewall.extraWhiteList)
       extraList.split('\n').forEach((line) => {
         const trimLine = line.trim()
@@ -1179,7 +1182,8 @@ EOF`
           /etc/init.d/${this.config.kcptun.service} restart
       fi
       `
-    if (this.config.firewall.enableTunnelDns) {
+    const profile = this.config.profiles.profiles[this.config.profiles.activedProfile]
+    if (profile.enableTunnelDns) {
       content += tunnelDns
     }
     if (proxies.includes('Kt')) {
