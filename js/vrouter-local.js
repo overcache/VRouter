@@ -440,7 +440,7 @@ EOF`
     if (state === 'running' && !stopFirst) {
       throw Error('vm must be stopped before delete')
     }
-    await this.stopvm('poweroff', 3000)
+    await this.stopvm('force', 3000)
     return this.localExec(cmd)
   }
   async startvm (type = 'headless', waitTime = 100) {
@@ -611,13 +611,12 @@ EOF`
   }
   async specifyBridgeAdapter (inf, nic = '2') {
     // VBoxManage modifyvm com.icymind.vrouter --nic2 bridged --bridgeadapter1 en0
-    let service
+    let service = 'Wi-Fi'
     if (!inf) {
       try {
         let info = await this.getActiveAdapter()
         service = info[0]
       } catch (error) {
-        service = 'Wi-Fi'
       }
     }
 
@@ -632,7 +631,7 @@ EOF`
       ` --nictype${nic} "82540EM" ` +
       `--bridgeadapter${nic} "${iinf.replace(/["']/g, '')}" ` +
       `--cableconnected${nic} "on" ` +
-      `--macaddress${nic} "080027a8b841"`
+      `--macaddress${nic} "${this.config.vrouter.macaddress}"`
     const vmState = await this.getvmState()
     if (vmState !== 'poweroff') {
       return Promise.reject(Error('vm must be shutdown before modify'))
@@ -1481,9 +1480,9 @@ EOF`
         <key>RunAtLoad</key>
         <true/>
         <key>StandardErrorPath</key>
-        <string>${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}</string>
+        <string>${path.join(os.tmpdir(), path.basename(this.config.host.networkSh, '.sh') + '.log')}</string>
         <key>StandardOutPath</key>
-        <string>${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}</string>
+        <string>${path.join(os.tmpdir(), path.basename(this.config.host.networkSh, '.sh') + '.log')}</string>
       </dict>
     </plist>`
 

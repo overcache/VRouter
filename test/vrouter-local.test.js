@@ -14,6 +14,44 @@ const winston = require('winston')
 
 describe('Test suite for VRouter', function () {
   let vrouter
+  const profile = {
+    'name': 'kcp 加速',
+    'mode': 'whitelist',
+    'proxies': 'ssKt',
+    'relayUDP': false,
+    'enableTunnelDns': true,
+    'selectedBL': {'gfwDomains': true, 'extraBlackList': true},
+    'selectedWL': {'chinaIPs': true, 'lanNetworks': true, 'extraWhiteList': true},
+    'shadowsocks': {
+      'address': '123.123.123.123',
+      'port': '8989',
+      'password': 'demo-paswd',
+      'timeout': 300,
+      'method': 'chacha20',
+      'fastopen': false
+    },
+    'kcptun': {
+      'address': '123.123.123.123',
+      'port': '5555',
+      'key': 'demo-secret',
+      'crypt': 'aes-128',
+      'mode': 'fast2',
+      'others': 'sndwnd=256;rcvwnd=2048;nocomp=true'
+    },
+    'shadowsocksr': {
+      'address': '123.123.123.123',
+      'port': '9999',
+      'password': 'demo-paswd',
+      'timeout': 300,
+      'method': 'chacha20',
+      'protocol': 'auth_aes128_md5',
+      'protocol_param': '32',
+      'obfs': 'tls1.2_ticket_auth',
+      'obfs_param': '',
+      'others': '',
+      'fastopen': false
+    }
+  }
   before('get vrouter instance', async function () {
     this.timeout(50000)
     const configFile = path.join(__dirname, '../config/config.json')
@@ -21,6 +59,7 @@ describe('Test suite for VRouter', function () {
     cfg.host.ip = '10.10.10.10'
     cfg.host.configDir = path.join(getAppDir(), 'VRouter-test')
     cfg.vrouter.ip = '10.10.10.11'
+    cfg.vrouter.macaddress = '080027a8b844'
     cfg.vrouter.name = 'vrouter.test'
     vrouter = new VRouter(cfg)
     await fs.remove(path.join(__dirname, 'config')).catch(() => {})
@@ -258,13 +297,11 @@ describe('Test suite for VRouter', function () {
     it('test getActiveAdapter should return an array', function () {
       const promise = vrouter.getActiveAdapter()
       return promise.then(async (output) => {
-        for (let i = 0; i < output.length; i += 1) {
-          const inf = output[i].split(':')[0].trim()
-          await vrouter.getInfIP(inf)
-            .then((ip) => {
-              expect(ip).to.not.be.empty
-            })
-        }
+        const inf = output[1]
+        await vrouter.getInfIP(inf)
+          .then((ip) => {
+            expect(ip).to.not.be.empty
+          })
       })
     })
     it("configvmLanIP should config vm's br-lan with vrouter.ip", function () {
@@ -341,24 +378,11 @@ describe('Test suite for VRouter', function () {
     })
     it('specifyBridgeAdapter(inf, nic) should change vm\'s adapter', function () {
       this.timeout(10000)
-      let currentInf = ''
       const promise = vrouter.stopvm('poweroff', 8000)
         .then(() => {
           return vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep bridgeadapter`)
         })
-        .then((output) => {
-          currentInf = output.trim().split('=')[1]
-        })
-        .then(() => {
-          return vrouter.specifyBridgeAdapter('something')
-        })
-        .then(() => {
-          return vrouter.localExec(`VBoxManage showvminfo ${vrouter.config.vrouter.name} --machinereadable | grep bridgeadapter`)
-        })
-      return expect(promise).to.eventually.equal('bridgeadapter2="something"\n')
-        .then(() => {
-          return vrouter.specifyBridgeAdapter(currentInf)
-        })
+      return expect(promise).to.eventually.equal('bridgeadapter2="en0: Wi-Fi (AirPort)"\n')
     })
 
     it('isNIC1ConfigedAsHostonly should be fulfilled when adapter1 was config as hostonly network', function () {
@@ -420,20 +444,8 @@ describe('Test suite for VRouter', function () {
             .to.be.rejectedWith(Error, "NIC2 isn't bridged network")
         })
         .then(() => {
-          const promise = vrouter.specifyBridgeAdapter('no-exist-inf')
+          const promise = vrouter.specifyBridgeAdapter()
           return expect(promise).to.be.fulfilled
-        })
-        .then(() => {
-          return expect(vrouter.isNIC2ConfigedAsBridged())
-            .to.be.rejectedWith(Error, 'ifconfig: interface no-exist-inf does not exist')
-        })
-        .then(() => {
-          const promise = vrouter.specifyBridgeAdapter('en1: Thunderbolt 1')
-          return expect(promise).to.be.fulfilled
-        })
-        .then(() => {
-          return expect(vrouter.isNIC2ConfigedAsBridged())
-            .to.be.rejectedWith(Error, "bridged adapter doesn't active")
         })
     })
 
@@ -1199,48 +1211,54 @@ stop() {
       expect(pid1 === pid2).to.be.false
     })
     it('changeMode to whitelist+ss', async function () {
-      vrouter.config.firewall.currentProxies = 'ss'
-      vrouter.config.firewall.currentMode = 'whitelist'
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile] = profile
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].proxies = 'ss'
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].mode = 'whitelist'
       await remote.changeMode()
       let output = await remote.getFile('/etc/firewall.user')
       let reg = /^iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-port 1010$/mg
       expect(reg.test(output)).to.be.true
     })
     it('changeMode to blacklist+ssrKt', async function () {
-      vrouter.config.firewall.currentProxies = 'ssrKt'
-      vrouter.config.firewall.currentMode = 'blacklist'
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile] = profile
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].proxies = 'ssrKt'
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].mode = 'blacklist'
       await remote.changeMode()
       let output = await remote.getFile('/etc/firewall.user')
       let reg = /^iptables -t nat -A OUTPUT -p tcp -m set --match-set BLACKLIST dst -j REDIRECT --to-port 1022$/mg
       expect(reg.test(output)).to.be.true
     })
     it('changeProxies to ss', async function () {
-      vrouter.config.firewall.currentProxies = 'ss'
-      await remote.changeProxies()
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile] = profile
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].proxies = 'ss'
+      await remote.applyProfile()
       await expect(remote.isSsRunning()).to.eventually.be.true
       await expect(remote.isSsrRunning()).to.eventually.be.false
       await expect(remote.isKtRunning()).to.eventually.be.false
     })
 
     it('changeProxies to ssKt', async function () {
-      vrouter.config.firewall.currentProxies = 'ssKt'
-      await remote.changeProxies()
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile] = profile
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].proxies = 'ssKt'
+      await remote.applyProfile()
       await expect(remote.isSsRunning()).to.eventually.be.true
       await expect(remote.isSsrRunning()).to.eventually.be.false
       await expect(remote.isKtRunning()).to.eventually.be.true
     })
 
     it('changeProxies to ssr', async function () {
-      vrouter.config.firewall.currentProxies = 'ssr'
-      await remote.changeProxies()
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile] = profile
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].proxies = 'ssr'
+      await remote.applyProfile()
       await expect(remote.isSsrRunning()).to.eventually.be.true
       await expect(remote.isSsRunning()).to.eventually.be.false
       await expect(remote.isKtRunning()).to.eventually.be.false
     })
 
     it('changeProxies to ssrKt', async function () {
-      vrouter.config.firewall.currentProxies = 'ssrKt'
-      await remote.changeProxies()
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile] = profile
+      vrouter.config.profiles.profiles[vrouter.config.profiles.activedProfile].proxies = 'ssrKt'
+      await remote.applyProfile()
       await expect(remote.isSsRunning()).to.eventually.be.false
       await expect(remote.isSsrRunning()).to.eventually.be.true
       await expect(remote.isKtRunning()).to.eventually.be.true
@@ -1261,7 +1279,7 @@ stop() {
         const ip = await vrouter.localExec("networksetup -getinfo Wi-Fi | grep ^Router | awk '{print $2}'")
         await vrouter.changeRouteTo('wifi')
         const output = await vrouter.getCurrentGateway()
-        expect(output).to.be.deep.equal([ip, ip])
+        expect(output).to.be.deep.equal([ip.trim(), ip.trim()])
       }
     })
     it.skip('test installNwWatchdog/removeNwWatchdog', function () {

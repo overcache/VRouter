@@ -12,6 +12,7 @@
     "vrouter": {
         "name": "vrouter",
         "ip": "10.19.28.37",
+        "macaddress": "080027a8b841",
         "port": 22,
         "username": "root",
         "password": "root",
@@ -23,7 +24,7 @@
         "profiles": [
             {
                 "name": "vps",
-                "mode": "whitelist",
+                "mode": "none",
                 "proxies": "ss",
                 "relayUDP": false,
                 "enableTunnelDns": true,
@@ -126,7 +127,7 @@
             }
 
         ],
-        "activedProfile": 1
+        "activedProfile": 0
     },
     "tunnelDns": {
         "dns": "tunnel-dns.json",
