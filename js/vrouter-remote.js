@@ -143,7 +143,7 @@ class VRouterRemote {
       types.push('tunnelDnsService')
       types.push('tunnelDns')
     }
-    const proxies = this.config.firewall.currentProxies
+    const proxies = this.config.profiles.profiles[this.config.profiles.activedProfile].proxies
     if (proxies.includes('Kt')) {
       types.push('kcptun')
       types.push('ktService')
@@ -220,7 +220,7 @@ class VRouterRemote {
   }
   async isSsRunning () {
     let cmd = ''
-    if (this.config.firewall.currentProxies === 'ss') {
+    if (this.config.profiles.profiles[this.config.profiles.activedProfile].proxies === 'ss') {
       cmd = 'ps -w| grep "[s]s-redir -c .*ss-client.json"'
     } else {
       cmd = 'ps -w| grep "[s]s-redir -c .*ss-over-kt.json"'
@@ -238,7 +238,7 @@ class VRouterRemote {
   }
   async isSsrRunning () {
     let cmd = ''
-    if (this.config.firewall.currentProxies === 'ssr') {
+    if (this.config.profiles.profiles[this.config.profiles.activedProfile].proxies === 'ssr') {
       cmd = 'ps -w| grep "[s]sr-redir -c .*ssr-client.json"'
     } else {
       cmd = 'ps -w| grep "[s]sr-redir -c .*ssr-over-kt.json"'
@@ -251,7 +251,7 @@ class VRouterRemote {
     }
   }
   async isTunnelDnsRunning () {
-    const tunnelBinName = this.config.firewall.currentProxies.includes('ssr') ? 'sr-tunnel' : 's-tunnel'
+    const tunnelBinName = this.config.profiles.profiles[this.config.profiles.activedProfile].proxies.includes('ssr') ? 'sr-tunnel' : 's-tunnel'
     const cmd = `ps -w| grep "[s]${tunnelBinName} -c .*tunnel-dns.json"`
     const output = await this.remoteExec(cmd)
     if (output) {
@@ -293,7 +293,7 @@ class VRouterRemote {
     const cmd = `cat ${file}`
     return this.remoteExec(cmd)
   }
-  async changeProxies (proxies = this.config.firewall.currentProxies) {
+  async applyProfile () {
     // stop tunnelDns before change tunnelDns.service's file content
     await this.service(this.config.tunnelDns.service, 'stop').catch(() => {})
 
@@ -301,7 +301,7 @@ class VRouterRemote {
     await this.scpConfigAll(true)
     // console.log(`scpConfigAll time: ${(Date.now() - s) / 1000}`)
     const promises = []
-    switch (proxies) {
+    switch (this.config.profiles.profiles[this.config.profiles.activedProfile].proxies) {
       case 'ss':
         promises.push(...[
           this.service('shadowsocksr', 'stop').catch(() => {}),
@@ -345,7 +345,7 @@ class VRouterRemote {
     // console.log(`restart/stop service time: ${(Date.now() - s) / 1000}`)
   }
 
-  async changeMode (mode = this.config.firewall.currentMode, proxies = this.config.firewall.currentProxies) {
+  async changeMode (mode, proxies) {
     await Promise.all([
       this.local.generateIPsets(true),
       this.local.generateDnsmasqCf('whitelist', true),
