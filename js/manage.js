@@ -25,28 +25,7 @@ winston.configure({
 })
 
 Vue.component('profile', {
-  props: ['profiles', 'profile', 'index', 'proxiesTextDict', 'proxiesModeTextDict'],
-  methods: {
-    applyProfile () {
-      const element = document.querySelector('#profiles .ui.message.dimmed')
-      this.profiles.activedProfile = parseInt(element.id)
-      $(element).dimmer('hide')
-    },
-    editProfile () {
-      const id = document.querySelector('#profiles .ui.message.dimmed').id
-      console.log(`edit id: ${id}`)
-    },
-    deleteProfile () {
-      const element = document.querySelector('#profiles .ui.message.dimmed')
-      this.profiles.profiles.splice(parseInt(element.id), 1)
-      if (this.profiles.activedProfile === parseInt(element.id)) {
-        this.profiles.activedProfile = 0
-      } else if (this.profiles.activedProfile > parseInt(element.id)) {
-        this.profiles.activedProfile -= 1
-      }
-      $(element).dimmer('hide')
-    }
-  },
+  props: ['profiles', 'profile', 'index', 'proxiesTextDict', 'proxiesModeTextDict', 'editingProfile', 'toggleProfileEditor', 'deleteProfile', 'editProfile', 'applyProfile'],
   template: String.raw`
   <div v-bind:class="['ui blurring message dimmable', profiles.activedProfile === index ? 'positive' : '']" v-bind:id="index">
     <div class="header">{{ profile.name }}</div>
@@ -58,15 +37,15 @@ Vue.component('profile', {
     <div class="ui dimmer">
       <div class="content">
         <div class="center">
-          <div class="ui green icon labeled button" v-on:click="applyProfile">
+          <div class="ui green icon labeled button" v-on:click="applyProfile(index)">
             <i class="ui check icon"></i>
             应用
           </div>
-          <div class="ui teal icon labeled button" v-on:click="editProfile">
+          <div class="ui teal icon labeled button" v-on:click="editProfile(index)">
             <i class="ui write icon"></i>
             编辑
           </div>
-          <div class="ui red icon labeled button" v-on:click="deleteProfile">
+          <div class="ui red icon labeled button" v-on:click="deleteProfile(index)">
             <i class="ui remove icon"></i>
             删除
           </div>
@@ -83,6 +62,11 @@ const myApp = new Vue({
   el: '#app',
   data: {
     profiles: vrouter.config.profiles,
+    editingProfile: {
+      shadowsocks: {},
+      shadowsocksr: {},
+      kcptun: {}
+    },
     shadowsocks: vrouter.config.shadowsocks.server,
     shadowsocksr: vrouter.config.shadowsocksr.server,
     kcptun: vrouter.config.kcptun.server,
@@ -120,8 +104,8 @@ const myApp = new Vue({
       activeLoader: false,
       btnToggleRouterPopup: '',
       proxiesTextDic: {
-        ss: '仅 Shadowsocks',
-        ssr: '仅 ShadowsocksR',
+        ss: 'Shadowsocks',
+        ssr: 'ShadowsocksR',
         ssKt: 'Shadowsocks + Kcptun',
         ssrKt: 'ShadowsocksR + Kcptun'
       },
@@ -176,7 +160,10 @@ const myApp = new Vue({
       this.errorMsg = err.toString()
       $(this.$refs.errorModal).modal('show')
     },
-    editProfile () {
+    toggleProfileEditor (action = 'show') {
+      this.resetProxiesDropdown()
+      this.resetProxiesForm()
+      this.resetProxiesMode()
       $(this.$refs.profileModal)
         .modal({
           dimmerSettings: {
@@ -185,11 +172,128 @@ const myApp = new Vue({
           detachable: false,
           closable: false
         })
-        .modal('show')
+        .modal(action)
     },
-    showProfileBtns (event) {
-      // console.log(event.target)
-      // event.target.visibility = 'hidden'
+    newProfile () {
+      this.editingProfile = {
+        'name': '新配置',
+        'action': 'new',
+        'mode': 'none',
+        'proxies': 'ss',
+        'relayUDP': false,
+        'enableTunnelDns': true,
+        'selectedBL': {'gfwDomains': true, 'extraBlackList': true},
+        'selectedWL': {'chinaIPs': true, 'lanNetworks': true, 'extraWhiteList': true},
+        'shadowsocks': {
+          'address': '123.123.123.123',
+          'port': '8989',
+          'password': 'demo-paswd',
+          'timeout': 300,
+          'method': 'chacha20',
+          'fastopen': false
+        },
+        'shadowsocksr': {
+          'address': '123.123.123.123',
+          'port': '9999',
+          'password': 'demo-paswd',
+          'timeout': 300,
+          'method': 'chacha20',
+          'protocol': 'auth_aes128_md5',
+          'protocol_param': '32',
+          'obfs': 'tls1.2_ticket_auth',
+          'obfs_param': '',
+          'others': '',
+          'fastopen': false
+        },
+        'kcptun': {
+          'address': '123.123.123.123',
+          'port': '5555',
+          'key': 'demo-secret',
+          'crypt': 'aes-128',
+          'mode': 'fast2',
+          'others': 'sndwnd=256;rcvwnd=2048;nocomp=true'
+        }
+      }
+      this.toggleProfileEditor('show')
+      // this.resetProxiesMode()
+    },
+    async deleteProfile (index) {
+      this.profiles.profiles.splice(index, 1)
+      if (this.profiles.activedProfile === index) {
+        this.profiles.activedProfile = -1
+      } else if (this.profiles.activedProfile > index) {
+        this.profiles.activedProfile -= 1
+      }
+      await vrouter.saveCfg2File()
+      $('#profiles .ui.message.dimmed').dimmer('hide')
+    },
+    editProfile (index) {
+      this.editingProfile = JSON.parse(JSON.stringify(this.profiles.profiles[index]))
+      this.editingProfile.shadowsocks = this.editingProfile.shadowsocks || {}
+      this.editingProfile.shadowsocksr = this.editingProfile.shadowsocksr || {}
+      this.editingProfile.kcptun = this.editingProfile.kcptun || {}
+      this.editingProfile.action = 'edit'
+      this.editingProfile.id = index
+      this.toggleProfileEditor('show')
+    },
+    async applyProfile (index) {
+      $('#profiles .ui.message.dimmed').dimmer('hide')
+      this.ui.activeLoader = true
+      this.profiles.activedProfile = index
+      await vrouter.saveCfg2File()
+      await this.remote.applyProfile(index)
+      this.ui.activeLoader = false
+    },
+    initDimmer () {
+      $('#profiles .ui.message').dimmer({
+        opacity: 0,
+        on: 'hover',
+        duration: 10
+      })
+    },
+    async saveProfile () {
+      // save: proxies, mode, BWList
+      this.saveFields('proxies')
+
+      switch (this.editingProfile.proxies) {
+        case 'ss':
+          this.editingProfile.shadowsocksr = {}
+          this.editingProfile.kcptun = {}
+          break
+        case 'ssr':
+          this.editingProfile.shadowsocks = {}
+          this.editingProfile.kcptun = {}
+          break
+        case 'ssKt':
+          this.editingProfile.shadowsocksr = {}
+          break
+        case 'ssrKt':
+          this.editingProfile.shadowsocks = {}
+          break
+        default:
+      }
+
+      this.saveFields('mode')
+      this.saveFields('BWList')
+      // 添加/保存this.editingProfile到this.profiles.profiles
+      const action = this.editingProfile.action
+      const id = this.editingProfile.id
+      delete this.editingProfile.action
+      delete this.editingProfile.id
+      if (action === 'new') {
+        this.profiles.profiles.push(JSON.parse(JSON.stringify(this.editingProfile)))
+      } else {
+        this.profiles.profiles[id] = JSON.parse(JSON.stringify(this.editingProfile))
+      }
+      await vrouter.saveCfg2File()
+      this.toggleProfileEditor('hide')
+      setTimeout(() => {
+        this.initDimmer()
+      }, 500)
+
+      if (id === this.profiles.activedProfile) {
+        console.log('re apply activedProfile')
+      }
     },
     async toggleVrouter () {
       $('*[data-content]').popup('hide')
@@ -283,7 +387,17 @@ const myApp = new Vue({
       this.ui.pwdVisible[type] = !this.ui.pwdVisible[type]
     },
     resetProxiesDropdown () {
-      this.$refs.proxiesText.innerHTML = this.ui.proxiesTextDic[this.firewall.currentProxies]
+      this.$refs.proxiesText.innerHTML = this.ui.proxiesTextDic[this.editingProfile.proxies]
+      const items = document.querySelectorAll('#proxies-chains .menu .item')
+      ;[...items].forEach((item) => {
+        if (item.dataset.value === this.editingProfile.proxies) {
+          item.classList.add('active')
+          item.classList.add('selected')
+        } else {
+          item.classList.remove('active')
+          item.classList.remove('selected')
+        }
+      })
     },
     selectProxies (event) {
       const selectedProxies = event.target.dataset.value
@@ -291,7 +405,7 @@ const myApp = new Vue({
     },
     resetProxiesForm (proxies) {
       const arr = []
-      switch (proxies || this.firewall.currentProxies) {
+      switch (proxies || this.editingProfile.proxies) {
         case 'ss':
           arr.push('shadowsocks')
           break
@@ -321,21 +435,27 @@ const myApp = new Vue({
       })
     },
     saveCurrentProxiesFields () {
-      const currentProxies = vrouter.config.firewall.currentProxies
-      switch (currentProxies) {
+      // const currentProxies = vrouter.config.firewall.currentProxies
+      switch (this.editingProfile.proxies) {
         case 'ss':
           this.saveFields('shadowsocks')
+          delete this.editingProfile['shadowsocksr']
+          delete this.editingProfile['kcptun']
           break
         case 'ssr':
           this.saveFields('shadowsocksr')
+          delete this.editingProfile['shadowsocks']
+          delete this.editingProfile['kcptun']
           break
         case 'ssKt':
           this.saveFields('shadowsocks')
           this.saveFields('kcptun')
+          delete this.editingProfile['shadowsocksr']
           break
         case 'ssrKt':
           this.saveFields('shadowsocksr')
           this.saveFields('kcptun')
+          delete this.editingProfile['shadowsocks']
           break
         default:
           throw Error('unkown current proxies')
@@ -368,16 +488,30 @@ const myApp = new Vue({
     saveFields (type) {
       switch (type) {
         case 'proxies':
-          const selected = this.$refs.proxiesDropdown.querySelector('.item.active.selected')
-          if (selected) {
-            this.firewall.currentProxies = selected.dataset.value
-          }
+          const selectedProxies = this.$refs.proxiesDropdown.querySelector('.item.active.selected')
+          this.editingProfile.proxies = selectedProxies ? selectedProxies.dataset.value : 'ss'
+          break
+        case 'mode':
+          const selectedMode = document.querySelector('#bypass-mode .menu .item.active.selected')
+          this.editingProfile.mode = selectedMode ? selectedMode.dataset.value : 'none'
+          break
+        case 'BWList':
+          const blackListRef = ['gfwDomains', 'extraBlackList']
+          blackListRef.forEach((ref) => {
+            this.editingProfile.selectedBL[ref] = this.$refs[ref].checked
+          })
+
+          const whiteListRef = ['chinaIPs', 'lanNetworks', 'extraWhiteList']
+          whiteListRef.forEach((ref) => {
+            this.editingProfile.selectedWL[ref] = this.$refs[ref].checked
+          })
           break
         case 'shadowsocks':
           let ssFields = ['ssAddress', 'ssPort', 'ssPassword', 'ssTimeout', 'ssMethod', 'ssFastOpen']
           ssFields.forEach((field) => {
             let key = field.substr(2).toLowerCase()
-            vrouter.config.shadowsocks.server[key] = this.$refs[field].value.trim()
+            this.editingProfile.shadowsocks.server[key] = this.$refs[field].value.trim()
+            // vrouter.config.shadowsocks.server[key] = this.$refs[field].value.trim()
           })
           break
         case 'shadowsocksr':
@@ -403,7 +537,17 @@ const myApp = new Vue({
 
 // Mode Tab
     resetProxiesMode () {
-      this.$refs.proxiesModeText.innerHTML = this.ui.proxiesModeTextDic[this.firewall.currentMode]
+      this.$refs.proxiesModeText.innerHTML = this.ui.proxiesModeTextDic[this.editingProfile.mode]
+      const items = document.querySelectorAll('#bypass-mode .menu .item')
+      ;[...items].forEach((item) => {
+        if (item.dataset.value === this.editingProfile.mode) {
+          item.classList.add('active')
+          item.classList.add('selected')
+        } else {
+          item.classList.remove('active')
+          item.classList.remove('selected')
+        }
+      })
     },
     editProxiesMode () {
       this.ui.editable.mode = !this.ui.editable.mode
