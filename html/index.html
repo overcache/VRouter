@@ -62,7 +62,7 @@
         </div>
       </div>
       <div v-bind:class="['ui labeled icon button right floated', status.currentGW === 'vrouter' ? 'red' : 'teal']"
-        v-bind:data-content="ui.btnToggleRouterPopup" v-on:click="toggleVrouter">
+        v-bind:data-content="ui.btnToggleRouterPopup" data-position="bottom center" v-on:click="toggleVrouter">
         <i v-bind:class="['icon', status.currentGW === 'vrouter' ? 'pause' : 'play']"></i>
         {{ status.currentGW === 'vrouter' ? '暂停' : '启用' }}
       </div>
@@ -221,7 +221,7 @@
           </div>
         </div>
       </div>
-      <div class="ui labeled icon teal button right floated" data-content="重新收集状态信息" data-position="top center" v-on:click="refreshInfos">
+      <div class="ui labeled icon teal button right floated" data-content="重新收集状态信息" data-position="bottom center" v-on:click="refreshInfos">
         <i class="inline ui refresh icon"></i>
         刷新
       </div>
@@ -430,7 +430,7 @@
                 </div>
                 <div class="four wide field">
                   <label>Others
-                    <i class="help circle link icon" data-content="shadowsocksr 的其他参数, 格式'key1=value1;key2=value2'"></i>
+                    <i class="help circle link icon" data-content="shadowsocksr 的其他参数, 格式'key1=value1;key2=value2'" data-position="bottom center"></i>
                   </label>
                   <div class="ui input">
                     <input v-model="editingProfile.shadowsocksr.others" ref="ssrOthers">
@@ -473,7 +473,7 @@
               </div>
             </div>
             <div class="field">
-              <label>Others<i class="help circle link icon" data-content="kcptun的其他参数, 格式'key1=value1;key2=value2', 如sndwnd=256;rcvwnd=2048;nocomp=true"></i></label>
+              <label>Others<i class="help circle link icon" data-content="kcptun的其他参数, 格式'key1=value1;key2=value2', 如sndwnd=256;rcvwnd=2048;nocomp=true" data-position="bottom center"></i></label>
               <input ref="ktOthers" v-model="editingProfile.kcptun.others">
             </div>
           </div>
@@ -499,7 +499,7 @@
             <div class="item">
               <div class="ui checkbox">
                 <input type="checkbox" name="gfw" v-bind:checked="editingProfile.selectedBL && editingProfile.selectedBL.gfwDomains" ref="gfwDomains">
-                <label>GFW-list <i v-if="false" class="ui refresh icon link" data-content="更新 gfwlist" v-on:click="updateGfwList"></i></label>
+                <label>GFW-list <i v-if="false" class="ui refresh icon link"></i></label>
               </div>
             </div>
             <div class="item">
@@ -522,7 +522,7 @@
                 <input type="checkbox" name="chinaIPs" v-bind:checked="editingProfile.selectedWL && editingProfile.selectedWL.chinaIPs" ref="chinaIPs">
                 <label>
                   国内 IP
-                  <i class="ui refresh icon link" data-content="更新 IP 数据库" v-on:click="updateChinaIPs"></i>
+                  <i class="ui refresh icon link" data-content="更新 IP 数据库" data-position="bottom center" v-on:click="updateChinaIPs"></i>
                 </label>
               </div>
             </div>
