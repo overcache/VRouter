@@ -96,12 +96,12 @@
       <div class="ui list">
         <div class="item">
           <div class="ui label">
-            网关: <span class="detail">{{ status.currentGWIP }}</span>
+            当前网关: <span class="detail">{{ status.currentGWIP }}</span>
           </div>
         </div>
         <div class="item">
           <div class="ui label">
-            DNS: <span id="dns" class="detail white">{{ status.currentDnsIP }}</span>
+            当前 DNS: <span id="dns" class="detail white">{{ status.currentDnsIP }}</span>
           </div>
         </div>
       </div>
@@ -221,7 +221,7 @@
           </div>
         </div>
       </div>
-      <div class="ui labeled icon teal button right floated" data-content="重新收集状态信息" data-position="bottom center" v-on:click="refreshInfos">
+      <div class="ui labeled icon teal button right floated" v-on:click="refreshInfos">
         <i class="inline ui refresh icon"></i>
         刷新
       </div>

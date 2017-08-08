@@ -1620,10 +1620,7 @@ echo ""`
 
   saveCfg2File () {
     const cfgPath = path.join(this.config.host.configDir, 'config.json')
-    console.log(this.config.host.configDir)
-    console.log(cfgPath)
-    console.log(this.config)
-    // return fs.writeJson(cfgPath, this.config, {spaces: 2})
+    return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
   async upgradeCfgV1 (newCfg) {
     // const template = path.join(__dirname, '..', 'config', 'config.json')
@@ -1724,6 +1721,7 @@ echo ""`
       if (profiles.length !== 0) {
         newCfg.profiles.profiles = profiles
       }
+      newCfg.host.configDir = this.config.host.configDir
       this.config = newCfg
     }
   }
