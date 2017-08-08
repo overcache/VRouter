@@ -79,11 +79,11 @@
         <profile v-bind:profiles="profiles" v-bind:profile="profile" v-bind:index="index" v-bind:proxies-text-dict="ui.proxiesTextDict" v-bind:proxies-mode-text-dict="ui.proxiesModeTextDict" v-bind:editing-profile="editingProfile" v-bind:toggle-profile-editor="toggleProfileEditor" :delete-profile="deleteProfile" :edit-profile="editProfile" :apply-profile="applyProfile" v-for="(profile, index) in profiles.profiles"></profile>
       </div>
       <div class="ui divider hidden"></div>
-      <div class="ui green labeled icon button right floated" v-on:click="openExtraList('White')">
+      <div class="ui teal labeled icon button right floated" v-on:click="openExtraList('White')">
         <i class="ui write icon"></i>
         自定义白名单
       </div>
-      <div class="ui blue labeled icon button right floated" v-on:click="openExtraList('Black')">
+      <div class="ui teal labeled icon button right floated" v-on:click="openExtraList('Black')">
         <i class="ui write icon"></i>
         自定义黑名单
       </div>

@@ -222,13 +222,13 @@ async function checkRequirement (vrouter) {
     clearInterval(interval)
     vue.hide()
   }
-  vue.data = {
-    header: '更新 VRouter',
-    content: '更新配置文件, 并安装 ShadowsocksR. 预计需要1分钟, 请稍候',
-    buttons: [],
-    closable: false
-  }
-  vue.show()
+  // vue.data = {
+    // header: '更新 VRouter',
+    // content: '更新配置文件, 并安装 ShadowsocksR. 预计需要1分钟, 请稍候',
+    // buttons: [],
+    // closable: false
+  // }
+  // vue.show()
   await vrouter.upgradeCfg()
   redirect()
 }

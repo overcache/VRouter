@@ -37,11 +37,11 @@ Vue.component('profile', {
     <div class="ui dimmer">
       <div class="content">
         <div class="center">
-          <div class="ui green icon labeled button" v-on:click="applyProfile(index)">
+          <div class="ui teal icon labeled button" v-on:click="applyProfile(index)">
             <i class="ui check icon"></i>
             应用
           </div>
-          <div class="ui teal icon labeled button" v-on:click="editProfile(index)">
+          <div class="ui icon labeled button" v-on:click="editProfile(index)">
             <i class="ui write icon"></i>
             编辑
           </div>
@@ -271,12 +271,9 @@ const myApp = new Vue({
       }
       await vrouter.saveCfg2File()
       this.toggleProfileEditor('hide')
-      setTimeout(() => {
-        this.initDimmer()
-      }, 500)
 
       if (id === this.profiles.activedProfile) {
-        console.log('re apply activedProfile')
+        await this.applyProfile(id)
       }
     },
     async toggleVrouter () {

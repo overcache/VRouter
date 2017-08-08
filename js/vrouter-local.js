@@ -1667,6 +1667,8 @@ echo ""`
       await remote.remoteExec('rm /etc/com.icymind.vrouter/ss-dns.json').catch(() => {})
       await remote.changeProxies()
       await remote.closeConn()
+    } else if (this.config.version === '0.2') {
+
     }
     return this.saveCfg2File()
   }

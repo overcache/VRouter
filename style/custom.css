@@ -86,3 +86,6 @@ body {
 #aboutModal div.content {
   text-align: center;
 }
+#app>div.ui.dimmer {
+     position: fixed;
+}
