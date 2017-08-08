@@ -1620,12 +1620,14 @@ echo ""`
 
   saveCfg2File () {
     const cfgPath = path.join(this.config.host.configDir, 'config.json')
-    return fs.writeJson(cfgPath, this.config, {spaces: 2})
+    console.log(this.config.host.configDir)
+    console.log(cfgPath)
+    console.log(this.config)
+    // return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
-  async upgradeCfg () {
-    const template = path.join(__dirname, '..', 'config', 'config.json')
-    const newCfg = fs.readJsonSync(template)
-    // const oldCfg = fs.readJsonSync(path.join(this.config.host.configDir, 'config.json'))
+  async upgradeCfgV1 (newCfg) {
+    // const template = path.join(__dirname, '..', 'config', 'config.json')
+    // const newCfg = fs.readJsonSync(template)
     if (this.config.version === newCfg.version) {
       return
     }
@@ -1665,12 +1667,65 @@ echo ""`
       await remote.service('shadowsocks', 'stop').catch(() => {})
       await remote.service('kcptun', 'stop').catch(() => {})
       await remote.remoteExec('rm /etc/com.icymind.vrouter/ss-dns.json').catch(() => {})
-      await remote.changeProxies()
+      // await remote.changeProxies()
       await remote.closeConn()
-    } else if (this.config.version === '0.2') {
-
     }
-    return this.saveCfg2File()
+  }
+  async upgradeCfgV2 (newCfg) {
+    // const template = path.join(__dirname, '..', 'config', 'config.json')
+    // const newCfg = fs.readJsonSync(template)
+    if (this.config.version === '0.2') {
+      const profiles = []
+      // 如果ss地址不是123123...拷贝到newCfg
+      // 同理ssr/kcptun
+      const oldSS = this.config.shadowsocks.server
+      const oldSSR = this.config.shadowsocksr.server
+      const oldKT = this.config.kcptun.server
+      if (oldSS.address && oldSS.address !== '123.123.123.123') {
+        const profile = {
+          'name': '配置oo',
+          'mode': 'whitelist',
+          'proxies': 'ss',
+          'relayUDP': false,
+          'enableTunnelDns': true,
+          'selectedBL': {'gfwDomains': true, 'extraBlackList': true},
+          'selectedWL': {'chinaIPs': true, 'lanNetworks': true, 'extraWhiteList': true},
+          'shadowsocks': oldSS
+        }
+        profiles.push(profile)
+      }
+      if (oldSSR.address && oldSSR.address !== '123.123.123.123') {
+        const profile = {
+          'name': '配置xx',
+          'mode': 'blacklist',
+          'proxies': 'ssr',
+          'relayUDP': false,
+          'enableTunnelDns': true,
+          'selectedBL': {'gfwDomains': true, 'extraBlackList': true},
+          'selectedWL': {'chinaIPs': true, 'lanNetworks': true, 'extraWhiteList': true},
+          'shadowsocksr': oldSSR
+        }
+        profiles.push(profile)
+      }
+      if (oldKT.address && oldKT.address !== '123.123.123.123') {
+        const profile = {
+          'name': '配置tt',
+          'mode': 'whitelist',
+          'proxies': 'ssKt',
+          'relayUDP': false,
+          'enableTunnelDns': true,
+          'selectedBL': {'gfwDomains': true, 'extraBlackList': true},
+          'selectedWL': {'chinaIPs': true, 'lanNetworks': true, 'extraWhiteList': true},
+          'shadowsocks': oldSS,
+          'kcptun': oldKT
+        }
+        profiles.push(profile)
+      }
+      if (profiles.length !== 0) {
+        newCfg.profiles.profiles = profiles
+      }
+      this.config = newCfg
+    }
   }
   async copyTemplate (fileName) {
     const template = path.join(__dirname, '..', 'config', fileName)

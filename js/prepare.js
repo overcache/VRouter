@@ -2,7 +2,7 @@
 /* global Vue */
 const { app, getCurrentWindow } = require('electron').remote
 const path = require('path')
-// const fs = require('fs-extra')
+const fs = require('fs-extra')
 const url = require('url')
 const { VRouter } = require('../js/vrouter-local.js')
 // const { getAppDir } = require('../js/helper.js')
@@ -145,8 +145,9 @@ const vue = new Vue({
 
 async function checkRequirement (vrouter) {
   let ret = await vrouter.isVBInstalled()
-  winston.debug('virtualbox installed')
-  if (!ret) {
+  if (ret) {
+    winston.debug('virtualbox installed')
+  } else {
     winston.warn('no virtualbox installed')
     vue.data = {
       header: '检测 VirtualBox',
@@ -171,6 +172,7 @@ async function checkRequirement (vrouter) {
     vue.show()
     return false
   }
+
   ret = await vrouter.isVRouterExisted()
   if (!ret) {
   // if (true) {
@@ -229,7 +231,11 @@ async function checkRequirement (vrouter) {
     // closable: false
   // }
   // vue.show()
-  await vrouter.upgradeCfg()
+  const template = path.join(__dirname, '..', 'config', 'config.json')
+  const newCfg = fs.readJsonSync(template)
+  await vrouter.upgradeCfgV1(newCfg)
+  await vrouter.upgradeCfgV2(newCfg)
+  await vrouter.saveCfg2File()
   redirect()
 }
 

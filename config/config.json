@@ -40,24 +40,7 @@
                 }
             },
             {
-                "name": "vps 黑名单",
-                "mode": "blacklist",
-                "proxies": "ss",
-                "relayUDP": false,
-                "enableTunnelDns": true,
-                "selectedBL": {"gfwDomains":true, "extraBlackList":true},
-                "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
-                "shadowsocks": {
-                    "address": "123.123.123.123",
-                    "port": "8989",
-                    "password": "demo-paswd",
-                    "timeout": 300,
-                    "method": "chacha20",
-                    "fastopen": false
-                }
-            },
-            {
-                "name": "kcp 加速",
+                "name": "kcp 加速ss",
                 "mode": "whitelist",
                 "proxies": "ssKt",
                 "relayUDP": false,
@@ -84,28 +67,6 @@
             {
                 "name": "ssr",
                 "mode": "blacklist",
-                "proxies": "ssr",
-                "relayUDP": false,
-                "enableTunnelDns": true,
-                "selectedBL": {"gfwDomains":true, "extraBlackList":true},
-                "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
-                "shadowsocksr": {
-                    "address": "123.123.123.123",
-                    "port": "9999",
-                    "password": "demo-paswd",
-                    "timeout": 300,
-                    "method": "chacha20",
-                    "protocol": "auth_aes128_md5",
-                    "protocol_param": "32",
-                    "obfs": "tls1.2_ticket_auth",
-                    "obfs_param": "",
-                    "others": "",
-                    "fastopen": false
-                }
-            },
-            {
-                "name": "ssr 白名单",
-                "mode": "whitelist",
                 "proxies": "ssr",
                 "relayUDP": false,
                 "enableTunnelDns": true,
