@@ -235,6 +235,9 @@ const myApp = new Vue({
         duration: 10
       })
     },
+    async importProfile () {
+      // TODO:
+    },
     async saveProfile () {
       // save: proxies, mode, BWList
       this.saveFields('proxies')
