@@ -1,6 +1,6 @@
 {
   "name": "VRouter",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "oxs transparent proxy.",
   "main": "main.js",
   "scripts": {
@@ -11,14 +11,14 @@
   "author": "icymind (icymindt@gmail.com)",
   "license": "GPL",
   "dependencies": {
-    "fs-extra": "^3.0.1",
+    "fs-extra": "^4.0.1",
     "ssh2": "^0.5.5",
     "sudo-prompt": "^7.1.0",
     "vue": "^2.3.4",
     "winston": "^2.3.1"
   },
   "devDependencies": {
-    "electron": "^1.7.4",
+    "electron": "^1.6.11",
     "chai": "^4.0.2",
     "chai-as-promised": "^7.1.1",
     "electron-builder": "^19.13.0",
