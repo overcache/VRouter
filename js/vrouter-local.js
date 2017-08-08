@@ -431,6 +431,7 @@ EOF`
     return this.localExec(cmd)
   }
   async deletevm (stopFirst = false) {
+    await this.removeNwWatchdog()
     const cmd = `${VBoxManage} unregistervm ${this.config.vrouter.name} --delete`
     const existed = await this.isVRouterExisted()
     if (!existed) {
@@ -1723,6 +1724,7 @@ echo ""`
       }
       newCfg.host.configDir = this.config.host.configDir
       this.config = newCfg
+      await this.installNwWatchdog()
     }
   }
   async copyTemplate (fileName) {

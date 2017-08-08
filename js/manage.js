@@ -266,6 +266,9 @@ const myApp = new Vue({
       delete this.editingProfile.id
       if (action === 'new') {
         this.profiles.profiles.push(JSON.parse(JSON.stringify(this.editingProfile)))
+        setTimeout(() => {
+          this.initDimmer()
+        }, 500)
       } else {
         this.profiles.profiles[id] = JSON.parse(JSON.stringify(this.editingProfile))
       }
