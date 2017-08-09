@@ -66,7 +66,7 @@ async function buildVmHandler (vrouter) {
     winston.debug('start to build vm...')
     await vrouter.buildvm()
     winston.debug('vm builded')
-    vue.data.content += `<li class="ui">等待虚拟机重新启动</li>`
+    vue.data.content += `<li class="ui">虚拟机重新启动, 请稍候30秒</li>`
     winston.debug('starting vm...')
     await vrouter.startvm('headless', 30000)
     winston.debug('vm started')
@@ -231,14 +231,14 @@ async function checkRequirement (vrouter) {
     // closable: false
   // }
   // vue.show()
+  redirect()
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   const template = path.join(__dirname, '..', 'config', 'config.json')
   const newCfg = fs.readJsonSync(template)
   await vrouter.upgradeCfgV1(newCfg)
   await vrouter.upgradeCfgV2(newCfg)
   await vrouter.saveCfg2File()
-  redirect()
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
   checkRequirement(vrouter)
 })
