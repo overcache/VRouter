@@ -4,8 +4,6 @@
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 ### VRouter
 
-VRouter is a socialism only application, no English version offered.
-
 一个基于 Virtualbox 和 openwrt 构建的项目, 旨在实现 OS X / macOS 平台上的透明代理.
 
 VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认路由, 将所有系统数据包转发到虚拟机上. 依托 openwrt 的 iptables 进行数据包的处理.
