@@ -141,7 +141,14 @@ const myApp = new Vue({
       }
       winston.error(err)
       this.errorMsg = err.toString()
-      $(this.$refs.errorModal).modal('show')
+      $(this.$refs.errorModal)
+        .modal({
+          blurring: true,
+          dimmerSettings: {
+            opacity: 0.8
+          }
+        })
+        .modal('show')
     },
     toggleProfileEditor (action = 'show') {
       this.resetProxiesDropdown()
@@ -468,6 +475,12 @@ const myApp = new Vue({
     async showLoginModal () {
       $('*[data-content]').popup('hide')
       $(this.$refs.loginModal)
+        .modal({
+          blurring: true,
+          dimmerSettings: {
+            opacity: 0.8
+          }
+        })
         .modal('show')
     },
     openLogFile () {
@@ -478,7 +491,14 @@ const myApp = new Vue({
       return getCurrentWindow().toggleDevTools()
     },
     showAboutModal () {
-      $(this.$refs.aboutModal).modal('show')
+      $(this.$refs.aboutModal)
+        .modal({
+          blurring: true,
+          dimmerSettings: {
+            opacity: 0.8
+          }
+        })
+        .modal('show')
     },
     goToHomepage () {
       return shell.openExternal('https://github.com/icymind/VRouter')

@@ -72,7 +72,7 @@
     <div id="proxies-tab" class="ui bottom attached tab segment" data-tab="proxies">
       <div class="ui teal icon labeled button" v-on:click="newProfile">
         <i class="ui plus icon"></i>
-        添加配置
+        新建配置
       </div>
       <div class="ui divider hidden"></div>
       <div id="profiles">
@@ -234,7 +234,7 @@
         登录到 VRouter 虚拟机
       </div>
       <div class="content">
-        <p>VRouter 和后台的虚拟机紧密关联, 各项功能都依赖于正确设置了虚拟机. 修改虚拟机可能会造成 VRouter 无法正常工作. 用户名密码均为root</p>
+        <p>后台虚拟机用户名密码均为root, VRouter 和后台的虚拟机紧密关联, 各项功能都依赖于正确设置了虚拟机. 修改虚拟机可能会造成 VRouter 无法正常工作.</p>
       </div>
       <div class="actions">
         <div class="ui red inverted button" v-on:click="guiLogin">
@@ -297,6 +297,13 @@
 
     <div id="profileModal" class="ui modal" ref="profileModal">
       <div class="scrolling content">
+        <div class="ui action input">
+          <input type="text">
+          <div class="ui button teal right labeled icon">
+            <i class="copy icon"></i>
+            导入URI
+          </div>
+        </div>
         <form class="ui form">
           <div class="field">
             <label>配置名称</label>
