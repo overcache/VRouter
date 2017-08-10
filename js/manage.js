@@ -143,7 +143,6 @@ const myApp = new Vue({
       this.errorMsg = err.toString()
       $(this.$refs.errorModal)
         .modal({
-          blurring: true,
           dimmerSettings: {
             opacity: 0.8
           }
@@ -157,12 +156,26 @@ const myApp = new Vue({
       $(this.$refs.profileModal)
         .modal({
           dimmerSettings: {
-            opacity: 0.2
+            opacity: 0.8
           },
           detachable: false,
           closable: false
         })
         .modal(action)
+    },
+    showImportProfileModal () {
+      document.querySelector('#importProfileModal input').value = ''
+      const label = document.querySelector('#importProfileModal div.label')
+      label.innerHTML = ''
+      label.classList.add('hidden')
+      $('#importProfileModal')
+        .modal({
+          dimmerSettings: {
+            opacity: 0.8
+          },
+          detachable: false
+        })
+        .modal('show')
     },
     newProfile () {
       this.editingProfile = {
@@ -242,8 +255,16 @@ const myApp = new Vue({
         duration: 10
       })
     },
-    async importProfile () {
-      // TODO:
+    importProfile () {
+      const uri = document.querySelector('#importProfileModal input').value
+      try {
+        this.editingProfile = vrouter.parseProfileURI(uri)
+        this.toggleProfileEditor('show')
+      } catch (error) {
+        const label = document.querySelector('#importProfileModal div.label')
+        label.innerHTML = error
+        label.classList.remove('hidden')
+      }
     },
     async saveProfile () {
       // save: proxies, mode, BWList
@@ -476,7 +497,6 @@ const myApp = new Vue({
       $('*[data-content]').popup('hide')
       $(this.$refs.loginModal)
         .modal({
-          blurring: true,
           dimmerSettings: {
             opacity: 0.8
           }
@@ -493,7 +513,6 @@ const myApp = new Vue({
     showAboutModal () {
       $(this.$refs.aboutModal)
         .modal({
-          blurring: true,
           dimmerSettings: {
             opacity: 0.8
           }
@@ -612,16 +631,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('.tabular.menu .item').tab()
   $('.dropdown').dropdown()
   $('*[data-content]').popup()
-  $('#profileModal').modal({
-    dimmerSettings: {
-      opacity: 0.2
-    },
-    detachable: false,
-    closable: false
-  })
+  // $('#profileModal').modal({
+    // dimmerSettings: {
+      // opacity: 0.2
+    // },
+    // detachable: false,
+    // closable: false
+  // })
+  // $('#importProfileModal').modal({
+    // dimmerSettings: {
+      // opacity: 0.2
+    // },
+    // detachable: false
+  // })
   $('#profiles .ui.message').dimmer({
     opacity: 0,
     on: 'hover',
     duration: 10
   })
+  $('#add-profile')
+    .dropdown({
+      on: 'hover'
+    })
 })

@@ -18,7 +18,7 @@
     </a>
     <!-- <a class="item" data-tab="mode"> -->
       <!-- <i class="filter icon"></i> -->
-      <!-- 模式 -->
+     <!-- 模式 -->
     <!-- </a> -->
     <a class="item" data-tab="system">
       <i class="linux icon"></i>
@@ -70,9 +70,19 @@
     </div>
 
     <div id="proxies-tab" class="ui bottom attached tab segment" data-tab="proxies">
-      <div class="ui teal icon labeled button" v-on:click="newProfile">
-        <i class="ui plus icon"></i>
-        新建配置
+      <div id="add-profile" class="ui dropdown button left pointing labeled icon teal">
+        <i class="add user icon"></i>
+        添加配置
+        <div class="menu">
+          <div class="item" v-on:click="newProfile">
+            <i class="ui plus icon"></i>
+            新建
+          </div>
+          <div class="item" v-on:click="showImportProfileModal">
+            <i class="ui paste icon"></i>
+            导入
+          </div>
+        </div>
       </div>
       <div class="ui divider hidden"></div>
       <div id="profiles">
@@ -295,15 +305,19 @@
       </div>
     </div>
 
+    <div id="importProfileModal" class="ui basic modal">
+      <div class="ui action fluid input">
+        <input type="text">
+        <div class="ui button teal right labeled icon" @click="importProfile">
+          <i class="copy icon"></i>
+          导入URI
+        </div>
+      </div>
+      <div class="ui pointing red basic label hidden">
+      </div>
+    </div>
     <div id="profileModal" class="ui modal" ref="profileModal">
       <div class="scrolling content">
-        <div class="ui action input">
-          <input type="text">
-          <div class="ui button teal right labeled icon">
-            <i class="copy icon"></i>
-            导入URI
-          </div>
-        </div>
         <form class="ui form">
           <div class="field">
             <label>配置名称</label>
@@ -332,10 +346,6 @@
               </div>
             </div>
           </div>
-          <!-- <div class="ui icon labeled button" @click="importProfile"> -->
-            <!-- <i class="ui paste icon"></i> -->
-            <!-- 导入 -->
-          <!-- </div> -->
         </div>
         <div class="ui divider hidden"></div>
         <form class="ui form">

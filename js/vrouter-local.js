@@ -1727,6 +1727,140 @@ echo ""`
       await this.installNwWatchdog()
     }
   }
+  parseProfileURI (uri) {
+    // ssr://dnBzLmljeW1pbmQuY29tOjk5OTk6YXV0aF9hZXMxMjhfbWQ1OmNoYWNoYTIwOnRsczEuMl90aWNrZXRfYXV0aDphR0Z3Y0hramMzTnlJekl3TVRjLz9vYmZzcGFyYW09JnByb3RvcGFyYW09TXpJJnJlbWFya3M9UVc1a2NtOXBaQ0JUVTFJZ1JHVm1ZWFZzZEEmZ3JvdXA9ZG5Ceg
+
+    // ss://Y2hhY2hhMjA6aGFwcHkjc3MjMjAxNw@vps.icymind.com:7979?plugin=kcptun%3Bnocomp%3Dtrue%3Bmode%3Dfast%3Bkey%3Dhappy%23kt%232017%3Bcrypt%3Dnone#kcptun
+
+    // ss://Y2hhY2hhMjA6aGFwcHkjc3MjMjAxNw@vps.icymind.com:8989#%E6%98%8E%E6%98%8E%E6%98%8E
+    let profile = {
+      'name': '配置xx',
+      'action': 'new',
+      'mode': 'whitelist',
+      'proxies': 'ss',
+      'relayUDP': false,
+      'enableTunnelDns': true,
+      'selectedBL': {'gfwDomains': true, 'extraBlackList': true},
+      'selectedWL': {'chinaIPs': true, 'lanNetworks': true, 'extraWhiteList': true},
+      'shadowsocks': {
+        'address': '123.123.123.123',
+        'port': '8989',
+        'password': 'demo-paswd',
+        'timeout': 300,
+        'method': 'chacha20',
+        'fastopen': false
+      },
+      'shadowsocksr': {
+        'address': '123.123.123.123',
+        'port': '9999',
+        'password': 'demo-paswd',
+        'timeout': 300,
+        'method': 'chacha20',
+        'protocol': 'auth_aes128_md5',
+        'protocol_param': '32',
+        'obfs': 'tls1.2_ticket_auth',
+        'obfs_param': '',
+        'others': '',
+        'fastopen': false
+      },
+      'kcptun': {
+        'address': '',
+        'port': '',
+        'key': 'demo-secret',
+        'crypt': 'aes-128',
+        'mode': 'fast2',
+        'others': 'sndwnd=256;rcvwnd=2048;nocomp=true'
+      }
+    }
+    let type = uri.substr(0, uri.indexOf(':'))
+    if (type === 'ssr') {
+      profile.proxies = 'ssr'
+      let decode = Buffer.from(uri.substr(6), 'base64').toString()
+      const separatorIndex = decode.indexOf('/?')
+      let config = decode.substr(0, separatorIndex).split(':')
+      config[config.length - 1] = Buffer.from(config[config.length - 1], 'base64').toString()
+      ;[profile.shadowsocksr.address, profile.shadowsocksr.port, profile.shadowsocksr.protocol, profile.shadowsocksr.method, profile.shadowsocksr.obfs, profile.shadowsocksr.password] = config
+
+      config = decode.substr(separatorIndex + 2).split('&')
+      config.forEach((pair) => {
+        let [key, value] = pair.split('=')
+        value = Buffer.from(value, 'base64').toString()
+        switch (key) {
+          case 'obfsparam':
+            profile.shadowsocksr.obfs_param = value
+            break
+          case 'protoparam':
+            profile.shadowsocksr.protocol_param = value
+            break
+          case 'remarks':
+            profile.name = value
+            break
+          case 'group':
+            break
+          default:
+            profile.shadowsocksr.others += `${key}=${value};`
+        }
+      })
+    } else if (type === 'ss') {
+      profile.proxies = 'ss'
+      const nameIndex = uri.lastIndexOf('#')
+      if (nameIndex >= 0) {
+        profile.name = decodeURIComponent(uri.substr(nameIndex + 1))
+      }
+      const separatorIndex = uri.indexOf('@')
+      if (separatorIndex > 0) {
+        // https://shadowsocks.org/en/spec/SIP002-URI-Scheme.html
+        // ss://YmYtY2ZiOnRlc3Q@192.168.100.1:8888/?plugin=url-encoded-plugin-argument-value&unsupported-arguments=should-be-ignored#Dummy+profile+name
+        let decode = Buffer.from(uri.substr(5, separatorIndex - 5), 'base64').toString()
+        ;[profile.shadowsocks.method, profile.shadowsocks.password] = decode.split(':')
+
+        const pluginIndex = uri.indexOf('?plugin')
+        if (pluginIndex < 0) {
+          // without plugin
+          decode = uri.substr(separatorIndex + 1, nameIndex < 0 ? undefined : nameIndex - separatorIndex - 1)
+          ;[profile.shadowsocks.address, profile.shadowsocks.port] = decode.split(':')
+        } else {
+          // with plugin
+          decode = uri.substr(separatorIndex + 1, pluginIndex - separatorIndex - 1)
+          ;[profile.shadowsocks.address, profile.shadowsocks.port] = decode.split(':')
+
+          let plugin = uri.substr(pluginIndex + '?plugin'.length + 1, nameIndex - 1 - pluginIndex - '?plugin'.length)
+          let config = decodeURIComponent(plugin).split(';')
+          if (config[0] !== 'kcptun') {
+            throw Error(`unsupported plugin: ${config[0]}`)
+          } else {
+            profile.proxies = 'ssKt'
+            let others = ''
+            config.slice(1).forEach((pair) => {
+              let [key, value] = pair.split('=')
+              switch (key) {
+                case 'mode':
+                case 'key':
+                case 'crypt':
+                  profile.kcptun[key] = value
+                  break
+                default:
+                  others += `${pair};`
+              }
+            })
+            profile.kcptun.address = profile.kcptun.address || profile.shadowsocks.address
+            profile.kcptun.port = profile.kcptun.port || profile.shadowsocks.port
+            profile.kcptun.others = others === '' ? profile.kcptun.others : others
+          }
+        }
+      } else {
+        // https://shadowsocks.org/en/config/quick-guide.html
+        // ss://YmYtY2ZiOnRlc3RAMTkyLjE2OC4xMDAuMTo4ODg4Cg#example-server
+        let index = uri.indexOf('#')
+        let decode = Buffer.from(uri.substr(5, index < 0 ? undefined : nameIndex - 5), 'base64').toString()
+        let config = decode.split('@')
+        ;[profile.shadowsocks.address, profile.shadowsocks.port, profile.shadowsocks.method, profile.shadowsocks.password] = [...config[1].split(':'), ...config[0].split(':')]
+      }
+    } else {
+      throw Error('unsupported URI')
+    }
+    return profile
+  }
   async copyTemplate (fileName) {
     const template = path.join(__dirname, '..', 'config', fileName)
     const dest = path.join(this.config.host.configDir, fileName)
