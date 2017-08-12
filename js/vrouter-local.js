@@ -176,6 +176,7 @@ d.show
 EOF`
     const serviceName = await this.localExec(cmd)
 
+    winston.info(`activeAdapter: ${serviceName.trim()}(${router}), ${inf}`)
     return [serviceName.trim(), inf, router]
   }
 
@@ -916,8 +917,12 @@ EOF`
       return Promise.resolve(cfg.address)
     }
     return new Promise((resolve, reject) => {
+      winston.info(`resolve domain: ${cfg.address}`)
       dns.lookup(cfg.address, { family: 4 }, (err, address, family) => {
-        if (err) reject(err)
+        if (err) {
+          winston.error(`resolve domain: ${cfg.address} failed.`)
+          reject(err)
+        }
         resolve(address)
       })
     })
@@ -1863,6 +1868,11 @@ echo ""`
       await fs.copy(template, dest)
       return dest
     }
+  }
+  async deleteLogFile () {
+    const logFile = path.join(this.config.host.configDir, 'vrouter.log')
+    winston.info(`delete logFile: ${logFile}`)
+    return this.localExec(`rm "${logFile}"`)
   }
   async connect (startFirst) {
     const state = await this.getvmState()

@@ -618,6 +618,7 @@ const myApp = new Vue({
   },
   async mounted () {
     try {
+      await vrouter.deleteLogFile()
       await vrouter.changeBridgeAdapter()
       this.remote = await vrouter.connect()
       await this.checkTrafficStatus()
