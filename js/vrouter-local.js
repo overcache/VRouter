@@ -69,30 +69,19 @@ class VRouter {
     return new Promise((resolve, reject) => {
       sudo.exec(cmd, option, (err, stdout, stderr) => {
         if (err) {
-          // console.log(err)
           reject(err)
         } else {
-          // stderr && console.log(stderr)
           resolve(stdout || stderr)
         }
       })
     })
   }
   localExec (cmd) {
-    // const specialCmd = [
-      // /^VBoxManage hostonlyif .*$/ig,
-      // /^VBoxManage startvm/ig,
-      // /^VBoxManage controlvm .* poweroff/ig,
-      // /^VBoxManage convertfromraw .ig
-     // ]
-
     return new Promise((resolve, reject) => {
       exec(cmd, (err, stdout, stderr) => {
         if (err) {
-          // console.log(err)
           reject(err)
         } else {
-          // stderr && console.log(stderr)
           resolve(stdout || stderr)
         }
       })
@@ -116,6 +105,7 @@ class VRouter {
     return this.localExec(cmd)
   }
   async getOSXNetworkService (inf) {
+    // 返回 en{0-9} 对应的网络服务
     const cmd = `/usr/sbin/networksetup -listnetworkserviceorder`
     const output = await this.localExec(cmd)
     const reg = /\(\d+\) (.*)\n\(Hardware Port: .*?, Device: (.*)\)/g
@@ -446,16 +436,17 @@ EOF`
   }
   async startvm (type = 'headless', waitTime = 100) {
     const state = await this.getvmState()
-    if (state !== 'running') {
-      const cmd = `${VBoxManage} startvm --type ${type} ${this.config.vrouter.name}`
-      await this.localExec(cmd)
-      await this.wait(1000)
-      await this.sendKeystrokes()
-      // skip grub's waiting time
-      await this.wait(500)
-      await this.sendKeystrokes()
-      await this.wait(waitTime)
+    if (state === 'running') {
+      return
     }
+    const cmd = `${VBoxManage} startvm --type ${type} ${this.config.vrouter.name}`
+    await this.localExec(cmd)
+    await this.wait(1000)
+    await this.sendKeystrokes()
+    // skip grub's waiting time
+    await this.wait(500)
+    await this.sendKeystrokes()
+    await this.wait(waitTime)
   }
   async stopvm (action = 'savestate', waitTime = 100) {
     const serialPortState = await this.isSerialPortOn()
@@ -463,20 +454,24 @@ EOF`
     if (vmState === 'running') {
       winston.debug(`about to stop vm. current State: ${vmState}. action: ${action}`)
       if (action === 'force') {
+        winston.debug('vrouter poweroff by controlvm')
         const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} poweroff`
         await this.localExec(cmd)
         return this.wait(waitTime)
       } else if (action === 'poweroff') {
         if (serialPortState) {
           // poweroff from inside openwrt is more safer.
+          winston.debug('poweroff by serialExec')
           await this.serialExec('poweroff', 'poweroff')
           return this.wait(8000)
         } else {
+          winston.debug('vrouter poweroff by controlvm')
           const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} poweroff`
           await this.localExec(cmd)
           return this.wait(waitTime)
         }
       } else if (action === 'savestate') {
+        winston.debug('vrouter savestate')
         const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} savestate`
         await this.localExec(cmd)
         return this.wait(waitTime)
@@ -524,9 +519,6 @@ EOF`
     return state
   }
   async isVRouterRunning () {
-    // State:           running (since 2017-06-16T02:13:09.066000000)
-    // VBoxManage showvminfo com.icymind.test --machinereadable  | grep vmState
-    // vmState="running"
     const cmd = `${VBoxManage} list runningvms`
     const stdout = await this.localExec(cmd)
     const vms = stdout
@@ -551,7 +543,6 @@ EOF`
     return this.localExec(cmd)
   }
   async getHostonlyInf () {
-    // return [correspondingInf, firstAvailableInf]
     const infs = await this.getAllInf()
     const reg = /^vboxnet\d+.*\n(?:\t.*\n)*/img
     let correspondingInf = null

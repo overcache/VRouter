@@ -228,6 +228,7 @@ const myApp = new Vue({
         this.profiles.activedProfile -= 1
       }
       await vrouter.saveCfg2File()
+      winston.info(`delete profile: ${index}`)
       $('#profiles .ui.message.dimmed').dimmer('hide')
     },
     editProfile (index) {
@@ -243,6 +244,7 @@ const myApp = new Vue({
       $('#profiles .ui.message.dimmed').dimmer('hide')
       this.ui.activeLoader = true
       this.profiles.activedProfile = index
+      winston.info(`active profile: ${index}`)
       await vrouter.saveCfg2File()
       await this.remote.applyProfile(index)
       await this.refreshInfos()
@@ -257,6 +259,7 @@ const myApp = new Vue({
     },
     importProfile () {
       const uri = document.querySelector('#importProfileModal input').value
+      winston.info(`import profile: ${uri}`)
       try {
         this.editingProfile = vrouter.parseProfileURI(uri)
         this.toggleProfileEditor('show')
@@ -303,6 +306,7 @@ const myApp = new Vue({
       } else {
         this.profiles.profiles[id] = JSON.parse(JSON.stringify(this.editingProfile))
       }
+      winston.info(`save profile: ${this.editingProfile}`)
       await vrouter.saveCfg2File()
       this.toggleProfileEditor('hide')
 
@@ -338,6 +342,7 @@ const myApp = new Vue({
         this.status.currentGW = 'default'
         this.status.currentDns = 'default'
       }
+      winston.info(`checkTrafficStatus: currentGW=${this.status.currentGW}, currentDns=${this.status.currentDns}`)
       const isGWVRouter = this.status.currentGW === 'vrouter'
       this.ui.btnToggleRouterPopup = isGWVRouter ? '停止接管流量' : '开始接管流量'
       // this.toggleBlink(isGWVRouter)
@@ -631,19 +636,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('.tabular.menu .item').tab()
   $('.dropdown').dropdown()
   $('*[data-content]').popup()
-  // $('#profileModal').modal({
-    // dimmerSettings: {
-      // opacity: 0.2
-    // },
-    // detachable: false,
-    // closable: false
-  // })
-  // $('#importProfileModal').modal({
-    // dimmerSettings: {
-      // opacity: 0.2
-    // },
-    // detachable: false
-  // })
   $('#profiles .ui.message').dimmer({
     opacity: 0,
     on: 'hover',

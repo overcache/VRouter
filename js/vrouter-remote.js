@@ -1,3 +1,4 @@
+const winston = require('winston')
 const path = require('path')
 class VRouterRemote {
   // todo: reconnect
@@ -7,6 +8,17 @@ class VRouterRemote {
     this.config = config
     this.local = local
     this.sftp = sftp
+    winston.configure({
+      transports: [
+        new (winston.transports.File)({
+          filename: path.join(this.config.host.configDir, 'vrouter.log'),
+          level: 'info'
+        }),
+        new (winston.transports.Console)({
+          level: 'debug'
+        })
+      ]
+    })
   }
 
   // vm
@@ -40,6 +52,7 @@ class VRouterRemote {
     })
   }
   async scp (src, dest) {
+    winston.info(`scp ${src} to vrouter:${dest}`)
     let isDestDir = false
     if (dest.endsWith('/')) {
       isDestDir = true
@@ -180,6 +193,7 @@ class VRouterRemote {
     })
   }
   service (name, action) {
+    winston.info(`${action} service: ${name}`)
     const cmd = `/etc/init.d/${name} ${action}`
     return this.remoteExec(cmd)
   }
