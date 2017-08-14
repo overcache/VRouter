@@ -161,7 +161,13 @@ EOF`
     const output = await this.localExec(cmd)
 
     const infReg = /PrimaryInterface : (.*)$/mg
-    const inf = infReg.exec(output)[1]
+    let inf
+    try {
+      inf = infReg.exec(output)[1]
+    } catch (error) {
+      winston.error('no activeAdapter detected')
+      throw Error('no activeAdapter detected.')
+    }
 
     const serviceReg = /PrimaryService : (.*)$/mg
     const service = serviceReg.exec(output)[1]
@@ -603,26 +609,19 @@ EOF`
     await this.localExec(cmd)
   }
   async specifyBridgeAdapter (inf, nic = '2') {
-    // VBoxManage modifyvm com.icymind.vrouter --nic2 bridged --bridgeadapter1 en0
-    let service = 'Wi-Fi'
     if (!inf) {
-      try {
-        let info = await this.getActiveAdapter()
-        service = info[0]
-      } catch (error) {
-      }
+      let info = await this.getActiveAdapter()
+      inf = info[1]
     }
 
-    const subCmd = `${VBoxManage} list bridgedifs | grep "${service}"`
-    const output = await this.localExec(subCmd)
-    const raw = String.raw`^Name:\s*(.*)`
-    const reg = new RegExp(raw, 'mg')
-    const iinf = reg.exec(output)[1]
+    let subCmd = `${VBoxManage} list bridgedifs | grep '^Name:.*${inf}' | awk -F'Name:' '{print $2}'`
+    let output = await this.localExec(subCmd)
+    const activeBridge = output.trim()
 
     const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
       `--nic${nic} bridged ` +
       ` --nictype${nic} "82540EM" ` +
-      `--bridgeadapter${nic} "${iinf.replace(/["']/g, '')}" ` +
+      `--bridgeadapter${nic} "${activeBridge.replace(/["']/g, '')}" ` +
       `--cableconnected${nic} "on" ` +
       `--macaddress${nic} "${this.config.vrouter.macaddress}"`
     const vmState = await this.getvmState()
@@ -634,16 +633,20 @@ EOF`
 
   async changeBridgeAdapter (nic = '2') {
     const info = await this.getActiveAdapter()
-    let subCmd = `${VBoxManage} list bridgedifs | grep "${info[0]}"`
+    let subCmd = `${VBoxManage} list bridgedifs | grep '^Name:.*${info[1]}' | awk -F'Name:' '{print $2}'`
     let output = await this.localExec(subCmd)
-    const raw = String.raw`^Name:\s*(.*)`
-    let reg = new RegExp(raw, 'mg')
-    const activeBridge = reg.exec(output)[1]
+    const activeBridge = output.trim()
 
     subCmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep bridgeadapter`
     output = await this.localExec(subCmd)
-    reg = /^bridgeadapter2="(.*)"/mg
-    const specifyBridge = reg.exec(output)[1]
+    let reg = /^bridgeadapter2="(.*)"/mg
+    let specifyBridge = null
+    try {
+      specifyBridge = reg.exec(output)[1]
+    } catch (err) {
+      winston.error(`changeBridgeAdapter Error. activeBridge: ${activeBridge}, bridgeadapter of vrouter: ${output}`)
+      throw err
+    }
 
     if (activeBridge !== specifyBridge) {
       winston.info(`PrimaryInterface change from ${specifyBridge} to ${activeBridge}. now change vm's bridged to ${activeBridge}`)
