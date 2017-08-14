@@ -115,6 +115,9 @@ class VRouter {
     const cmd = `osascript -e '${applescript}'`
     return this.localExec(cmd)
   }
+  async getOSXLocale(){
+    return this.localExec(`defaults read -g AppleLocale`)
+  }
   async getOSXNetworkService (inf) {
     const cmd = `/usr/sbin/networksetup -listnetworkserviceorder`
     const output = await this.localExec(cmd)
@@ -162,7 +165,7 @@ class VRouter {
     // https://askubuntu.com/questions/634620/when-using-and-sudo-on-the-first-command-is-the-second-command-run-as-sudo-t
     return this.sudoExec(`bash -c '${cmd1} && ${cmd2}'`)
   }
-  async getActiveAdapter () {
+  async getActiveAdapter (caseLocale = false) {
     let cmd = String.raw`cat <<EOF | scutil
 open
 get State:/Network/Global/IPv4
@@ -184,8 +187,11 @@ open
 get Setup:/Network/Service/${service}
 d.show
 EOF`
-    const serviceName = await this.localExec(cmd)
-
+    var serviceName = await this.localExec(cmd)
+    const locale = await this.getOSXLocale()
+    if( caseLocale && locale.trim() == 'zh_CN' && serviceName.trim() == 'Ethernet' ){
+      serviceName = '以太网'
+    }
     return [serviceName.trim(), inf, router]
   }
 
@@ -615,7 +621,7 @@ EOF`
     let service = 'Wi-Fi'
     if (!inf) {
       try {
-        let info = await this.getActiveAdapter()
+        let info = await this.getActiveAdapter(true)
         service = info[0]
       } catch (error) {
       }
@@ -641,7 +647,7 @@ EOF`
   }
 
   async changeBridgeAdapter (nic = '2') {
-    const info = await this.getActiveAdapter()
+    const info = await this.getActiveAdapter(true)
     let subCmd = `${VBoxManage} list bridgedifs | grep "${info[0]}"`
     let output = await this.localExec(subCmd)
     const raw = String.raw`^Name:\s*(.*)`
