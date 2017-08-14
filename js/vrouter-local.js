@@ -149,8 +149,8 @@ class VRouter {
     }
     const cmd1 = `/sbin/route change default ${ip}`
     const cmd2 = `/usr/sbin/networksetup -setdnsservers "${info[0]}" "${ip}"`
-    // https://askubuntu.com/questions/634620/when-using-and-sudo-on-the-first-command-is-the-second-command-run-as-sudo-t
-    return this.sudoExec(`/bin/bash -c '${cmd1} && ${cmd2}'`)
+    await this.sudoExec(cmd1)
+    await this.sudoExec(cmd2)
   }
   async getActiveAdapter () {
     let cmd = String.raw`cat <<EOF | scutil
