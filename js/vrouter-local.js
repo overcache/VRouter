@@ -139,14 +139,10 @@ class VRouter {
     ])
   }
   async changeRouteTo (dst) {
-    let ip
     const info = await this.getActiveAdapter()
 
-    if (dst === 'vrouter') {
-      ip = this.config.vrouter.ip
-    } else {
-      ip = info[2]
-    }
+    const ip = dst === 'vrouter' ? this.config.vrouter.ip : info[2]
+
     const cmd1 = `/sbin/route change default ${ip}`
     const cmd2 = `/usr/sbin/networksetup -setdnsservers "${info[0]}" "${ip}"`
     await this.sudoExec(cmd1)
