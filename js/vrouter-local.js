@@ -1,10 +1,8 @@
-const Client = require('ssh2').Client
 const { URL } = require('url')
 const http = require('http')
 const https = require('https')
 const fs = require('fs-extra')
 const path = require('path')
-const { VRouterRemote } = require('./vrouter-remote.js')
 const { getAppDir } = require('./helper.js')
 const packageJson = require('../package.json')
 const dns = require('dns')
@@ -162,7 +160,6 @@ EOF`
     winston.info(`activeAdapter: ${serviceName.trim()}(${router}), ${inf}`)
     return [serviceName.trim(), inf, router]
   }
-
   async installNwWatchdog () {
     await this.generateNetworkSh()
     await this.localExec(`chmod +x "${path.join(this.config.host.configDir, this.config.host.networkSh)}"`)
@@ -354,122 +351,6 @@ EOF`
     } catch (error) {
       throw error
     }
-  }
-
-  getAllInf () {
-    const cmd = '/sbin/ifconfig'
-    return this.localExec(cmd)
-  }
-  async getHostonlyInf () {
-    const infs = await this.getAllInf()
-    const reg = /^vboxnet\d+.*\n(?:\t.*\n)*/img
-    let correspondingInf = null
-    let firstAvailableInf = null
-    while (true) {
-      const result = reg.exec(infs)
-      if (!result) break
-      const infConfig = result[0]
-      const ipMatch = /inet (\d+\.\d+\.\d+\.\d+) netmask/ig.exec(infConfig)
-      const nameMatch = /^(vboxnet\d+):/ig.exec(infConfig)
-      if (!ipMatch && !firstAvailableInf && nameMatch) {
-        // console.log(infConfig)
-        firstAvailableInf = nameMatch[1]
-      }
-      if (ipMatch && nameMatch && ipMatch[1] === this.config.host.ip) {
-        correspondingInf = nameMatch[1]
-      }
-    }
-    return [correspondingInf, firstAvailableInf]
-  }
-  async createHostonlyInf () {
-    const cmd = `${VBoxManage} hostonlyif create`
-    const output = await this.localExec(cmd)
-    const infMatch = /Interface '(.*)'/ig.exec(output)
-    return infMatch && infMatch[1]
-  }
-  removeHostonlyInf (inf) {
-    const cmd = `${VBoxManage} hostonlyif remove ${inf}`
-    return this.localExec(cmd)
-  }
-  async configHostonlyInf (inf, netmask = '255.255.255.0') {
-    let iinf = inf
-    if (!inf) {
-      const infs = await this.getHostonlyInf()
-      iinf = infs[0] || infs[1] || await this.createHostonlyInf()
-    }
-    const cmd = `${VBoxManage} hostonlyif ipconfig ${iinf} --ip ${this.config.host.ip} --netmask ${netmask}`
-    await this.localExec(cmd)
-    return iinf
-  }
-
-  async changeBridgeAdapter (nic = '2') {
-    const info = await this.getActiveAdapter()
-    let subCmd = `${VBoxManage} list bridgedifs | grep '^Name:.*${info[1]}' | awk -F'Name:' '{print $2}'`
-    let output = await this.localExec(subCmd)
-    const activeBridge = output.trim()
-
-    subCmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep bridgeadapter`
-    output = await this.localExec(subCmd)
-    let reg = /^bridgeadapter2="(.*)"/mg
-    let specifyBridge = null
-    try {
-      specifyBridge = reg.exec(output)[1]
-    } catch (err) {
-      winston.error(`changeBridgeAdapter Error. activeBridge: ${activeBridge}, bridgeadapter of vrouter: ${output}`)
-      throw err
-    }
-
-    if (activeBridge !== specifyBridge) {
-      winston.info(`PrimaryInterface change from ${specifyBridge} to ${activeBridge}. now change vm's bridged to ${activeBridge}`)
-      const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} nic${nic} bridged "${activeBridge}"`
-      await this.localExec(cmd)
-    }
-    return activeBridge
-  }
-
-  async isNIC1ConfigedAsHostonly () {
-    let cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic1\\|hostonlyadapter1'`
-    const output = await this.localExec(cmd)
-    // hostonlyadapter1="vboxnet4"
-    // nic1="hostonly"
-    const infos = new Map()
-    output.trim().split('\n').map((element) => {
-      const temp = element.split('=')
-      infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
-    })
-    if (infos.get('nic1') !== 'hostonly') {
-      throw Error("NIC1 isn't hostonly network")
-    }
-    if (!/^vboxnet\d+$/ig.test(infos.get('hostonlyadapter1'))) {
-      throw Error("NIC1 doesn't specify host-only adapter")
-    }
-    const inf = infos.get('hostonlyadapter1')
-    const ip = await this.getInfIP(inf)
-    if (ip !== this.config.host.ip) {
-      throw Error("host-only adapter doesn't config as hostIP")
-    }
-    return inf
-  }
-  async isNIC2ConfigedAsBridged () {
-    let cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep 'nic2\\|bridgeadapter2'`
-    const output = await this.localExec(cmd)
-    const infos = new Map()
-    output.trim().split('\n').map((element) => {
-      const temp = element.split('=')
-      infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
-    })
-    if (infos.get('nic2') !== 'bridged') {
-      throw Error("NIC2 isn't bridged network")
-    }
-    const inf = infos.get('bridgeadapter2')
-    if (!inf) {
-      throw Error("NIC2 doesn't specify bridged adapter")
-    }
-    cmd = `/sbin/ifconfig ${inf.trim().split(':')[0]}`
-    const infConfig = await this.localExec(cmd)
-    const statusMatch = /status: active/ig.exec(infConfig)
-    if (!statusMatch) throw Error("bridged adapter doesn't active")
-    return inf
   }
 
   async configvmNetwork () {
@@ -676,6 +557,7 @@ EOF`
   generateFWRulesHelper (str) {
     return `iptables -t nat -A PREROUTING ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
+
   // files
   async generateFWRules (m, p, overwrite = false) {
     // whitelist/blacklist/global/none
@@ -1619,31 +1501,6 @@ echo ""`
     const logFile = path.join(this.config.host.configDir, 'vrouter.log')
     winston.info(`delete logFile: ${logFile}`)
     return this.localExec(`rm "${logFile}"`)
-  }
-  async connect (startFirst) {
-    const state = await this.getvmState()
-    if (state !== 'running') {
-      throw Error("vm doesn't running.")
-    }
-    return new Promise((resolve, reject) => {
-      const conn = new Client()
-      conn.on('ready', () => {
-        conn.sftp((err, sftp) => {
-          if (err) {
-            reject(err)
-          } else {
-            resolve(new VRouterRemote(conn, sftp, this.config, this))
-          }
-        })
-      }).connect({
-        host: this.config.vrouter.ip,
-        port: this.config.vrouter.port,
-        username: this.config.vrouter.username,
-        password: this.config.vrouter.password,
-        keepaliveInterval: 60000,
-        readyTimeout: 1500
-      })
-    })
   }
 }
 module.exports = {
