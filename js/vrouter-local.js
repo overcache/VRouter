@@ -1,4 +1,3 @@
-const { exec } = require('child_process')
 const Client = require('ssh2').Client
 const { URL } = require('url')
 const http = require('http')
@@ -58,9 +57,6 @@ class VRouter {
   }
 
   // os
-  wait (time) {
-    return new Promise(resolve => setTimeout(resolve, time))
-  }
   sudoExec (cmd) {
     const option = {
       name: 'VRouter',
@@ -75,21 +71,6 @@ class VRouter {
         }
       })
     })
-  }
-  localExec (cmd) {
-    return new Promise((resolve, reject) => {
-      exec(cmd, (err, stdout, stderr) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(stdout || stderr)
-        }
-      })
-    })
-  }
-  sendKeystrokes (key = '1c 9c') {
-    const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} keyboardputscancode ${key}`
-    return this.localExec(cmd)
   }
   sshLogin () {
     const applescript = String.raw`
@@ -375,172 +356,6 @@ EOF`
     }
   }
 
-  guiLogin () {
-    const cmd = `${VBoxManage} startvm ${this.config.vrouter.name} --type separate`
-    return this.localExec(cmd)
-  }
-  async serialExec (cmd, msg) {
-    const serialPortState = await this.isSerialPortOn()
-
-    // toggleSerialPort on
-    if (!serialPortState) {
-      // turn vm off if necessary
-      await this.stopvm('poweroff', 8000)
-      await this.toggleSerialPort('on')
-    }
-
-    const state = await this.getvmState()
-    // startvm if necessary
-    if (state !== 'running') {
-      try {
-        await this.startvm()
-        await this.wait(35000)
-      } catch (err) {
-        console.log(err)
-        console.log('startvm error')
-        console.log('try again')
-        await this.serialExec('poweroff', 'poweroff')
-        await this.wait(8000)
-        // await this.stopvm('poweroff', 8000)
-        console.log('turn vm off finish')
-        console.log('now try to turn vm on')
-        await this.startvm()
-      }
-    }
-
-    const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
-    const pre = `echo "" |  /usr/bin/nc -U "${serialPath}"`
-    const serialCmd = `echo "${cmd}" | /usr/bin/nc -U '${serialPath}'`
-
-    // 先执行两遍pre
-    await this.localExec(pre)
-    await this.localExec(pre)
-    // console.log(serialCmd)
-    return this.localExec(serialCmd)
-  }
-
-  importvm (vmFile) {
-    const cmd = `${VBoxManage} import ${vmFile}`
-    return this.localExec(cmd)
-  }
-  async deletevm (stopFirst = false) {
-    await this.removeNwWatchdog()
-    const cmd = `${VBoxManage} unregistervm ${this.config.vrouter.name} --delete`
-    const existed = await this.isVRouterExisted()
-    if (!existed) {
-      return
-    }
-    const state = await this.getvmState()
-    if (state === 'running' && !stopFirst) {
-      throw Error('vm must be stopped before delete')
-    }
-    await this.stopvm('force', 3000)
-    return this.localExec(cmd)
-  }
-  async startvm (type = 'headless', waitTime = 100) {
-    const state = await this.getvmState()
-    if (state === 'running') {
-      return
-    }
-    const cmd = `${VBoxManage} startvm --type ${type} ${this.config.vrouter.name}`
-    await this.localExec(cmd)
-    await this.wait(1000)
-    await this.sendKeystrokes()
-    // skip grub's waiting time
-    await this.wait(500)
-    await this.sendKeystrokes()
-    await this.wait(waitTime)
-  }
-  async stopvm (action = 'savestate', waitTime = 100) {
-    const serialPortState = await this.isSerialPortOn()
-    const vmState = await this.getvmState()
-    if (vmState === 'running') {
-      winston.debug(`about to stop vm. current State: ${vmState}. action: ${action}`)
-      if (action === 'force') {
-        winston.debug('vrouter poweroff by controlvm')
-        const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} poweroff`
-        await this.localExec(cmd)
-        return this.wait(waitTime)
-      } else if (action === 'poweroff') {
-        if (serialPortState) {
-          // poweroff from inside openwrt is more safer.
-          winston.debug('poweroff by serialExec')
-          await this.serialExec('poweroff', 'poweroff')
-          return this.wait(8000)
-        } else {
-          winston.debug('vrouter poweroff by controlvm')
-          const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} poweroff`
-          await this.localExec(cmd)
-          return this.wait(waitTime)
-        }
-      } else if (action === 'savestate') {
-        winston.debug('vrouter savestate')
-        const cmd = `${VBoxManage} controlvm ${this.config.vrouter.name} savestate`
-        await this.localExec(cmd)
-        return this.wait(waitTime)
-      }
-    } else if (vmState === 'saved') {
-      if (action === 'poweroff') {
-        await this.localExec(`${VBoxManage} discardstate ${this.config.vrouter.name}`)
-        return this.wait(5000)
-      }
-    }
-  }
-
-  hidevm (action = true) {
-    const cmd = `${VBoxManage} setextradata ${this.config.vrouter.name} GUI/HideFromManager ${action}`
-    return this.localExec(cmd)
-  }
-  lockGUIConfig (action = true) {
-    const cmd = `${VBoxManage} setextradata ${this.config.vrouter.name} GUI/PreventReconfiguration ${action}`
-    return this.localExec(cmd)
-  }
-
-  async isVBInstalled () {
-    const cmd = `${VBoxManage} --version`
-    try {
-      await this.localExec(cmd)
-      return true
-    } catch (error) {
-      return false
-    }
-  }
-  async isVRouterExisted () {
-    const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name}`
-    try {
-      await this.localExec(cmd)
-      return true
-    } catch (error) {
-      return false
-    }
-  }
-  async getvmState () {
-    // much slow than 'VBoxManage list runningvms'
-    const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable | grep VMState=`
-    const output = await this.localExec(cmd)
-    const state = output.trim().split('=')[1].replace(/"/g, '')
-    return state
-  }
-  async isVRouterRunning () {
-    const cmd = `${VBoxManage} list runningvms`
-    const stdout = await this.localExec(cmd)
-    const vms = stdout
-      .trim().split('\n')
-      .map(e => e.split(' ')[0].trim().replace(/"/g, ''))
-    if (vms.includes(this.config.vrouter.name)) {
-      return true
-    } else {
-      return false
-    }
-  }
-
-  async getInfIP (inf) {
-    const cmd = `/sbin/ifconfig ${inf}`
-    const output = await this.localExec(cmd)
-    const ipMatch = /inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) netmask/ig.exec(output)
-    const ip = (ipMatch && ipMatch[1]) || ''
-    return ip
-  }
   getAllInf () {
     const cmd = '/sbin/ifconfig'
     return this.localExec(cmd)
@@ -585,46 +400,6 @@ EOF`
     const cmd = `${VBoxManage} hostonlyif ipconfig ${iinf} --ip ${this.config.host.ip} --netmask ${netmask}`
     await this.localExec(cmd)
     return iinf
-  }
-
-  async specifyHostonlyAdapter (inf, nic = '1') {
-    let iinf = inf
-    if (!iinf) {
-      iinf = await this.configHostonlyInf()
-    }
-    const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
-      ` --nic${nic} hostonly ` +
-      ` --nictype${nic} "82540EM" ` +
-      ` --hostonlyadapter${nic} ${iinf} ` +
-      ` --cableconnected${nic} "on"`
-
-    const vmState = await this.getvmState()
-    if (vmState !== 'poweroff') {
-      return Promise.reject(Error('vm must be shutdown before modify'))
-    }
-    await this.localExec(cmd)
-  }
-  async specifyBridgeAdapter (inf, nic = '2') {
-    if (!inf) {
-      let info = await this.getActiveAdapter()
-      inf = info[1]
-    }
-
-    let subCmd = `${VBoxManage} list bridgedifs | grep '^Name:.*${inf}' | awk -F'Name:' '{print $2}'`
-    let output = await this.localExec(subCmd)
-    const activeBridge = output.trim()
-
-    const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} ` +
-      `--nic${nic} bridged ` +
-      ` --nictype${nic} "82540EM" ` +
-      `--bridgeadapter${nic} "${activeBridge.replace(/["']/g, '')}" ` +
-      `--cableconnected${nic} "on" ` +
-      `--macaddress${nic} "${this.config.vrouter.macaddress}"`
-    const vmState = await this.getvmState()
-    if (vmState !== 'poweroff') {
-      return Promise.reject(Error('vm must be shutdown before modify'))
-    }
-    await this.localExec(cmd)
   }
 
   async changeBridgeAdapter (nic = '2') {
@@ -722,30 +497,6 @@ EOF`
       })
   }
 
-  async isSerialPortOn () {
-    // VBoxManage showvminfo com.icymind.test --machinereadable  | grep "uart\(mode\)\?1"
-    // uart1="0x03f8,4"
-    // uartmode1="server,/Users/simon/Library/Application Support/VRouter/serial"
-    const cmd = `${VBoxManage} showvminfo ${this.config.vrouter.name} --machinereadable  | grep "uart\\(mode\\)\\?1"`
-    const output = await this.localExec(cmd)
-    const infos = new Map()
-    output.trim().split('\n').map((element) => {
-      const temp = element.split('=')
-      infos.set(temp[0].replace(/"/g, ''), temp[1].replace(/"/g, ''))
-    })
-    return infos.get('uart1') === '0x03f8,4' &&
-      infos.get('uartmode1') === `server,${path.join(this.config.host.configDir, this.config.host.serialFile)}`
-  }
-  async toggleSerialPort (action = 'on', num = 1) {
-    const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
-    const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${num} server "${serialPath}"` : 'off'
-    const cmd = `${VBoxManage} modifyvm ${this.config.vrouter.name} --uart${num} ${subCmd}`
-    const vmState = await this.getvmState()
-    if (vmState !== 'poweroff') {
-      return Promise.reject(Error('vm must be shutdown before modify'))
-    }
-    await this.localExec(cmd)
-  }
   async configvmLanIP () {
     // execute cmd
     const subCmds = []
@@ -796,10 +547,6 @@ EOF`
   async turnOnFastOpen () {
     await this.serialExec('echo "net.ipv4.tcp_fastopen = 3" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf')
     return this.serialLog('done: trunOn fast_open')
-  }
-  serialLog (msg) {
-    const cmd = `echo '${msg}' >> /vrouter.log`
-    return this.serialExec(cmd, 'log to file')
   }
   async installPackage () {
     const subCmds = []

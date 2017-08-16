@@ -53,6 +53,10 @@ class VBox {
     await wait(500)
     await this.sendKeystrokesTo(name)
   }
+  static attachHeadless (name) {
+    const cmd = `${bin} startvm ${name} --type separate`
+    return execute(cmd)
+  }
   static saveState (name) {
     const cmd = `${bin} controlvm ${name} savestate`
     return execute(cmd)
@@ -95,7 +99,7 @@ class VBox {
     const state = await this.getVmState(name)
     return state === 'running'
   }
-  static toggleSerialPort (name, portNum = 1, action = 'on', file) {
+  static toggleSerialPort (name, file, action = 'on', portNum = 1) {
     // const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${portNum} server "${file}"` : 'off'
     const cmd = `${bin} modifyvm ${name} --uart${portNum} ${subCmd}`
@@ -108,6 +112,33 @@ class VBox {
     const vmInfo = await this.getVmInfo(name)
     const pattern = new RegExp(String.raw`^uart${portNum}="0x03f8,4"$`)
     return pattern.exec(vmInfo) !== undefined
+  }
+  static async serialExec (name, file, command) {
+    // TODO: replace /usr/bin/nc with nodejs package
+    const pre = `echo "" |  /usr/bin/nc -U "${file}"`
+    const serialCmd = `echo "${command}" | /usr/bin/nc -U '${file}'`
+
+    // 先执行两遍pre
+    await execute(pre)
+    await execute(pre)
+    return execute(serialCmd)
+  }
+
+  // network
+  static assignHostonlyAdapter (name, inf, nic = '1') {
+    const cmd = `${bin} modifyvm ${name} ` +
+      ` --nic${nic} hostonly ` +
+      ` --nictype${nic} "82540EM" ` +
+      ` --hostonlyadapter${nic} ${inf} ` +
+      ` --cableconnected${nic} "on"`
+    return execute(cmd)
+  }
+  async assignBridgeAdapter (name, nic = '2', bridgedInf) {
+    const cmd = `${bin} controlvm ${name} nic${nic} bridged "${bridgedInf}"`
+    await this.localExec(cmd)
+  }
+  static getBridgedInf (inf) {
+
   }
 }
 
