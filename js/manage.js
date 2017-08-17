@@ -439,7 +439,7 @@ const myApp = new Vue({
     },
     openExtraList (type) {
       // if (this.ui.editable.mode) {
-      return shell.openItem(path.join(vrouter.config.host.configDir, this.firewall[`extra${type}List`]))
+      return shell.openItem(path.join(vrouter.config.host.configDir, vrouter.config.firewall[`extra${type}List`]))
       // }
     },
     async updateChinaIPs () {
