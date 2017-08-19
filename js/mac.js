@@ -1,9 +1,7 @@
-const os = require('os')
 const path = require('path')
 const { exec } = require('child_process')
-const sudo = require('sudo-prompt')
+// const sudo = require('sudo-prompt')
 
-const platform = os.platform()
 const execute = function (command) {
   return new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
@@ -16,19 +14,20 @@ const execute = function (command) {
   })
 }
 
-const mac = {
-  async getActiveAdapter () {
+class Mac {
+  static async getActiveAdapter () {
     let cmd = String.raw`cat <<EOF | scutil
-open
-get State:/Network/Global/IPv4
-d.show
-EOF`
+    open
+    get State:/Network/Global/IPv4
+    d.show
+    EOF`
     const output = await execute(cmd)
 
     const infReg = /PrimaryInterface : (.*)$/mg
     return infReg.exec(output)[1]
-  },
-  sshLogin () {
+  }
+
+  static sshLogin () {
     const applescript = String.raw`
       tell application "Terminal"
           do script ("ssh ${this.config.vrouter.username}@${this.config.vrouter.ip};")
@@ -40,8 +39,9 @@ EOF`
       `
     const cmd = `osascript -e '${applescript}'`
     return this.localExec(cmd)
-  },
-  async getOSXNetworkService (inf) {
+  }
+
+  static async getOSXNetworkService (inf) {
     // 返回 en{0-9} 对应的网络服务
     const cmd = `/usr/sbin/networksetup -listnetworkserviceorder`
     const output = await this.localExec(cmd)
@@ -54,8 +54,9 @@ EOF`
       }
     }
     throw Error(`can not find NetworkService match ${inf}`)
-  },
-  async getCurrentGateway () {
+  }
+
+  static async getCurrentGateway () {
     let info
     try {
       info = await this.getActiveAdapter()
@@ -74,8 +75,9 @@ EOF`
         return Promise.resolve((output && output.trim()) || '')
       })
     ])
-  },
-  async changeRouteTo (dst) {
+  }
+
+  static async changeRouteTo (dst) {
     const info = await this.getActiveAdapter()
 
     const ip = dst === 'vrouter' ? this.config.vrouter.ip : info[2]
@@ -84,52 +86,21 @@ EOF`
     const cmd2 = `/usr/sbin/networksetup -setdnsservers "${info[0]}" "${ip}"`
     await this.sudoExec(cmd1)
     await this.sudoExec(cmd2)
-  },
-  async installNwWatchdog () {
+  }
+
+  static async installNwWatchdog () {
     await this.generateNetworkSh()
     await this.localExec(`chmod +x "${path.join(this.config.host.configDir, this.config.host.networkSh)}"`)
     await this.generateNetworkPlist()
     await this.sudoExec(`cp "${path.join(this.config.host.configDir, this.config.host.networkPlist)}" /Library/LaunchDaemons`)
     await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
     await this.sudoExec(`launchctl bootstrap system /Library/LaunchDaemons/${this.config.host.networkPlist}`)
-  },
-  async removeNwWatchdog () {
+  }
+
+  static async removeNwWatchdog () {
     await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
     await this.sudoExec(`rm /Library/LaunchDaemons/${this.config.host.networkPlist}`).catch(e => {})
     await this.sudoExec(`rm "${path.join(this.config.host.configDir, path.basename(this.config.host.networkSh, '.sh') + '.log')}"`).catch(e => {})
-  }
-}
-
-class System {
-  static getAppDir () {
-    return process.env.APPDATA || (platform === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : '/var/local')
-  }
-
-  static execute (command) {
-    return execute(command)
-  }
-
-  /*
-   * @param {string} 待执行命令
-   * @param {object} options 选项, 可包含name, icns属性
-   */
-  static sudoExec (cmd, options) {
-    return new Promise((resolve, reject) => {
-      sudo.exec(cmd, options, (err, stdout, stderr) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(stdout || stderr)
-        }
-      })
-    })
-  }
-
-  static getActiveAdapter () {
-    switch (platform) {
-      case 'darwin':
-        return mac.getActiveAdapter()
-    }
   }
 
   /*
@@ -151,5 +122,5 @@ class System {
 }
 
 module.exports = {
-  System
+  Mac
 }

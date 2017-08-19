@@ -1,4 +1,5 @@
 const { Client } = require('ssh2')
+const path = require('path')
 
 class Openwrt {
   constructor (config) {
@@ -116,6 +117,51 @@ class Openwrt {
   turnOnFastOpen () {
     const cmd = 'echo "net.ipv4.tcp_fastopen = 3" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf'
     return this.execute(cmd)
+  }
+
+  changePwd (username = 'root', passwd = 'root') {
+    const cmd = `"echo -e '${passwd}\\n${passwd}' | (passwd ${username})"`
+    return this.execute(cmd)
+  }
+
+  async scp (src, dest) {
+    if (!this.conn) {
+      await this.connect()
+    }
+    let isDestDir = false
+    if (dest.endsWith('/')) {
+      isDestDir = true
+      await this.execute(`mkdir -p ${dest}`)
+    } else {
+      await this.execute(`mkdir -p ${path.dirname(dest)}`)
+    }
+
+    let files
+    try {
+      const names = require('fs').readdirSync(src)
+      files = names.map(name => `${src}/${name}`)
+    } catch (error) {
+      if (error.code === 'ENOTDIR') {
+        files = [src]
+      } else {
+        throw error
+      }
+    }
+    const promises = []
+    for (let i = 0; i < files.length; i++) {
+      const p = new Promise((resolve, reject) => {
+        let s = files[i]
+        let d = isDestDir ? `${dest}${path.basename(files[i])}` : dest
+        this.conn.sftp((err, sftp) => {
+          err && reject(err)
+          sftp.fastPut(s, d, (err) => {
+            err ? reject(err) : resolve()
+          })
+        })
+      })
+      promises.push(p)
+    }
+    return Promise.all(promises)
   }
 }
 

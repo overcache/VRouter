@@ -1,15 +1,12 @@
 const { exec } = require('child_process')
-const { Netmask } = require('netmask')
 const os = require('os')
 
-let bin = null
-;(function () {
+let bin = (function () {
   switch (os.platform()) {
     case 'darwin':
-      bin = '/usr/local/bin/VBoxManage'
-      break
+      return '/usr/local/bin/VBoxManage'
     default:
-      bin = 'VBoxManage'
+      return 'VBoxManage'
   }
 })()
 
@@ -28,18 +25,6 @@ const execute = function (command) {
   })
 }
 
-/*
- * 判断network和"IP, mask"是否同一网络
- * @param {string} 网络, 如'192.168.1.1/24'
- * @param {string} ip地址
- * @param {string} mask 子网掩码
- */
-const isSameNetwork = function (network, ip, mask) {
-  const net1 = new Netmask(network)
-  const net2 = new Netmask(`${ip}/${mask}`)
-  return net1.mask === net2.mask && net1.base === net2.base
-}
-
 class VBox {
   static sendKeystrokesTo (name, key = '1c 9c') {
     const cmd = `${bin} controlvm ${name} keyboardputscancode ${key}`
@@ -51,18 +36,22 @@ class VBox {
   }
   static async isVBInstalled () {
     try {
-      await this.getVersion()
+      await VBox.getVersion()
       return true
     } catch (error) {
       return false
     }
   }
   static convertImg (img, out) {
-    const cmd = `${bin} convertfromraw ${img} ${out} --format VDI`
+    const cmd = `${bin} convertfromraw "${img}" "${out}" --format VDI`
     return execute(cmd)
   }
   static create (name) {
     const cmd = `${bin} createvm --name ${name} --register`
+    return execute(cmd)
+  }
+  static listvms () {
+    const cmd = `${bin} list vms`
     return execute(cmd)
   }
   static modify (name, args) {
@@ -82,9 +71,9 @@ class VBox {
     await execute(cmd)
     await wait(1000)
     // mock 'press enter key' to skip grub waiting time
-    await this.sendKeystrokesTo(name)
+    await VBox.sendKeystrokesTo(name)
     await wait(500)
-    await this.sendKeystrokesTo(name)
+    await VBox.sendKeystrokesTo(name)
   }
   static attachHeadless (name) {
     const cmd = `${bin} startvm ${name} --type separate`
@@ -102,9 +91,14 @@ class VBox {
     const cmd = `${bin} controlvm ${name} poweroff`
     return execute(cmd)
   }
-  static delete (name) {
+  static async delete (name) {
+    const isExisted = await VBox.isVmExisted(name)
+    const isRunning = isExisted ? await VBox.isVmRunning(name) : false
+    if (isExisted && isRunning) {
+      await VBox.powerOff(name)
+    }
     const cmd = `${bin} unregistervm ${name} --delete`
-    return execute(cmd)
+    return isExisted ? execute(cmd) : null
   }
   static hide (name, action = true) {
     const cmd = `${bin} setextradata ${name} GUI/HideFromManager ${action}`
@@ -128,16 +122,16 @@ class VBox {
     return execute(cmd)
   }
   static async getVmState (name) {
-    const vmInfo = await this.getVmInfo(name)
+    const vmInfo = await VBox.getVmInfo(name)
     const statePattern = /^VMState="(.*)"$/mg
     return statePattern.exec(vmInfo)[1]
   }
   static async isVmRunning (name) {
-    const state = await this.getVmState(name)
+    const state = await VBox.getVmState(name)
     return state === 'running'
   }
   static toggleSerialPort (name, file, action = 'on', portNum = '1') {
-    // const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
+    // const serialPath = path.join(VBox.config.host.configDir, VBox.config.host.serialFile)
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${portNum} server "${file}"` : 'off'
     const cmd = `${bin} modifyvm ${name} --uart${portNum} ${subCmd}`
     return execute(cmd)
@@ -146,7 +140,7 @@ class VBox {
     // VBoxManage showvminfo com.icymind.test --machinereadable  | grep "uart\(mode\)\?1"
     // uart1="0x03f8,4"
     // uartmode1="server,/Users/simon/Library/Application Support/VRouter/serial"
-    const vmInfo = await this.getVmInfo(name)
+    const vmInfo = await VBox.getVmInfo(name)
     const pattern = new RegExp(String.raw`^uart${portNum}="0x03f8,4"$`, 'mg')
     return pattern.exec(vmInfo) !== undefined
   }
@@ -204,7 +198,7 @@ class VBox {
    * @return {string} 桥接的宿主网络, 如"en0: Wi-Fi (AirPort)"
    */
   static async getAssignedBridgeService (name, nic = '2') {
-    const vmInfo = await this.getVmInfo(name)
+    const vmInfo = await VBox.getVmInfo(name)
     const pattern = new RegExp(String.raw`^bridgeadapter${nic}=(.*)$`, 'mg')
     return pattern.exec(vmInfo)[1]
   }
@@ -214,21 +208,22 @@ class VBox {
    * @param {string} network 网段, 如 '10.19.28.37/24'
    * @return {string} hostonly接口, 如vboxnet3
    */
-  static async getAvailableHostonlyInf (network) {
+  static async getAvailableHostonlyInf (ip, mask) {
     const cmd = `${bin} list hostonlyifs`
     const output = await execute(cmd)
     const infPattern = /^Name:\s*(.*)\n[\s\S]*?IPAddress:\s*(.*)\nNetworkMask:\s*(.*)\n/mg
     let infMatch = infPattern.exec(output)
     while (infMatch) {
       let name = infMatch[1]
-      let ip = infMatch[2]
-      let mask = infMatch[3]
-      if (isSameNetwork(network, ip, mask)) {
+      let ipMatch = infMatch[2]
+      let maskMatch = infMatch[3]
+      if (ip === ipMatch && mask === maskMatch) {
         return name
       }
       infMatch = infPattern.exec(output)
     }
-    return this.createHostonlyInf()
+    const newInf = await VBox.createHostonlyInf()
+    return VBox.ipconfigHostonlyInf(newInf, ip, mask)
   }
 
   /*
@@ -248,12 +243,11 @@ class VBox {
   }
 
   static async getBridgeService (inf) {
-    const bridgeServices = this.getAllBridgeServices()
-    bridgeServices.forEach((service) => {
-      if (inf === service.split(':')[0]) {
-        return service
-      }
+    const bridgeServices = await VBox.getAllBridgeServices()
+    const filter = bridgeServices.filter((service) => {
+      return inf === service.split(':')[0]
     })
+    return filter[0]
   }
 
   /*
@@ -263,7 +257,7 @@ class VBox {
    * @param {sring} netmask 子网掩码
    * @return undefined
    */
-  static async configHostonlyNetwork (inf, ip, netmask = '255.255.255.0') {
+  static async ipconfigHostonlyInf (inf, ip, netmask = '255.255.255.0') {
     const cmd = `${bin} hostonlyif ipconfig ${inf} --ip ${ip} --netmask ${netmask}`
     return execute(cmd)
   }

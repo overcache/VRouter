@@ -235,13 +235,6 @@ class VRouter {
     return this.serialExec(cmd, 'config watchdog')
   }
 
-  deleteCfgFile (fileName) {
-    const filePath = path.join(this.config.host.configDir, fileName)
-    return fs.remove(filePath)
-      .catch(() => {
-        // don't panic. that's unnecessary to delete a non existed file.
-      })
-  }
   async getCfgContent (fileName) {
     const filePath = path.join(this.config.host.configDir, fileName)
     try {

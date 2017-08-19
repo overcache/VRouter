@@ -22,44 +22,6 @@ class VRouterRemote {
   }
 
   // vm
-  async scp (src, dest) {
-    winston.info(`scp ${src} to vrouter:${dest}`)
-    let isDestDir = false
-    if (dest.endsWith('/')) {
-      isDestDir = true
-      await this.remoteExec(`mkdir -p ${dest}`)
-    } else {
-      await this.remoteExec(`mkdir -p ${path.dirname(dest)}`)
-    }
-
-    let files
-    try {
-      const names = require('fs').readdirSync(src)
-      files = names.map(name => `${src}/${name}`)
-    } catch (error) {
-      if (error.code === 'ENOTDIR') {
-        files = [src]
-      } else {
-        throw error
-      }
-    }
-    const promises = []
-    for (let i = 0; i < files.length; i++) {
-      const p = new Promise((resolve, reject) => {
-        let s = files[i]
-        let d = isDestDir ? `${dest}${path.basename(files[i])}` : dest
-        this.sftp.fastPut(s, d, (err) => {
-          if (err) {
-            reject(err)
-          } else {
-            resolve()
-          }
-        })
-      })
-      promises.push(p)
-    }
-    return Promise.all(promises)
-  }
   async scpConfig (type = 'shadowsocks', overwrite = false) {
     let p
     switch (type) {

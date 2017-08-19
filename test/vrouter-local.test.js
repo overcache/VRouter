@@ -12,7 +12,7 @@ const { VRouterRemote } = require(path.join(__dirname, '../js/vrouter-remote.js'
 const { getAppDir } = require('../js/helper.js')
 const winston = require('winston')
 
-describe('Test suite for VRouter', function () {
+describe.skip('Test suite for VRouter', function () {
   let vrouter
   const profile = {
     'name': 'kcp 加速',
