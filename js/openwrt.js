@@ -105,50 +105,17 @@ class Openwrt {
     const cmd = 'cat /etc/openwrt_version'
     return this.execute(cmd)
   }
-
-  // shadowsocks
-  installSs () {
-    const cmd = `ls ${this.config.vrouter.configDir}/third_party/*.ipk | xargs opkg install`
-    return this.remoteExec(cmd)
+  changeTZ (name) {
+    const subCmds = []
+    subCmds.push(`uci set system.@system[0].hostname='${name}'`)
+    subCmds.push("uci set system.@system[0].timezone='HKT-8'")
+    subCmds.push("uci set system.@system[0].zonename='Asia/Hong Kong'")
+    subCmds.push('uci commit system')
+    return this.execute(subCmds.join(' && '))
   }
-  getSsVersion (type = 'ss') {
-    const cmd = `${type}-redir -h | grep "shadowsocks-libev" | cut -d" " -f2`
+  turnOnFastOpen () {
+    const cmd = 'echo "net.ipv4.tcp_fastopen = 3" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf'
     return this.execute(cmd)
-  }
-  async isSsRunning (type = 'ss', plugin) {
-    const fileName = !plugin ? `${type}-client.json` : `${type}-over-kt.json`
-    const cmd = `ps -w | grep "${type}-redir -c .*${fileName}"`
-    const output = await this.execute(cmd)
-    return output.trim() !== ''
-  }
-
-  // shadowsocksr
-  installSsr () {
-    const cmd = `mv ${this.config.vrouter.configDir}/third_party/ssr-* /usr/bin/ && chmod +x /usr/bin/ssr-*`
-    return this.execute(cmd)
-  }
-
-  async isTunnelDnsRunning (type = 'ss') {
-    const cmd = `ps -w| grep "${type}-tunnel -c .*tunnel-dns.jso[n]"`
-    const output = await this.execute(cmd)
-    return output.trim() !== ''
-  }
-
-  // kcptun
-  installKt () {
-    // const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
-      // ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
-    const cmd = `mv ${this.config.vrouter.configDir}/third_party/kcptun /usr/bin/ && chmod +x /usr/bin/kcptun`
-    return this.execute(cmd)
-  }
-  getKtVersion () {
-    const cmd = 'kcptun --version | cut -d" " -f3'
-    return this.execute(cmd)
-  }
-  async isKtRunning () {
-    const cmd = 'ps | grep "[k]cptun -c"'
-    const output = await this.execute(cmd)
-    return output.trim() !== ''
   }
 }
 

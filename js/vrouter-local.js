@@ -1,12 +1,7 @@
-const { URL } = require('url')
-const http = require('http')
-const https = require('https')
 const fs = require('fs-extra')
 const path = require('path')
 const { getAppDir } = require('./helper.js')
 const packageJson = require('../package.json')
-const dns = require('dns')
-const crypto = require('crypto')
 const { EventEmitter } = require('events')
 const os = require('os')
 const winston = require('winston')
@@ -52,8 +47,6 @@ class VRouter {
       ]
     })
   }
-
-  // os
 
   // vm
   async buildvm (imagePath, deleteFirst = true) {
@@ -234,90 +227,12 @@ class VRouter {
     }
   }
 
-  async configvmNetwork () {
-    /*
-     * 1. make sure two ip in same network
-     * 2. make sure vm adapters are : hostonlyif, bridged
-     * 3. make sure hostonlyif ip equal config.host.ip
-     * 4. make sure vm bridged interface choose right host-network
-     * 5. make sure vm lan's ip equal config.vrouter.ip
-     */
-
-    if (this.config.vrouter.ip.split('.').slice(0, 3).join('.') !==
-      this.config.host.ip.split('.').slice(0, 3).join('.')) {
-      return Promise.reject(Error('VRouterIP and hostIP must in a same subnet'))
-    }
-    await this.isNIC1ConfigedAsHostonly(this.config.vrouter.name, this.config.host.ip)
-      .catch(() => {
-        winston.debug(`isNIC1ConfigedAsHostonly return false. vrouter: ${this.config.vrouter.name}, hostip: ${this.config.host.ip}`)
-        return this.specifyHostonlyAdapter()
-      })
-    await this.isNIC2ConfigedAsBridged(this.config.vrouter.name)
-      .catch(() => {
-        winston.debug(`isNIC2ConfigedAsBridged return false. vrouter: ${this.config.vrouter.name}, hostip: ${this.config.host.ip}`)
-        return this.specifyBridgeAdapter()
-      })
-  }
-
-  async configvmLanIP () {
-    // execute cmd
-    const subCmds = []
-    subCmds.push(`uci set network.lan.ipaddr='${this.config.vrouter.ip}'`)
-    subCmds.push('uci commit network')
-    subCmds.push('/etc/init.d/network restart')
-    await this.serialExec(subCmds.join(' && '), 'config lan ipaddr')
-    return this.serialLog('done: configvmLanIP')
-  }
-
-  async configDnsmasq () {
-    const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.conf"
-    await this.serialExec(cmd, 'configDnsmasq')
-    return this.serialLog('done: configDnsmasq')
-  }
-  enableService (service) {
-    const cmd1 = `chmod +x /etc/init.d/${service} && /etc/init.d/${service} enable`
-    return this.serialExec(cmd1, `enable ${service}`)
-  }
-  disabledService (service) {
-    const cmd = `/etc/init.d/${service} disable && /etc/init.d/${service} stop`
-    return this.serialExec(cmd, `disable ${service}`)
-  }
   configWatchdog () {
     const watchdogPath = `${this.config.vrouter.configDir}/${this.config.firewall.watchdogFile}`
     const cronPath = `${this.config.vrouter.configDir}/${this.config.firewall.cronFile}`
 
     const cmd = `chmod +x '${watchdogPath}' && crontab '${cronPath}'`
     return this.serialExec(cmd, 'config watchdog')
-  }
-  restartCrontab () {
-    const cmd = '/etc/init.d/cron restart'
-    return this.serialExec(cmd)
-  }
-  async changevmTZ () {
-    const cc = String.raw`
-        uci set system.@system[0].hostname='${this.config.vrouter.name}'
-        uci set system.@system[0].timezone='HKT-8'
-        uci set system.@system[0].zonename='Asia/Hong Kong'
-        uci commit system`
-    await this.serialExec(cc.trim().split('\n').map(line => line.trim()).join(' && '), 'change timezone')
-    return this.serialLog('done: changevmTZ')
-  }
-  async changevmPwd () {
-    await this.serialExec("echo -e 'root\\nroot' | (passwd root)", 'change password')
-    return this.serialLog('done: changevmPwd')
-  }
-  async turnOnFastOpen () {
-    await this.serialExec('echo "net.ipv4.tcp_fastopen = 3" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf')
-    return this.serialLog('done: trunOn fast_open')
-  }
-  async installPackage () {
-    const subCmds = []
-    subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
-    subCmds.push('opkg update')
-    subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server libopenssl rng-tools')
-    subCmds.push('/etc/init.d/dropbear restart')
-    await this.serialExec(subCmds.join(' && '), 'install packages')
-    return this.serialLog('done: install package && restart dropbear')
   }
 
   deleteCfgFile (fileName) {
@@ -417,24 +332,6 @@ class VRouter {
     return promise
   }
 
-  getServerIP (proxy = 'shadowsocks') {
-    const profile = this.config.profiles.profiles[this.config.profiles.activedProfile]
-    const cfg = profile[proxy]
-    const ipPatthen = /^\d+.\d+.\d+.\d+$/ig
-    if (ipPatthen.test(cfg.address)) {
-      return Promise.resolve(cfg.address)
-    }
-    return new Promise((resolve, reject) => {
-      winston.info(`resolve domain: ${cfg.address}`)
-      dns.lookup(cfg.address, { family: 4 }, (err, address, family) => {
-        if (err) {
-          winston.error(`resolve domain: ${cfg.address} failed.`)
-          reject(err)
-        }
-        resolve(address)
-      })
-    })
-  }
   generateFWRulesHelper (str) {
     return `iptables -t nat -A PREROUTING ${str}\niptables -t nat -A OUTPUT ${str}\n`
   }
@@ -1074,60 +971,6 @@ echo ""`
     return cfgPath
   }
 
-  downloadFile (src, dest) {
-    const protocol = (new URL(src)).protocol
-    const method = protocol === 'https:' ? https : http
-    let destination = dest
-    if (!dest) {
-      destination = path.join(this.config.host.configDir, path.basename(src))
-    }
-    const tmp = path.join(os.tmpdir(), path.basename(src))
-    return new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(tmp)
-      method.get(src, (response) => {
-        response.pipe(file)
-        file.on('finish', async () => {
-          file.close()
-          return fs.copy(tmp, destination)
-            .then(() => {
-              return resolve(destination)
-            })
-            .catch((err) => {
-              return reject(err)
-            })
-        })
-      }).on('error', (err) => {
-        fs.unlink(tmp)
-        return reject(err)
-      })
-    })
-  }
-  async hashFile (file) {
-    try {
-      const stats = await fs.stat(file)
-      if (!stats.isFile()) {
-        throw Error('file not existed')
-      }
-    } catch (err) {
-      return ''
-    }
-
-    var algo = 'sha256'
-    var shasum = crypto.createHash(algo)
-    var s = fs.ReadStream(file)
-    return new Promise((resolve, reject) => {
-      s.on('data', function (d) { shasum.update(d) })
-      s.on('end', function () {
-        var d = shasum.digest('hex')
-        resolve(d)
-      })
-    })
-  }
-
-  saveCfg2File () {
-    const cfgPath = path.join(this.config.host.configDir, 'config.json')
-    return fs.writeJson(cfgPath, this.config, {spaces: 2})
-  }
   async upgradeCfgV1 (newCfg) {
     // const template = path.join(__dirname, '..', 'config', 'config.json')
     // const newCfg = fs.readJsonSync(template)
@@ -1377,11 +1220,6 @@ echo ""`
       await fs.copy(template, dest)
       return dest
     }
-  }
-  async deleteLogFile () {
-    const logFile = path.join(this.config.host.configDir, 'vrouter.log')
-    winston.info(`delete logFile: ${logFile}`)
-    return this.localExec(`rm "${logFile}"`)
   }
 }
 module.exports = {

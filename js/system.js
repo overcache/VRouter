@@ -1,27 +1,33 @@
 const os = require('os')
+const path = require('path')
+const { exec } = require('child_process')
 const sudo = require('sudo-prompt')
-const path = ''
-const winston = ''
 
-class MacOS {
-  /*
-   * @param {string} 待执行命令
-   * @param {object} options 选项, 可包含name, icns属性
-   */
-  static sudoExec (cmd, options) {
-    return new Promise((resolve, reject) => {
-      sudo.exec(cmd, options, (err, stdout, stderr) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(stdout || stderr)
-        }
-      })
+const platform = os.platform()
+const execute = function (command) {
+  return new Promise((resolve, reject) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        reject(error)
+      } else {
+        resolve(stdout || stderr)
+      }
     })
-  }
-  static changeRouteTo (dst = 'vrouter') {
+  })
+}
 
-  }
+const mac = {
+  async getActiveAdapter () {
+    let cmd = String.raw`cat <<EOF | scutil
+open
+get State:/Network/Global/IPv4
+d.show
+EOF`
+    const output = await execute(cmd)
+
+    const infReg = /PrimaryInterface : (.*)$/mg
+    return infReg.exec(output)[1]
+  },
   sshLogin () {
     const applescript = String.raw`
       tell application "Terminal"
@@ -34,7 +40,7 @@ class MacOS {
       `
     const cmd = `osascript -e '${applescript}'`
     return this.localExec(cmd)
-  }
+  },
   async getOSXNetworkService (inf) {
     // 返回 en{0-9} 对应的网络服务
     const cmd = `/usr/sbin/networksetup -listnetworkserviceorder`
@@ -48,7 +54,7 @@ class MacOS {
       }
     }
     throw Error(`can not find NetworkService match ${inf}`)
-  }
+  },
   async getCurrentGateway () {
     let info
     try {
@@ -68,7 +74,7 @@ class MacOS {
         return Promise.resolve((output && output.trim()) || '')
       })
     ])
-  }
+  },
   async changeRouteTo (dst) {
     const info = await this.getActiveAdapter()
 
@@ -78,40 +84,7 @@ class MacOS {
     const cmd2 = `/usr/sbin/networksetup -setdnsservers "${info[0]}" "${ip}"`
     await this.sudoExec(cmd1)
     await this.sudoExec(cmd2)
-  }
-  async getActiveAdapter () {
-    let cmd = String.raw`cat <<EOF | scutil
-open
-get State:/Network/Global/IPv4
-d.show
-EOF`
-    const output = await this.localExec(cmd)
-
-    const infReg = /PrimaryInterface : (.*)$/mg
-    let inf
-    try {
-      inf = infReg.exec(output)[1]
-    } catch (error) {
-      winston.error('no activeAdapter detected')
-      throw Error('no activeAdapter detected.')
-    }
-
-    const serviceReg = /PrimaryService : (.*)$/mg
-    const service = serviceReg.exec(output)[1]
-
-    const routerReg = /Router : (.*)$/mg
-    const router = routerReg.exec(output)[1]
-
-    cmd = String.raw`cat <<EOF | scutil | grep "UserDefinedName" | awk -F': ' '{print $2}'
-open
-get Setup:/Network/Service/${service}
-d.show
-EOF`
-    const serviceName = await this.localExec(cmd)
-
-    winston.info(`activeAdapter: ${serviceName.trim()}(${router}), ${inf}`)
-    return [serviceName.trim(), inf, router]
-  }
+  },
   async installNwWatchdog () {
     await this.generateNetworkSh()
     await this.localExec(`chmod +x "${path.join(this.config.host.configDir, this.config.host.networkSh)}"`)
@@ -119,7 +92,7 @@ EOF`
     await this.sudoExec(`cp "${path.join(this.config.host.configDir, this.config.host.networkPlist)}" /Library/LaunchDaemons`)
     await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
     await this.sudoExec(`launchctl bootstrap system /Library/LaunchDaemons/${this.config.host.networkPlist}`)
-  }
+  },
   async removeNwWatchdog () {
     await this.sudoExec(`launchctl bootout system/${this.config.host.networkPlistName}`).catch(e => {})
     await this.sudoExec(`rm /Library/LaunchDaemons/${this.config.host.networkPlist}`).catch(e => {})
@@ -127,13 +100,54 @@ EOF`
   }
 }
 
-let System
-switch (os.platform()) {
-  case 'darwin':
-    System = MacOS
-    break
-  default:
-    System = MacOS
+class System {
+  static getAppDir () {
+    return process.env.APPDATA || (platform === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : '/var/local')
+  }
+
+  static execute (command) {
+    return execute(command)
+  }
+
+  /*
+   * @param {string} 待执行命令
+   * @param {object} options 选项, 可包含name, icns属性
+   */
+  static sudoExec (cmd, options) {
+    return new Promise((resolve, reject) => {
+      sudo.exec(cmd, options, (err, stdout, stderr) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(stdout || stderr)
+        }
+      })
+    })
+  }
+
+  static getActiveAdapter () {
+    switch (platform) {
+      case 'darwin':
+        return mac.getActiveAdapter()
+    }
+  }
+
+  /*
+   * 通过串口执行命令
+   * @param {string} file socket文件绝对路径
+   * @param {string} command 待执行的命令(有长度限制)
+   * @return undefined
+   */
+  static async serialExec (file, command) {
+    // TODO: replace /usr/bin/nc with nodejs package
+    const pre = `echo "" |  /usr/bin/nc -U "${file}"`
+    const serialCmd = `echo "${command}" | /usr/bin/nc -U '${file}'`
+
+    // 先执行两遍pre
+    await execute(pre)
+    await execute(pre)
+    return execute(serialCmd)
+  }
 }
 
 module.exports = {

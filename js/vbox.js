@@ -1,4 +1,5 @@
 const { exec } = require('child_process')
+const { Netmask } = require('netmask')
 const os = require('os')
 
 let bin = null
@@ -27,6 +28,18 @@ const execute = function (command) {
   })
 }
 
+/*
+ * 判断network和"IP, mask"是否同一网络
+ * @param {string} 网络, 如'192.168.1.1/24'
+ * @param {string} ip地址
+ * @param {string} mask 子网掩码
+ */
+const isSameNetwork = function (network, ip, mask) {
+  const net1 = new Netmask(network)
+  const net2 = new Netmask(`${ip}/${mask}`)
+  return net1.mask === net2.mask && net1.base === net2.base
+}
+
 class VBox {
   static sendKeystrokesTo (name, key = '1c 9c') {
     const cmd = `${bin} controlvm ${name} keyboardputscancode ${key}`
@@ -43,6 +56,26 @@ class VBox {
     } catch (error) {
       return false
     }
+  }
+  static convertImg (img, out) {
+    const cmd = `${bin} convertfromraw ${img} ${out} --format VDI`
+    return execute(cmd)
+  }
+  static create (name) {
+    const cmd = `${bin} createvm --name ${name} --register`
+    return execute(cmd)
+  }
+  static modify (name, args) {
+    const cmd = `${bin} modifyvm ${name} ${args}`
+    return execute(cmd)
+  }
+  static storagectl (name, args) {
+    const cmd = `${bin} storagectl ${name} ${args}`
+    return execute(cmd)
+  }
+  static storageattach (name, args) {
+    const cmd = `${bin} storageattach ${name} ${args}`
+    return execute(cmd)
   }
   static async start (name, type = 'headless') {
     const cmd = `${bin} startvm --type ${type} ${name}`
@@ -69,11 +102,15 @@ class VBox {
     const cmd = `${bin} controlvm ${name} poweroff`
     return execute(cmd)
   }
-  static toggleVisible (name, action = true) {
+  static delete (name) {
+    const cmd = `${bin} unregistervm ${name} --delete`
+    return execute(cmd)
+  }
+  static hide (name, action = true) {
     const cmd = `${bin} setextradata ${name} GUI/HideFromManager ${action}`
     return execute(cmd)
   }
-  static toggleGUIConfig (name, action = true) {
+  static lockGUIConfig (name, action = true) {
     const cmd = `${bin} setextradata ${name} GUI/PreventReconfiguration ${action}`
     return execute(cmd)
   }
@@ -99,7 +136,7 @@ class VBox {
     const state = await this.getVmState(name)
     return state === 'running'
   }
-  static toggleSerialPort (name, file, action = 'on', portNum = 1) {
+  static toggleSerialPort (name, file, action = 'on', portNum = '1') {
     // const serialPath = path.join(this.config.host.configDir, this.config.host.serialFile)
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${portNum} server "${file}"` : 'off'
     const cmd = `${bin} modifyvm ${name} --uart${portNum} ${subCmd}`
@@ -112,24 +149,6 @@ class VBox {
     const vmInfo = await this.getVmInfo(name)
     const pattern = new RegExp(String.raw`^uart${portNum}="0x03f8,4"$`, 'mg')
     return pattern.exec(vmInfo) !== undefined
-  }
-
-  /*
-   * 通过串口连接虚拟机执行命令
-   * @param {string} name 虚拟机名称
-   * @param {string} file socket文件绝对路径
-   * @param {string} command 待执行的命令(有长度限制)
-   * @return undefined
-   */
-  static async serialExec (name, file, command) {
-    // TODO: replace /usr/bin/nc with nodejs package
-    const pre = `echo "" |  /usr/bin/nc -U "${file}"`
-    const serialCmd = `echo "${command}" | /usr/bin/nc -U '${file}'`
-
-    // 先执行两遍pre
-    await execute(pre)
-    await execute(pre)
-    return execute(serialCmd)
   }
 
   // network
@@ -151,11 +170,17 @@ class VBox {
       ` --cableconnected${nic} "on"`
     return execute(cmd)
   }
-  static initBridgeNetwork (name, bridgedInf, nic = '2') {
+
+  /*
+   * @param {string} name 虚拟机名称
+   * @param {string} bridgeService 桥接的网络, 如"en0: Wi-Fi (AirPort)"
+   * @nic {string} nic 虚拟机网卡序号
+   */
+  static initBridgeNetwork (name, bridgeService, nic = '2') {
     const cmd = `${bin} modifyvm ${name} ` +
       `--nic${nic} bridged ` +
       ` --nictype${nic} "82540EM" ` +
-      `--bridgeadapter${nic} "${bridgedInf}" ` +
+      `--bridgeadapter${nic} "${bridgeService}" ` +
       `--cableconnected${nic} "on"`
     return execute(cmd)
   }
@@ -167,8 +192,8 @@ class VBox {
    * @nic {string} nic 虚拟机网卡序号
    * @return undefined
    */
-  static amendBridgeNetwork (name, bridgedInf, nic = '2') {
-    const cmd = `${bin} controlvm ${name} nic${nic} bridged "${bridgedInf}"`
+  static amendBridgeNetwork (name, bridgeService, nic = '2') {
+    const cmd = `${bin} controlvm ${name} nic${nic} bridged "${bridgeService}"`
     return execute(cmd)
   }
 
@@ -178,7 +203,7 @@ class VBox {
    * @param {string} nic  虚拟机网卡的序号
    * @return {string} 桥接的宿主网络, 如"en0: Wi-Fi (AirPort)"
    */
-  static async getAssignedBridgeInf (name, nic = '2') {
+  static async getAssignedBridgeService (name, nic = '2') {
     const vmInfo = await this.getVmInfo(name)
     const pattern = new RegExp(String.raw`^bridgeadapter${nic}=(.*)$`, 'mg')
     return pattern.exec(vmInfo)[1]
@@ -186,17 +211,19 @@ class VBox {
 
   /*
    * 获取ip值等于参数值的hostonly设备, 如果没有对应的设备, 则新建一个.
-   * @param {string} ip IP地址
+   * @param {string} network 网段, 如 '10.19.28.37/24'
    * @return {string} hostonly接口, 如vboxnet3
    */
-  static async getAvailableHostonlyInf (ip) {
+  static async getAvailableHostonlyInf (network) {
     const cmd = `${bin} list hostonlyifs`
     const output = await execute(cmd)
-    const infPattern = /^Name:\s*(.*)\n[\s\S]*?IPAddress:\s*(.*)\nNetworkMask:/mg
+    const infPattern = /^Name:\s*(.*)\n[\s\S]*?IPAddress:\s*(.*)\nNetworkMask:\s*(.*)\n/mg
     let infMatch = infPattern.exec(output)
     while (infMatch) {
       let name = infMatch[1]
-      if (infMatch[2] === ip) {
+      let ip = infMatch[2]
+      let mask = infMatch[3]
+      if (isSameNetwork(network, ip, mask)) {
         return name
       }
       infMatch = infPattern.exec(output)
@@ -207,17 +234,26 @@ class VBox {
   /*
    * @return {array} bridgedInfs 返回所有可供桥接的宿主网络名称
    */
-  static async getAllBridgeInfs () {
-    const bridgedInfs = []
+  static async getAllBridgeServices () {
+    const bridgeServices = []
     const cmd = `${bin} list bridgedifs`
     const output = await execute(cmd)
     const pattern = /^Name:\s*(.*)$/mg
     let name = pattern.exec(output)
     while (name) {
-      bridgedInfs.push(name[1])
+      bridgeServices.push(name[1])
       name = pattern.exec(output)
     }
-    return bridgedInfs
+    return bridgeServices
+  }
+
+  static async getBridgeService (inf) {
+    const bridgeServices = this.getAllBridgeServices()
+    bridgeServices.forEach((service) => {
+      if (inf === service.split(':')[0]) {
+        return service
+      }
+    })
   }
 
   /*
