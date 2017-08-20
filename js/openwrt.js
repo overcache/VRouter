@@ -124,6 +124,11 @@ class Openwrt {
     return this.execute(cmd)
   }
 
+  installCronJob (content) {
+    const cmd = `echo "${content}" > /tmp/vroutercron && crontab /tmp/vroutercron && rm /tmp/vroutercron`
+    return this.execute(cmd)
+  }
+
   async scp (src, dest) {
     if (!this.conn) {
       await this.connect()
@@ -162,6 +167,91 @@ class Openwrt {
       promises.push(p)
     }
     return Promise.all(promises)
+  }
+
+  // dnsmasq
+  configDnsmasq () {
+    const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.conf"
+    return this.execute(cmd)
+  }
+
+  // shadowsocks
+  async installSs () {
+    const src = path.join(__dirname, '..', 'third_party', 'shadowsocks.tar.gz')
+    const dst = '/tmp/shadowsocks/shadowsocks.tar.gz'
+    const dstDir = path.dirname(dst)
+    await this.scp(src, dst)
+    const cmd = `cd ${dstDir} && tar xzf ${dst} && ls ${dstDir}/*.ipk | xargs opkg install && rm -rf /tmp/shadowsocks`
+    return this.execute(cmd)
+  }
+  getSsVersion (type = 'ss') {
+    const cmd = `${type}-redir -h | grep "shadowsocks-libev" | cut -d" " -f2`
+    return this.execute(cmd)
+  }
+  async isSsRunning (type = 'ss', plugin) {
+    const fileName = !plugin ? `${type}-client.json` : `${type}-over-kt.json`
+    const cmd = `ps -w | grep "${type}-redir -c .*${fileName}"`
+    const output = await this.execute(cmd)
+    return output.trim() !== ''
+  }
+
+  // shadowsocksr
+  async installSsr () {
+    const src = path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz')
+    const dst = '/tmp/shadowsocksr/shadowsocksr.tar.gz'
+    const dstDir = path.dirname(dst)
+    await this.scp(src, dst)
+    const cmd = `cd ${dstDir} && tar xzf ${dst} && mv ${dstDir}/ssr-* /usr/bin/ && chmod +x /usr/bin/ssr-* && rm -rf /tmp/shadowsocksr`
+    return this.execute(cmd)
+  }
+
+  async isTunnelDnsRunning (type = 'ss') {
+    const cmd = `ps -w| grep "${type}-tunnel -c .*tunnel-dns.jso[n]"`
+    const output = await this.execute(cmd)
+    return output.trim() !== ''
+  }
+
+  // kcptun
+  async installKt () {
+    // const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
+      // ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
+    const src = path.join(__dirname, '..', 'third_party', 'kcptun.tar.gz')
+    const dst = '/tmp/kcptun/kcptun.tar.gz'
+    const dstDir = path.dirname(dst)
+    await this.scp(src, dst)
+    const cmd = `cd ${dstDir} && tar xzf ${dst} && mv ${dstDir}/kcptun /usr/bin/ && chmod +x /usr/bin/kcptun && rm -rf /tmp/kcptun`
+    return this.execute(cmd)
+  }
+  getKtVersion () {
+    const cmd = 'kcptun --version | cut -d" " -f3'
+    return this.execute(cmd)
+  }
+  async isKtRunning () {
+    const cmd = 'ps | grep "[k]cptun -c"'
+    const output = await this.execute(cmd)
+    return output.trim() !== ''
+  }
+
+  async installProxies () {
+    await this.installSs()
+    await this.installSsr()
+    await this.installKt()
+  }
+
+  async setupProxies () {
+
+  }
+  async setupIPset () {
+
+  }
+  async setupFirewall () {
+
+  }
+  async setupDnsmasq () {
+
+  }
+  async setupWatchdog () {
+
   }
 }
 
