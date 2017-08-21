@@ -11,6 +11,8 @@ const { Mac } = require('./mac.js')
 const NetcatClient = require('netcat').client
 const { exec } = require('child_process')
 const sudo = require('sudo-prompt')
+const winston = require('winston')
+winston.level = 'debug'
 
 const platform = os.platform()
 
@@ -43,7 +45,7 @@ class Utils {
     })
   }
 
-  static downloadFile (src, dest) {
+  static downloadFile (src) {
     const protocol = (new URL(src)).protocol
     const method = protocol === 'https:' ? https : http
     const tmp = path.join(os.tmpdir(), path.basename(src))
@@ -51,15 +53,9 @@ class Utils {
       const file = fs.createWriteStream(tmp)
       method.get(src, (response) => {
         response.pipe(file)
-        file.on('finish', async () => {
+        file.on('finish', () => {
           file.close()
-          return fs.copy(tmp, dest)
-            .then(() => {
-              return resolve(dest)
-            })
-            .catch((err) => {
-              return reject(err)
-            })
+          return resolve(tmp)
         })
       }).on('error', (err) => {
         fs.unlink(tmp)
@@ -100,6 +96,12 @@ class Utils {
   }
 
   static async hashFile (file) {
+    try {
+      fs.statSync(file)
+    } catch (err) {
+      winston.error(err)
+      return Promise.resolve('')
+    }
     const algo = 'sha256'
     const shasum = crypto.createHash(algo)
     const s = fs.ReadStream(file)

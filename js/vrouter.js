@@ -4,23 +4,29 @@ const os = require('os')
 const { VBox } = require('./vbox.js')
 const { Openwrt } = require('./openwrt.js')
 const { Utils } = require('./utils.js')
+const winston = require('winston')
+winston.level = 'debug'
 
 /*
- * @param {object} options: {vmName, hostonlyInfIP}
+ * @param {object} options: {vmName, hostonlyInfIP, hostonlyINC, bridgeINC}
  */
 async function initInterface (options) {
   const hostonlyInf = await VBox.getAvailableHostonlyInf(options.hostonlyInfIP, '255.255.255.0')
-  await VBox.initHostonlyNetwork(options.vmName, hostonlyInf, '1')
+  winston.info('hostonlyInf', hostonlyInf)
+  await VBox.initHostonlyNetwork(options.vmName, hostonlyInf, options.hostonlyINC)
   const activeAdapter = await Utils.getActiveAdapter()
+  winston.info('activeAdapter', activeAdapter)
   const bridgeService = await VBox.getBridgeService(activeAdapter)
-  await VBox.initBridgeNetwork(options.vmName, bridgeService, '2')
+  winston.info('bridgeService', bridgeService)
+  await VBox.initBridgeNetwork(options.vmName, bridgeService, options.bridgeINC)
 }
 
 /*
- * @param {object} options: {imageUrl, imageSha256, dstDir}
+ * @param {object} options: {imageUrl, imageSha256}
+ * @param {string} dstDirPath: 目标文件夹, 用于保存镜像压缩包和vdi文件
  */
-async function getImageZipfile (options) {
-  let file = path.join(options.dstDir, path.basename(options.imageUrl))
+async function getImageZipfile (options, dstDirPath) {
+  let file = path.join(os.tmpdir(), path.basename(options.imageUrl))
   const hashValue = await Utils.hashFile(file)
   if (hashValue !== options.imageSha256) {
     file = await Utils.downloadFile(options.imageUrl)
@@ -29,26 +35,27 @@ async function getImageZipfile (options) {
 }
 
 /*
- * @param {object} options: {imageUrl, imageSha256, dstDir, vdiName}
+ * @param {object} options: {vmName, imageUrl, imageSha256}
+ * @param {string} dstDirPath: 目标文件夹, 用于保存镜像压缩包和vdi文件
  */
-async function getVDI (options) {
-  const vdi = path.join(options.dstDir, options.vdiName)
+async function getVDI (options, dstDirPath) {
+  const vdi = path.join(dstDirPath, options.vmName + '.vdi')
   await fs.remove(vdi).catch()
 
   const zipfile = await getImageZipfile({
     imageUrl: options.imageUrl,
-    imageSha256: options.imageSha256,
-    dstDir: options.dstDir
-  })
-  const img = await Utils.gunzip(zipfile, path.join(os.tmpdir(), 'openwrt.img'))
+    imageSha256: options.imageSha256
+  }, dstDirPath)
+  const img = await Utils.gunzip(zipfile, path.join(os.tmpdir(), 'temp.img'))
   await VBox.convertImg(img, vdi)
   return vdi
 }
 
 /*
- * @param {object} options: {vmName, imageUrl, imageSha256, dstDir, vdiName}
+ * @param {object} options: {vmName, imageUrl, imageSha256}
+ * @param {string} dstDirPath: 目标文件夹, 用于保存镜像压缩包和vdi文件
  */
-async function create (options) {
+async function create (options, dstDirPath) {
   await VBox.create(options.vmName)
 
   let args = ` --ostype "Linux26_64" --memory "256" --cpus "1" ` +
@@ -61,25 +68,25 @@ async function create (options) {
   await VBox.storagectl(options.vmName, args)
 
   const vdi = await getVDI({
+    vmName: options.vmName,
     imageUrl: options.imageUrl,
-    imageSha256: options.imageSha256,
-    dstDir: options.dstDir,
-    vdiName: options.vdiName
-  })
+    imageSha256: options.imageSha256
+  }, dstDirPath)
   args = ` --storagectl "SATA Controller" --port "1" ` +
     `--type "hdd" --nonrotational "on" --medium "${vdi}"`
   await VBox.storageattach(options.vmName, args)
 }
 
 /*
- * @param {object} options: {serialFile, username, passwd}
+ * @param {object} options: {socketFPath, username, password}
  */
-function changePwd (options) {
-  const cmd = `echo -e '${options.passwd}\\n${options.passwd}' | (passwd ${options.username})`
-  return Utils.serialExec(options.serialFile, cmd)
+async function changePwd (options) {
+  winston.debug('about to change vrouter password', options)
+  const cmd = `echo -e '${options.password}\\n${options.password}' | (passwd ${options.username})`
+  await Utils.serialExec(options.socketFPath, cmd)
 }
 
-function installPackage (serialFile) {
+function installPackage (socketFPath) {
   const subCmds = []
   subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
   subCmds.push('opkg update')
@@ -94,32 +101,34 @@ function installPackage (serialFile) {
    */
 
   // return this.serialExec(subCmds.join(' && '))
-  return Utils.serialExec(serialFile, cmd)
+  return Utils.serialExec(socketFPath, cmd)
 }
 
 /*
  * 通过串口配置lan地址
- * @param {object} options: {serialFile, guestIP}
+ * @param {object} options: {socketFPath, IP}
  */
 function configLan (options) {
   const subCmds = []
-  subCmds.push(`uci set network.lan.ipaddr='${options.guestIP}'`)
+  subCmds.push(`uci set network.lan.ipaddr='${options.IP}'`)
   subCmds.push('uci commit network')
   subCmds.push('/etc/init.d/network restart')
   const cmd = subCmds.join(' && ')
-  return Utils.serialExec(options.serialFile, cmd)
+  return Utils.serialExec(options.socketFPath, cmd)
 }
 
 /*
- * @param {object} options: {vmName, serialFile, hostIP, guestIP, process}
+ * @param {object} options: {vmName, socketFPath, hostonlyInfIP, openwrtIP, process, username, password, hostonlyINC, bridgeINC, serailPort}
  */
 async function init (options) {
-  await VBox.lockGUIConfig(options.vmName, true)
-  await VBox.hide(options.vmName, true)
-  await VBox.toggleSerialPort(options.vmName, options.serialFile, 'on', '1')
+  // await VBox.lockGUIConfig(options.vmName, true)
+  // await VBox.hide(options.vmName, true)
+  await VBox.toggleSerialPort(options.vmName, options.socketFPath, 'on', options.serialPort)
   await initInterface({
     vmName: options.vmName,
-    hostonlyInfIP: options.hostIP
+    hostonlyInfIP: options.hostonlyInfIP,
+    hostonlyINC: options.hostonlyINC,
+    bridgeINC: options.bridgeINC
   })
 
   options.process.emit('init', '等待虚拟机启动, 请稍候30秒')
@@ -128,49 +137,46 @@ async function init (options) {
 
   options.process.emit('init', '配置虚拟机网络地址, 请稍候15秒')
   await configLan({
-    serialFile: options.serialFile,
-    guestIP: options.guestIP
+    socketFPath: options.socketFPath,
+    IP: options.openwrtIP
   })
   await Utils.wait(15000)
 
   options.process.emit('init', '修改虚拟机密码')
   await changePwd({
-    serialFile: options.serialFile,
-    username: 'root',
-    passwd: 'root'
+    socketFPath: options.socketFPath,
+    username: options.username,
+    password: options.password
   })
+  await Utils.wait(8000)
 }
 
 class VRouter extends Openwrt {
   constructor (config) {
-    super({
-      ip: config.vrouter.ip,
-      port: config.vrouter.port,
-      username: config.vrouter.username,
-      passwd: config.vrouter.password
-    })
-    this.name = config.vrouter.name
-    this.cfgDir = path.join(Utils.getAppDir(), require('../package.json').name)
+    super(config.openwrt)
+    this.name = config.virtualbox.vmName
+    this.cfgDirPath = path.join(Utils.getAppDir(), config.cfgDirName)
     this.config = config
   }
 
   async build (process) {
-    // @param {object} options: {vmName, imageUrl, imageSha256, dstDir, vdiName}
     await create({
       vmName: this.name,
-      imageUrl: this.config.vrouter.imageUrl,
-      imageSha256: this.config.vrouter.imageSha256,
-      dstDir: this.cfgDir,
-      vdiName: 'vrouter.vdi'
-    })
+      imageUrl: this.config.virtualbox.imageUrl,
+      imageSha256: this.config.virtualbox.imageSha256
+    }, this.cfgDirPath)
 
-   // @param {object} options: {vmName, serialFile, hostIP, guestIP, process}
     await init({
       vmName: this.name,
-      serialFile: path.join(this.cfgDir, this.config.host.serialFile),
-      hostIP: this.config.host.ip,
-      guestIP: this.ip,
-      process: process
+      socketFPath: path.join(this.cfgDirPath, this.config.virtualbox.socketFName),
+      hostonlyInfIP: this.config.virtualbox.hostonlyInfIP,
+      openwrtIP: this.ip,
+      process: process,
+      username: this.config.openwrt.username,
+      password: this.config.openwrt.password,
+      hostonlyINC: this.config.virtualbox.hostonlyINC,
+      bridgeINC: this.config.virtualbox.bridgeINC,
+      serialPort: this.config.virtualbox.serialPort
     })
 
     process.emit('init', '配置Dnsmasq')
@@ -185,7 +191,7 @@ class VRouter extends Openwrt {
     await this.manageService('cron', 'enable')
 
     process.emit('init', '更新软件源并安装必要软件包, 请稍候20-60秒')
-    await installPackage(path.join(this.cfgDir, this.config.host.serialFile))
+    await installPackage(path.join(this.cfgDirPath, this.config.virtualbox.socketFName))
     await Utils.wait(20000)
 
     const finished = await this.isInstallPackageFinish(4)
@@ -196,7 +202,11 @@ class VRouter extends Openwrt {
     process.emit('init', '必要软件包安装完成')
 
     process.emit('init', '安装代理软件包')
-    await this.installProxies()
+    await this.installProxies({
+      shadowsocks: path.join(__dirname, '..', 'third_party', 'shadowsocks.tar.gz'),
+      shadowsocksr: path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz'),
+      kcptun: path.join(__dirname, '..', 'third_party', 'kcptun.tar.gz')
+    })
   }
 
   async isInstallPackageFinish (maxRetry = 4) {

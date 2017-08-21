@@ -1,12 +1,14 @@
 const { Client } = require('ssh2')
+const { Generator } = require('./generator.js')
 const path = require('path')
+// const os = require('os')
 
 class Openwrt {
   constructor (config) {
     this.ip = config.ip
-    this.port = config.port || '22'
+    this.sshPort = config.sshPort || '22'
     this.username = config.username
-    this.passwd = config.passwd
+    this.password = config.password
     this.conn = null
   }
 
@@ -25,9 +27,9 @@ class Openwrt {
         this.conn = null
       }).connect({
         host: this.ip,
-        port: this.port,
+        port: this.sshPort,
         username: this.username,
-        password: this.passwd,
+        password: this.password,
         keepaliveInterval: heartbeat,
         readyTimeout: timeout
       })
@@ -119,8 +121,8 @@ class Openwrt {
     return this.execute(cmd)
   }
 
-  changePwd (username = 'root', passwd = 'root') {
-    const cmd = `"echo -e '${passwd}\\n${passwd}' | (passwd ${username})"`
+  changePwd (username = 'root', password = 'root') {
+    const cmd = `"echo -e '${password}\\n${password}' | (passwd ${username})"`
     return this.execute(cmd)
   }
 
@@ -176,28 +178,27 @@ class Openwrt {
   }
 
   // shadowsocks
-  async installSs () {
-    const src = path.join(__dirname, '..', 'third_party', 'shadowsocks.tar.gz')
+  async installSs (targzFPath) {
+    const src = targzFPath
     const dst = '/tmp/shadowsocks/shadowsocks.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
     const cmd = `cd ${dstDir} && tar xzf ${dst} && ls ${dstDir}/*.ipk | xargs opkg install && rm -rf /tmp/shadowsocks`
     return this.execute(cmd)
   }
-  getSsVersion (type = 'ss') {
-    const cmd = `${type}-redir -h | grep "shadowsocks-libev" | cut -d" " -f2`
+  getSsVersion (type = 'shadowsocks', proxiesInfo) {
+    const cmd = `${proxiesInfo[type].binName} -h | grep "shadowsocks-libev" | cut -d" " -f2`
     return this.execute(cmd)
   }
-  async isSsRunning (type = 'ss', plugin) {
-    const fileName = !plugin ? `${type}-client.json` : `${type}-over-kt.json`
-    const cmd = `ps -w | grep "${type}-redir -c .*${fileName}"`
+  async isSsRunning (type = 'shadowsocks', proxiesInfo) {
+    const cmd = `ps -w | grep "${proxiesInfo[type].binName} -[c] .*${proxiesInfo[type].cfgName}"`
     const output = await this.execute(cmd)
     return output.trim() !== ''
   }
 
   // shadowsocksr
-  async installSsr () {
-    const src = path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz')
+  async installSsr (targzFPath) {
+    const src = targzFPath
     const dst = '/tmp/shadowsocksr/shadowsocksr.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
@@ -205,41 +206,47 @@ class Openwrt {
     return this.execute(cmd)
   }
 
-  async isTunnelDnsRunning (type = 'ss') {
-    const cmd = `ps -w| grep "${type}-tunnel -c .*tunnel-dns.jso[n]"`
+  async isTunnelDnsRunning (type = 'shadowsocks', proxiesInfo) {
+    const cmd = `ps -w| grep "${proxiesInfo.tunnelDns.binName[type]} -[c] .*${proxiesInfo.tunnelDns.cfgName}"`
     const output = await this.execute(cmd)
     return output.trim() !== ''
   }
 
   // kcptun
-  async installKt () {
-    // const cmd = `tar -xvzf ${this.config.vrouter.configDir}/third_party/kcptun*.tar.gz ` +
-      // ` && rm server_linux_* && mv client_linux* /usr/bin/kcptun`
-    const src = path.join(__dirname, '..', 'third_party', 'kcptun.tar.gz')
+  async installKt (targzFPath) {
+    const src = targzFPath
     const dst = '/tmp/kcptun/kcptun.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
     const cmd = `cd ${dstDir} && tar xzf ${dst} && mv ${dstDir}/kcptun /usr/bin/ && chmod +x /usr/bin/kcptun && rm -rf /tmp/kcptun`
     return this.execute(cmd)
   }
-  getKtVersion () {
-    const cmd = 'kcptun --version | cut -d" " -f3'
+  getKtVersion (proxiesInfo) {
+    const cmd = `${proxiesInfo.kcptun.binName} --version | cut -d" " -f3`
     return this.execute(cmd)
   }
-  async isKtRunning () {
-    const cmd = 'ps | grep "[k]cptun -c"'
+  async isKtRunning (proxiesInfo) {
+    const cmd = `ps | grep "${proxiesInfo.kcptun.binName} -[c]"`
     const output = await this.execute(cmd)
     return output.trim() !== ''
   }
 
-  async installProxies () {
-    await this.installSs()
-    await this.installSsr()
-    await this.installKt()
+  // @param {object} targzFPaths: {shadowsocks: '', shadowsocksr: '', kcptun: ''}
+  async installProxies (targzFPaths) {
+    await this.installSs(targzFPaths.shadowsocks)
+    await this.installSsr(targzFPaths.shadowsocksr)
+    await this.installKt(targzFPaths.kcptun)
   }
 
-  async setupProxies () {
-
+  async setupProxies (profile, extraInfo, cfgDir) {
+    const cfgFiles = await Generator.genProxyCfg(profile, extraInfo)
+    console.log(cfgFiles)
+    const keys = Object.keys(cfgFiles)
+    for (let i = 0; i < keys.length; i++) {
+      const src = cfgFiles[keys[i]]
+      const dst = `${cfgDir}/${keys[i]}`
+      await this.scp(src, dst)
+    }
   }
   async setupIPset () {
 

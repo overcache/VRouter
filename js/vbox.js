@@ -1,5 +1,7 @@
 const { exec } = require('child_process')
 const os = require('os')
+const fs = require('fs-extra')
+const path = require('path')
 
 let bin = (function () {
   switch (os.platform()) {
@@ -42,7 +44,8 @@ class VBox {
       return false
     }
   }
-  static convertImg (img, out) {
+  static async convertImg (img, out) {
+    await fs.ensureDir(path.dirname(out))
     const cmd = `${bin} convertfromraw "${img}" "${out}" --format VDI`
     return execute(cmd)
   }

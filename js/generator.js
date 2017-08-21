@@ -6,14 +6,14 @@ const os = require('os')
 /*
  * 根据rule, 生成PREROUTING和OUTPUT两条iptables规则
  */
-function generateFWRulesHelper (rule) {
+function genFWRulesHelper (rule) {
   return `iptables -t nat -A PREROUTING ${rule}\niptables -t nat -A OUTPUT ${rule}\n`
 }
 
 /*
  * @param {object} options: {file, ipsetName, outStream}
  */
-async function generateIPsetsHelper (options) {
+async function genIPsetsHelper (options) {
   options.outStream.write(`create ${options.ipsetName} hash:net family inet hashsize 1024 maxelem 65536 -exist\n`)
 
   const list = await fs.readFile(options.file, 'utf8')
@@ -33,7 +33,7 @@ async function generateIPsetsHelper (options) {
 /*
  * @param {object} options: {file, dnsServer, ipsetName, outStream}
  */
-async function generateDnsmasqHelper (options) {
+async function genDnsmasqHelper (options) {
   const domains = await fs.readFile(options.file)
 
   domains.split('\n').forEach((line) => {
@@ -50,12 +50,133 @@ async function generateDnsmasqHelper (options) {
   })
 }
 
-class Generate {
+/*
+ * @param {object} profile 配置信息
+ * @param {object} extraInfo: {shadowsocks, shadowsocksr, kcptun, tunnelDns} 各代理的端口信息
+ */
+function getSsCfgFrom (profile, extraInfo) {
+  const data = profile.shadowsocks
+  const cfg = {
+    'server': data.address,
+    'server_port': data.port,
+    'local_address': '0.0.0.0',
+    'local_port': extraInfo.shadowsocks.clientPort,
+    'password': data.password,
+    'timeout': data.timeout,
+    'method': data.method,
+    'fast_open': data.fastopen,
+    'mode': 'tcp_and_udp'
+  }
+  if (profile.proxies === 'ssKt') {
+    cfg.server = '127.0.0.1'
+    cfg['server_port'] = extraInfo.kcptun.clientPort
+    cfg['local_port'] = extraInfo.shadowsocks.overKtPort
+    cfg.timeout = 50
+    cfg.mode = 'tcp_only'
+  }
+  return cfg
+}
+
+function getSsrCfgFrom (profile, extraInfo) {
+  const data = profile.shadowsocksr
+  const cfg = {
+    'server': data.address,
+    'server_port': data.port,
+    'local_address': '0.0.0.0',
+    'local_port': extraInfo.shadowsocksr.clientPort,
+    'password': data.password,
+    'timeout': data.timeout,
+    'method': data.method,
+    'fast_open': data.fastopen,
+    'mode': 'tcp_and_udp',
+    'protocol': data.protocol,
+    'protocol_param': data.protocol_param,
+    'obfs': data.obfs,
+    'obfs_param': data.obfs_param
+  }
+  data.others.split(';').forEach((kv) => {
+    if (kv.trim()) {
+      const [k, v] = kv.split('=')
+      cfg[k.trim()] = v.trim()
+    }
+  })
+  if (profile.proxies === 'ssrKt') {
+    cfg.server = '127.0.0.1'
+    cfg['server_port'] = extraInfo.kcptun.clientPort
+    cfg['local_port'] = extraInfo.shadowsocksr.overKtPort
+    cfg.timeout = 50
+    cfg.mode = 'tcp_only'
+  }
+  return cfg
+}
+
+function getTunnelDnsCfgFrom (profile, extraInfo) {
+  const data = profile.proxies.includes('ssr')
+    ? profile.shadowsocksr : profile.shadowsocks
+  const cfg = {
+    'server': data.address,
+    'server_port': data.port,
+    'local_address': '0.0.0.0',
+    'local_port': extraInfo.tunnelDns.dnsPort,
+    'password': data.password,
+    'timeout': data.timeout,
+    'method': data.method,
+    'fast_open': data.fastopen,
+    'tunnel_address': '8.8.8.8:53',
+    'mode': 'udp_only'
+  }
+  if (profile.proxies.includes('ssr')) {
+    const moreFields = ['protocol', 'protocol_param', 'obfs', 'obfs_param']
+    moreFields.forEach((field) => {
+      cfg[field] = data[field]
+    })
+    data.others.split(';').forEach((kv) => {
+      if (kv.trim()) {
+        const [k, v] = kv.split('=')
+        cfg[k.trim()] = v.trim()
+      }
+    })
+  }
+  return cfg
+}
+function getKtCfgFrom (profile, extraInfo) {
+  const data = profile.kcptun
+  const cfg = {
+    'remoteaddr': `${data.address}:${data.port}`,
+    'localaddr': `:${extraInfo.kcptun.clientPort}`,
+    'key': data.key,
+    'crypt': data.crypt,
+    'mode': data.mode
+  }
+  data.others.split(';').forEach((kv) => {
+    if (kv.trim()) {
+      const [k, v] = kv.split('=')
+      const value = v.trim().replace(/"/g, '')
+      const key = k.trim()
+      // kcptun can not parse a config file with quote-wrapped value of number/boolean
+      if (/^\d+$/g.test(value)) {
+        cfg[key] = parseInt(value)
+      } else if (/^true|false$/g.test(value)) {
+        cfg[key] = value === 'true'
+      } else {
+        cfg[key] = value
+      }
+    }
+  })
+  return cfg
+}
+
+async function genProxyCfgHelper (data, out) {
+  await fs.remove(out).catch()
+  await fs.writeJson(out, data, {space: 2})
+  return out
+}
+
+class Generator {
   /*
    * @param {object} options: {mode, list: [{file, dnsServer, ipsetName}]}
    */
-  static async dnsmasqCfgFile (options) {
-    const out = path.join(os.tmpdir(), 'dnsmasq.custom')
+  static async genDnsmasqCfgFile (options, out) {
     await fs.remove(out).catch()
 
     const ws = fs.createWriteStream(out)
@@ -76,7 +197,7 @@ class Generate {
 
     for (let i = 0; i < options.list.length; i++) {
       const { file, dnsServer, ipsetName } = options.list[i]
-      await generateDnsmasqHelper({
+      await genDnsmasqHelper({
         file,
         dnsServer,
         ipsetName,
@@ -90,9 +211,9 @@ class Generate {
 
   /*
    * @param {object} options: {priority, binPath, cfgPath}
+   * @param {string} out
    */
-  static async serviceFile (options) {
-    const out = path.join(os.tmpdir(), 'proxy.service')
+  static async genServiceFile (options, out) {
     await fs.remove(out).catch()
 
     const content = String.raw`#!/bin/sh /etc/rc.common
@@ -124,8 +245,7 @@ class Generate {
    *    options.sshPort: 服务器ssh端口. 当代理工具为kcptun时, 加速到bypassIP的ssh连接.
    * @return {promise} 当写入完毕后, promise会返回生成的firewall.user所在路径
    */
-  static async firewallFile (options) {
-    const out = path.join(os.tmpdir(), 'firewall.user')
+  static async genFirewallFile (options, out) {
     await fs.remove(out).catch()
 
     const ws = fs.createWriteStream(out)
@@ -148,7 +268,7 @@ class Generate {
       ws.write('# speedup ssh connection if current proxy is kcptun\n')
       options.bypassIPs.forEach((ip) => {
         const rule = `-d ${ip} -p tcp --dport ${options.sshPort} -j REDIRECT --to-port ${options.redirPort}`
-        ws.write(generateFWRulesHelper(rule))
+        ws.write(genFWRulesHelper(rule))
       })
     }
 
@@ -156,7 +276,7 @@ class Generate {
     // bypass shadowsocks server_ip
     ws.write('# bypass server ip\n')
     options.bypassIPs.forEach((ip) => {
-      ws.write(generateFWRulesHelper(`-d ${ip} -j RETURN`))
+      ws.write(genFWRulesHelper(`-d ${ip} -j RETURN`))
     })
 
     let rule = ''
@@ -164,39 +284,39 @@ class Generate {
     // bypass lan_networks. 如果不想绕过lan, 生成一个空的lan ipset集合即可
     ws.write('# bypass lan networks\n')
     rule = `-m set --match-set ${options.ipsets.lanName} dst -j RETURN`
-    ws.write(generateFWRulesHelper(rule))
+    ws.write(genFWRulesHelper(rule))
 
     // whitelist mode: bypass whitelist and route others
     if (options.mode === 'whitelist') {
       // "绕过白名单"模式下, 先将黑名单导向代理(如果自定义黑名单中存在白名单相同项, 先处理黑名单符合预期)
       ws.write('# route all blacklist traffic\n')
       rule = `-p tcp -m set --match-set ${options.ipsets.blackName} dst -j REDIRECT --to-port ${options.redirPort}`
-      ws.write(generateFWRulesHelper(rule))
+      ws.write(genFWRulesHelper(rule))
 
       ws.write('# bypass whitelist\n')
       rule = `-m set --match-set ${options.ipsets.whiteName} dst -j RETURN`
-      ws.write(generateFWRulesHelper(rule))
+      ws.write(genFWRulesHelper(rule))
 
       ws.write('# route all other traffic\n')
       rule = `-p tcp -j REDIRECT --to-port ${options.redirPort}`
-      ws.write(generateFWRulesHelper(rule))
+      ws.write(genFWRulesHelper(rule))
     }
 
     if (options.mode === 'blacklist') {
       // 仅代理黑名单模式下, 先将白名单返回(如果自定义白名单中存在黑名单相同项, 先处理白名单符合预期)
       ws.write('# bypass whitelist\n')
       rule = `-m set --match-set ${options.ipsets.whiteName} dst -j RETURN`
-      ws.write(generateFWRulesHelper(rule))
+      ws.write(genFWRulesHelper(rule))
 
       ws.write('# route all blacklist traffic\n')
       rule = `-p tcp -m set --match-set ${options.ipsets.blackName} dst -j REDIRECT --to-port ${options.redirPort}`
-      ws.write(generateFWRulesHelper(rule))
+      ws.write(genFWRulesHelper(rule))
     }
 
     if (options.mode === 'global') {
       ws.write('# route all traffic\n')
       rule = `-p tcp -j REDIRECT --to-port ${options.redirPort}`
-      ws.write(generateFWRulesHelper(rule))
+      ws.write(genFWRulesHelper(rule))
     }
     ws.end()
     return promise
@@ -205,8 +325,7 @@ class Generate {
   /*
    * @param {array} ipsets: [{file, ipsetName}]
    */
-  static async ipsetFile (ipsets) {
-    const out = path.join(os.tmpdir(), 'ipset')
+  static async genIpsetFile (ipsets, out) {
     await fs.remove(out).catch()
 
     const ws = fs.createWriteStream(out)
@@ -221,7 +340,7 @@ class Generate {
 
     for (let i = 0; i < ipsets.length; i++) {
       const [file, ipsetName] = ipsets[i]
-      await generateIPsetsHelper({
+      await genIPsetsHelper({
         file,
         ipsetName,
         outStream: ws
@@ -236,8 +355,7 @@ class Generate {
    * @param {object} options: {proxies, enableTunnelDns, servicesName:
    * {tunnelDns: '', shadowsocks: '', shadowsocksr: '', kcptun: ''}}
    */
-  static async watchdogFile (options) {
-    const out = path.join(os.tmpdir(), 'watchdog')
+  static async genWatchdogFile (options, out) {
     await fs.remove(out).catch()
 
     let content = '#!/bin/sh\n'
@@ -297,11 +415,55 @@ class Generate {
     return out
   }
 
-  static proxyCfg (profile) {
+  /*
+   * @param {object} profile
+   * @param {object} extraInfo: {config.shadowsocks, config.shadowsocksr, config.kcptun, config.tunnelDns}
+   */
+  static async genProxyCfg (profile, extraInfo) {
+    const cfgFiles = {}
+    let fname = ''
+    let data = null
+    switch (profile.proxies) {
+      case 'ss':
+        fname = extraInfo.shadowsocks.client
+        cfgFiles[fname] = path.join(os.tmpdir(), fname)
+        data = getSsCfgFrom(profile, extraInfo)
+        getTunnelDnsCfgFrom()
+        await genProxyCfgHelper(data, cfgFiles[fname])
+        break
+      case 'ssr':
+        fname = extraInfo.shadowsocksr.client
+        cfgFiles[fname] = path.join(os.tmpdir(), fname)
+        data = getSsrCfgFrom(profile, extraInfo)
+        await genProxyCfgHelper(data, cfgFiles[fname])
+        break
+      case 'ssKt':
+        fname = extraInfo.shadowsocks.client
+        cfgFiles[fname] = path.join(os.tmpdir(), fname)
+        data = getSsCfgFrom(profile, extraInfo)
+        await genProxyCfgHelper(data, cfgFiles[fname])
 
+        fname = extraInfo.kcptun.client
+        cfgFiles[fname] = path.join(os.tmpdir(), fname)
+        data = getKtCfgFrom(profile, extraInfo)
+        await genProxyCfgHelper(data, cfgFiles[fname])
+        break
+      case 'ssrKt':
+        fname = extraInfo.shadowsocksr.client
+        cfgFiles[fname] = path.join(os.tmpdir(), fname)
+        data = getSsrCfgFrom(profile, extraInfo)
+        await genProxyCfgHelper(data, cfgFiles[fname])
+
+        fname = extraInfo.kcptun.client
+        cfgFiles[fname] = path.join(os.tmpdir(), fname)
+        data = getKtCfgFrom(profile, extraInfo)
+        await genProxyCfgHelper(data, cfgFiles[fname])
+        break
+    }
+    return cfgFiles
   }
 }
 
 module.exports = {
-  Generate
+  Generator
 }
