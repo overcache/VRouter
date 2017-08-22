@@ -184,7 +184,7 @@ class Openwrt {
     const dst = '/tmp/shadowsocks/shadowsocks.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
-    const cmd = `cd ${dstDir} && tar xzf ${dst} && ls ${dstDir}/*.ipk | xargs opkg install && rm -rf /tmp/shadowsocks`
+    const cmd = `cd ${dstDir} && tar xzf ${dst} && ls ${dstDir}/*.ipk | xargs opkg install && rm -rf /tmp/shadowsocks && cp /usr/bin/ss-redir /usr/bin/ss-redir-udp`
     return this.execute(cmd)
   }
   getSsVersion (type = 'shadowsocks', proxiesInfo) {
@@ -204,7 +204,7 @@ class Openwrt {
     const dst = '/tmp/shadowsocksr/shadowsocksr.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
-    const cmd = `cd ${dstDir} && tar xzf ${dst} && mv ${dstDir}/ssr-* /usr/bin/ && chmod +x /usr/bin/ssr-* && rm -rf /tmp/shadowsocksr`
+    const cmd = `cd ${dstDir} && tar xzf ${dst} && mv ${dstDir}/ssr-* /usr/bin/ && chmod +x /usr/bin/ssr-* && rm -rf /tmp/shadowsocksr && cp /usr/bin/ssr-redir /usr/bin/ssr-redir-udp`
     return this.execute(cmd)
   }
 
@@ -254,8 +254,8 @@ class Openwrt {
       await this.scp(src, dst)
     }
   }
-  async scpProxiesServices (profile, proxiesInfo, remoteCfgDirPath) {
-    const cfgFiles = await Generator.genServicesFiles(profile, proxiesInfo, remoteCfgDirPath)
+  async scpProxiesServices (profile, proxiesInfo, remoteCfgDirPath, scpAllService) {
+    const cfgFiles = await Generator.genServicesFiles(profile, proxiesInfo, remoteCfgDirPath, scpAllService)
     winston.debug('Generate services files', cfgFiles)
     for (let i = 0; i < cfgFiles.length; i++) {
       const src = cfgFiles[i]
@@ -280,15 +280,17 @@ class Openwrt {
   async startProxiesServices (profile, proxiesInfo) {
     const proxies = profile.proxies
     const tunnelDnsAction = profile.enableTunnelDns ? 'on' : 'off'
+    const relayUDPAction = profile.enableRelayUDP ? 'on' : 'off'
     const ktAction = /kt/ig.test(proxies) ? 'on' : 'off'
     const ssAction = /^ss(kt)?$/ig.test(proxies) ? 'on' : 'off'
     const ssrAction = /ssr/ig.test(proxies) ? 'on' : 'off'
     await this.toggleProxyService('tunnelDns', proxiesInfo, tunnelDnsAction)
+    await this.toggleProxyService('relayUDP', proxiesInfo, relayUDPAction)
     await this.toggleProxyService('kcptun', proxiesInfo, ktAction)
     await this.toggleProxyService('shadowsocks', proxiesInfo, ssAction)
     await this.toggleProxyService('shadowsocksr', proxiesInfo, ssrAction)
   }
-  async setupWatchdog (profile, proxiesInfo, remoteCfgDirPath) {
+  async configProxiesWatchdog (profile, proxiesInfo, remoteCfgDirPath) {
     const src = await Generator.genWatchdogFile(profile, proxiesInfo)
     const fname = path.basename(src)
     const dst = `${remoteCfgDirPath}/${fname}`
@@ -301,9 +303,9 @@ class Openwrt {
     await this.scpProxiesCfgs(profile, proxiesInfo, remoteCfgDirPath)
     await this.scpProxiesServices(profile, proxiesInfo, remoteCfgDirPath)
     await this.startProxiesServices(profile, proxiesInfo)
-    await this.setupWatchdog(profile, proxiesInfo, remoteCfgDirPath)
+    await this.configProxiesWatchdog(profile, proxiesInfo, remoteCfgDirPath)
   }
-  async setupIPset (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
+  async scpIPsetFile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
     const dirPath = path.join(__dirname, '..', 'config')
 
     const src = await Generator.genIpsetFile(profile, proxiesInfo, firewallInfo, dirPath)
@@ -311,8 +313,8 @@ class Openwrt {
     await this.scp(src, dst)
   }
 
-  // must setupIPset first. otherwise will occur errors: ipset xxx not exist
-  async setupIptables (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
+  // must scpIPsetFile first. otherwise will occur errors: ipset xxx not exist
+  async configIptables (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
     const src = await Generator.genIptablesFile(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
     const fname = path.basename(src)
     const dst = `/etc/${fname}`
@@ -320,8 +322,8 @@ class Openwrt {
     await this.manageService('firewall', 'restart')
   }
   async setupFirewall (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
-    await this.setupIPset(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
-    await this.setupIptables(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
+    await this.scpIPsetFile(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
+    await this.configIptables(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
   }
   async setupDnsmasq (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
     const dirPath = path.join(__dirname, '..', 'config')
@@ -333,7 +335,7 @@ class Openwrt {
   }
   async applyProfile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir) {
     await this.setupProxies(profile, proxiesInfo, remoteCfgDirPath)
-    await this.setupFirewall(profile, proxiesInfo, remoteCfgDirPath)
+    await this.setupFirewall(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
     await this.setupDnsmasq(profile, proxiesInfo, firewallInfo, dnsmasqCfgDir)
   }
 }

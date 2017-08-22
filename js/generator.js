@@ -69,14 +69,12 @@ function getSsCfgFrom (profile, proxiesInfo) {
     'timeout': data.timeout,
     'method': data.method,
     'fast_open': data.fast_open,
-    'mode': 'tcp_and_udp'
+    'mode': 'tcp_only'
   }
   if (profile.proxies === 'ssKt') {
     cfg.server = '127.0.0.1'
     cfg.server_port = proxiesInfo.kcptun.localPort
-    cfg.local_port = proxiesInfo.shadowsocks.overKtPort
     cfg.timeout = 50
-    cfg.mode = 'tcp_only'
   }
   return cfg
 }
@@ -92,7 +90,7 @@ function getSsrCfgFrom (profile, proxiesInfo) {
     'timeout': data.timeout,
     'method': data.method,
     'fast_open': data.fast_open,
-    'mode': 'tcp_and_udp',
+    'mode': 'tcp_oly',
     'protocol': data.protocol,
     'protocol_param': data.protocol_param,
     'obfs': data.obfs,
@@ -107,40 +105,19 @@ function getSsrCfgFrom (profile, proxiesInfo) {
   if (profile.proxies === 'ssrKt') {
     cfg.server = '127.0.0.1'
     cfg['server_port'] = proxiesInfo.kcptun.localPort
-    cfg['local_port'] = proxiesInfo.shadowsocksr.overKtPort
     cfg.timeout = 50
-    cfg.mode = 'tcp_only'
   }
   return cfg
 }
 
 function getTunnelDnsCfgFrom (profile, proxiesInfo) {
-  const data = profile.proxies.includes('ssr')
-    ? profile.shadowsocksr : profile.shadowsocks
-  const cfg = {
-    'server': data.server,
-    'server_port': data.server_port,
-    'local_address': '0.0.0.0',
-    'local_port': proxiesInfo.tunnelDns.localPort,
-    'password': data.password,
-    'timeout': data.timeout,
-    'method': data.method,
-    'fast_open': data.fast_open,
-    'tunnel_address': profile.dnsServer,
-    'mode': 'udp_only'
-  }
-  if (profile.proxies.includes('ssr')) {
-    const moreFields = ['protocol', 'protocol_param', 'obfs', 'obfs_param']
-    moreFields.forEach((field) => {
-      cfg[field] = data[field]
-    })
-    data.others.split(';').forEach((kv) => {
-      if (kv.trim()) {
-        const [k, v] = kv.split('=')
-        cfg[k.trim()] = v.trim()
-      }
-    })
-  }
+  const cfg = /ssr/ig.test(profile.proxies)
+    ? getSsrCfgFrom(profile, proxiesInfo)
+    : getSsCfgFrom(profile, proxiesInfo)
+
+  cfg.local_port = proxiesInfo.tunnelDns.localPort
+  cfg.mode = 'udp_only'
+  cfg.tunnel_address = profile.dnsServer
   return cfg
 }
 function getKtCfgFrom (profile, proxiesInfo) {
@@ -169,6 +146,15 @@ function getKtCfgFrom (profile, proxiesInfo) {
   })
   return cfg
 }
+function getRelayUDPCfgFrom (profile, proxiesInfo) {
+  const cfg = /ssr/ig.test(profile.proxies)
+    ? getSsrCfgFrom(profile, proxiesInfo)
+    : getSsCfgFrom(profile, proxiesInfo)
+
+  cfg.local_port = proxiesInfo.relayUDP.localPort
+  cfg.mode = 'udp_only'
+  return cfg
+}
 
 /*
  * @return {string} cfg temppath
@@ -192,18 +178,21 @@ async function genProxyCfgHelper (proxy, profile, proxiesInfo) {
     case 'kcptun':
       func = getKtCfgFrom
       break
+    case 'relayUDP':
+      func = getRelayUDPCfgFrom
+      break
   }
   const data = func(profile, proxiesInfo)
-  winston.debug('extra data', data)
+  winston.debug('get proxy config from profile', data)
   await fs.writeJson(tempFPath, data, {spaces: 2})
   return tempFPath
 }
 
-async function genServiceFileHelper (proxies, proxy, proxiesInfo, remoteCfgDirPath) {
+async function genServiceFileHelper (proxy, proxies, proxiesInfo, remoteCfgDirPath) {
   winston.debug('genServiceFileHelper, proxy', proxy)
   const serviceName = proxiesInfo[proxy].serviceName
   let binName = proxiesInfo[proxy].binName
-  if (proxy === 'tunnelDns') {
+  if (proxy === 'tunnelDns' || proxy === 'relayUDP') {
     binName = /ssr/ig.test(proxies) ? binName.shadowsocksr : binName.shadowsocks
   }
   const binPath = `/usr/bin/${binName}`
@@ -211,6 +200,8 @@ async function genServiceFileHelper (proxies, proxy, proxiesInfo, remoteCfgDirPa
   const tempFPath = path.join(os.tmpdir(), serviceName)
   await fs.remove(tempFPath).catch()
 
+  // fixme: 因为relayUDP的binname和ss/ssr相同, 所有停止relayUDP service的时候会把ss/ssr的进程也停止
+  // 另一个可能的情况是: ss/ssr的进程被停止, 但是realyUDP自身的进程却没被停止
   const content = String.raw`#!/bin/sh /etc/rc.common
             # Copyright (C) 2006-2011 OpenWrt.org
             START=95
@@ -228,7 +219,7 @@ async function genServiceFileHelper (proxies, proxy, proxiesInfo, remoteCfgDirPa
 }
 function genWatchdogFileHelper (proxy, proxies, proxiesInfo) {
   let binName = proxiesInfo[proxy].binName
-  if (proxy === 'tunnelDns') {
+  if (proxy === 'tunnelDns' || proxy === 'relayUDP') {
     binName = /ssr/ig.test(proxies) ? binName.shadowsocksr : binName.shadowsocks
   }
   const cfgName = proxiesInfo[proxy].cfgName
@@ -323,20 +314,23 @@ class Generator {
    * @param {object} options: {priority, binPath, cfgPath}
    * @param {string} out
    */
-  static async genServicesFiles (profile, proxiesInfo, remoteCfgDirPath) {
+  static async genServicesFiles (profile, proxiesInfo, remoteCfgDirPath, scpAllService) {
     const cfgFiles = []
     const proxies = profile.proxies
-    if (profile.enableTunnelDns === true) {
-      cfgFiles.push(await genServiceFileHelper(proxies, 'tunnelDns', proxiesInfo, remoteCfgDirPath))
+    if (scpAllService || profile.enableTunnelDns) {
+      cfgFiles.push(await genServiceFileHelper('tunnelDns', proxies, proxiesInfo, remoteCfgDirPath))
     }
-    if (/kt/ig.test(proxies)) {
-      cfgFiles.push(await genServiceFileHelper(proxies, 'kcptun', proxiesInfo, remoteCfgDirPath))
+    if (scpAllService || profile.enableRelayUDP) {
+      cfgFiles.push(await genServiceFileHelper('relayUDP', proxies, proxiesInfo, remoteCfgDirPath))
     }
-    if (/ssr/ig.test(proxies)) {
-      cfgFiles.push(await genServiceFileHelper(proxies, 'shadowsocksr', proxiesInfo, remoteCfgDirPath))
+    if (scpAllService || /kt/ig.test(proxies)) {
+      cfgFiles.push(await genServiceFileHelper('kcptun', proxies, proxiesInfo, remoteCfgDirPath))
     }
-    if (/^ss(kt)?$/ig.test(proxies)) {
-      cfgFiles.push(await genServiceFileHelper(proxies, 'shadowsocks', proxiesInfo, remoteCfgDirPath))
+    if (scpAllService || /ssr/ig.test(proxies)) {
+      cfgFiles.push(await genServiceFileHelper('shadowsocksr', proxies, proxiesInfo, remoteCfgDirPath))
+    }
+    if (scpAllService || /^ss(kt)?$/ig.test(proxies)) {
+      cfgFiles.push(await genServiceFileHelper('shadowsocks', proxies, proxiesInfo, remoteCfgDirPath))
     }
     return cfgFiles
   }
@@ -347,9 +341,11 @@ class Generator {
 
     const proxies = profile.proxies
     const type = /ssr/ig.test(proxies) ? 'shadowsocksr' : 'shadowsocks'
-    const port = /kt/ig.test(proxies) ? 'overKtPort' : 'localPort'
-    let redirPort = proxiesInfo[type][port]
-    winston.debug('redirPort', redirPort)
+    const redirPort = proxiesInfo[type].localPort
+    const udpRedirPort = proxiesInfo.relayUDP.localPort
+
+    winston.debug('tcp redirPort', redirPort)
+    winston.debug('udp redirPort', udpRedirPort)
 
     const contents = ['# com.icymind.vrouter']
     contents.push(`# workMode: ${profile.mode}`)
@@ -391,6 +387,11 @@ class Generator {
       let rule = `-p tcp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
 
+      if (profile.enableRelayUDP) {
+        const udpRule = `-p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${udpRedirPort}`
+        contents.push(genFWRulesHelper(udpRule))
+      }
+
       contents.push('# bypass whitelist')
       rule = `-m set --match-set ${firewallInfo.ipset.whiteSetName} dst -j RETURN`
       contents.push(genFWRulesHelper(rule))
@@ -398,6 +399,11 @@ class Generator {
       contents.push('# route all other traffic')
       rule = `-p tcp -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
+
+      if (profile.enableRelayUDP) {
+        const udpRule = `-p udp -j REDIRECT --to-port ${udpRedirPort}`
+        contents.push(genFWRulesHelper(udpRule))
+      }
     } else if (profile.mode === 'blacklist') {
       // 仅代理黑名单模式下, 先将白名单返回(如果自定义白名单中存在黑名单相同项, 先处理白名单符合预期)
       contents.push('# bypass whitelist')
@@ -407,10 +413,20 @@ class Generator {
       contents.push('# route all blacklist traffic')
       rule = `-p tcp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
+
+      if (profile.enableRelayUDP) {
+        const udpRule = `-p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${udpRedirPort}`
+        contents.push(genFWRulesHelper(udpRule))
+      }
     } else if (profile.mode === 'global') {
       contents.push('# route all traffic')
       let rule = `-p tcp -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
+
+      if (profile.enableRelayUDP) {
+        const udpRule = `-p udp -j REDIRECT --to-port ${udpRedirPort}`
+        contents.push(genFWRulesHelper(udpRule))
+      }
     }
 
     await fs.outputFile(tempFPath, contents.join('\n'), 'utf8')
@@ -455,6 +471,9 @@ class Generator {
     if (profile.enableTunnelDns) {
       contents.push(genWatchdogFileHelper('tunnelDns', proxies, proxiesInfo))
     }
+    if (profile.enableRelayUDP) {
+      contents.push(genWatchdogFileHelper('relayUDP', proxies, proxiesInfo))
+    }
     if (/kt/ig.test(proxies)) {
       contents.push(genWatchdogFileHelper('kcptun', proxies, proxiesInfo))
     }
@@ -476,6 +495,9 @@ class Generator {
     const cfgFiles = []
     if (profile.enableTunnelDns) {
       cfgFiles.push(await genProxyCfgHelper('tunnelDns', profile, proxiesInfo))
+    }
+    if (profile.enableRelayUDP) {
+      cfgFiles.push(await genProxyCfgHelper('relayUDP', profile, proxiesInfo))
     }
     if (/kt/ig.test(profile.proxies)) {
       cfgFiles.push(await genProxyCfgHelper('kcptun', profile, proxiesInfo))

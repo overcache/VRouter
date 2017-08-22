@@ -209,7 +209,7 @@ class VRouter extends Openwrt {
     })
 
     process.emit('init', '拷贝代理的管理脚本到虚拟机')
-    await this.scpProxiesServices(this.config.proxiesInfo, `/etc/${this.config.cfgDirName}`)
+    await this.scpProxiesServices(this.config.profiles[0], this.config.proxiesInfo, `/etc/${this.config.cfgDirName}`, true)
   }
 
   async isInstallPackageFinish (maxRetry = 4) {
@@ -227,7 +227,13 @@ class VRouter extends Openwrt {
     const cfgPath = path.join(this.cfgDir, 'config.json')
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
-  async applyProfile (profile) {
+  async applyActivedProfile () {
+    const activedProfile = this.config.profiles.filter(profile => profile.active === true)[0]
+    const proxiesInfo = this.config.proxiesInfo
+    const firewallInfo = this.config.firewallInfo
+    const remoteCfgDirPath = path.join('/etc', this.config.cfgDirName)
+    const dnsmasqCfgDir = '/etc/dnsmasq.d'
+    await super.applyProfile(activedProfile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir)
   }
 }
 module.exports = {

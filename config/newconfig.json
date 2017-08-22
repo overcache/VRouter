@@ -29,7 +29,7 @@
             "name": "vps",
             "mode": "whitelist",
             "proxies": "ss",
-            "relayUDP": false,
+            "enableRelayUDP": true,
             "enableTunnelDns": true,
             "speedupServerSSH": false,
             "dnsServer": "8.8.8.8:53",
@@ -50,7 +50,7 @@
             "name": "kcp 加速ss",
             "mode": "whitelist",
             "proxies": "ssKt",
-            "relayUDP": false,
+            "enableRelayUDP": false,
             "enableTunnelDns": true,
             "dnsServer": "8.8.8.8:53",
             "speedupServerSSH": false,
@@ -79,7 +79,7 @@
             "name": "ssr",
             "mode": "blacklist",
             "proxies": "ssr",
-            "relayUDP": false,
+            "enableRelayUDP": false,
             "enableTunnelDns": true,
             "dnsServer": "8.8.8.8:53",
             "speedupServerSSH": false,
@@ -106,27 +106,19 @@
             "binName": "ss-redir",
             "cfgName": "shadowsocks.json",
             "serviceName": "shadowsocks",
-            "localPort": 1010,
-            "udpCfgName": "shadowsocks-udp.json",
-            "udpserviceName": "shadowsocksUDP",
-            "udpLocalPort": 1011,
-            "overKtPort": 1012
+            "localPort": 1010
         },
         "shadowsocksr": {
             "binName": "ssr-redir",
             "cfgName": "shadowsocksr.json",
             "serviceName": "shadowsocksr",
-            "localPort": 1020,
-            "udpCfgName": "shadowsocksr-udp.json",
-            "udpserviceName": "shadowsocksrUDP",
-            "udpLocalPort": 1021,
-            "overKtPort": 1022
+            "localPort": 1010
         },
         "kcptun": {
             "binName": "kcptun",
             "cfgName": "kcptun.json",
-            "localPort": 1030,
-            "serviceName": "kcptun"
+            "serviceName": "kcptun",
+            "localPort": 1020
         },
         "tunnelDns": {
             "binName": {
@@ -134,8 +126,17 @@
                 "shadowsocksr": "ssr-tunnel"
             },
             "cfgName": "tunnel-dns.json",
-            "localPort": 5353,
-            "serviceName": "tunnelDns"
+            "serviceName": "tunnelDns",
+            "localPort": 1030
+        },
+        "relayUDP": {
+            "binName": {
+                "shadowsocks": "ss-redir-udp",
+                "shadowsocksr": "ssr-redir-udp"
+            },
+            "cfgName": "relay-udp.json",
+            "serviceName": "relayUDP",
+            "localPort": 1040
         }
     },
     "firewallInfo": {

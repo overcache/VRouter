@@ -101,6 +101,6 @@ describe('Test Suite for vroute.js', function () {
     const activedProfile = vrouter.config.profiles.filter(profile => profile.active === true)[0]
     const proxiesInfo = vrouter.config.proxiesInfo
     const firewallInfo = vrouter.config.firewallInfo
-    await vrouter.applyProfile(activedProfile, proxiesInfo, firewallInfo, 'etc/vrouter', '/etc/dnsmasq.d')
+    await vrouter.applyProfile(activedProfile, proxiesInfo, firewallInfo, '/etc/vrouter', '/etc/dnsmasq.d')
   })
 })
