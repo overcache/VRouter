@@ -5,6 +5,8 @@ const fs = require('fs-extra')
 const { expect } = require('chai')
 const { VRouter } = require('../js/vrouter.js')
 // const { Utils } = require('../js/utils.js')
+const { VBox } = require('../js/vbox.js')
+const { EventEmitter } = require('events')
 
 describe('Test Suite for vroute.js', function () {
   let vrouter = null
@@ -19,17 +21,15 @@ describe('Test Suite for vroute.js', function () {
     cfg.virtualbox.vmName = 'abcd'
     vrouter = new VRouter(cfg)
 
-    // const { VBox } = require('../js/vbox.js')
-    // const { EventEmitter } = require('events')
-    // await fs.remove(path.join(__dirname, 'config')).catch()
-    // await VBox.delete(vrouter.name)
+    await fs.remove(path.join(__dirname, 'config')).catch()
+    await VBox.delete(vrouter.name)
     // await fs.remove(vrouter.cfgDirPath).catch()
-    // await fs.copy(path.join(__dirname, '../config'), path.join(__dirname, 'config'))
-    // const process = new EventEmitter()
-    // process.on('init', info => console.log(info))
-    // await vrouter.build(process)
-    // await VBox.lockGUIConfig(vrouter.name, false)
-    // await VBox.hide(vrouter.name, false)
+    await fs.copy(path.join(__dirname, '../config'), path.join(__dirname, 'config'))
+    const process = new EventEmitter()
+    process.on('init', info => console.log(info))
+    await vrouter.build(process)
+    await VBox.lockGUIConfig(vrouter.name, false)
+    await VBox.hide(vrouter.name, false)
   })
   it('#getIP(br-lan) should return 10.10.10.11', async function () {
     const ip = await vrouter.getIP('br-lan')
@@ -90,14 +90,14 @@ describe('Test Suite for vroute.js', function () {
     await vrouter.setupFirewall(activedProfile, proxiesInfo, firewallInfo, '/etc/vrouter')
   })
   it('#setupDnsmasq', async function () {
-    this.timeout(50000)
+    this.timeout(5000)
     const activedProfile = vrouter.config.profiles.filter(profile => profile.active === true)[0]
     const proxiesInfo = vrouter.config.proxiesInfo
     const firewallInfo = vrouter.config.firewallInfo
     await vrouter.setupDnsmasq(activedProfile, proxiesInfo, firewallInfo, '/etc/dnsmasq.d')
   })
   it('#applyProfile', async function () {
-    this.timeout(50000)
+    this.timeout(5000)
     const activedProfile = vrouter.config.profiles.filter(profile => profile.active === true)[0]
     const proxiesInfo = vrouter.config.proxiesInfo
     const firewallInfo = vrouter.config.firewallInfo

@@ -8,82 +8,80 @@ const winston = require('winston')
 winston.level = 'debug'
 
 /*
- * @param {object} options: {vmName, hostonlyInfIP, hostonlyINC, bridgeINC}
+ * @param {object} info: vmName, hostonlyINC, hostonlyInfIP, bridgeINC
  */
-async function initInterface (options) {
-  const hostonlyInf = await VBox.getAvailableHostonlyInf(options.hostonlyInfIP, '255.255.255.0')
+async function initInterface (info) {
+  const hostonlyInf = await VBox.getAvailableHostonlyInf(info.hostonlyInfIP, '255.255.255.0')
   winston.info('hostonlyInf', hostonlyInf)
-  await VBox.initHostonlyNetwork(options.vmName, hostonlyInf, options.hostonlyINC)
+  await VBox.initHostonlyNetwork(info.vmName, hostonlyInf, info.hostonlyINC)
   const activeAdapter = await Utils.getActiveAdapter()
   winston.info('activeAdapter', activeAdapter)
   const bridgeService = await VBox.getBridgeService(activeAdapter)
   winston.info('bridgeService', bridgeService)
-  await VBox.initBridgeNetwork(options.vmName, bridgeService, options.bridgeINC)
+  await VBox.initBridgeNetwork(info.vmName, bridgeService, info.bridgeINC)
 }
 
 /*
- * @param {object} options: {imageUrl, imageSha256}
- * @param {string} dstDirPath: 目标文件夹, 用于保存镜像压缩包和vdi文件
+ * @param {object} info: imageUrl, imageSha256
  */
-async function getImageZipfile (options, dstDirPath) {
-  let file = path.join(os.tmpdir(), path.basename(options.imageUrl))
+async function getImageZipfile (info) {
+  let file = path.join(os.tmpdir(), path.basename(info.imageUrl))
   const hashValue = await Utils.hashFile(file)
-  if (hashValue !== options.imageSha256) {
-    file = await Utils.downloadFile(options.imageUrl)
+  if (hashValue !== info.imageSha256) {
+    file = await Utils.downloadFile(info.imageUrl)
   }
   return file
 }
 
 /*
- * @param {object} options: {vmName, imageUrl, imageSha256}
- * @param {string} dstDirPath: 目标文件夹, 用于保存镜像压缩包和vdi文件
+ * @param {object} info: vmName, imageUrl, imageSha256, cfgDirPath
  */
-async function getVDI (options, dstDirPath) {
-  const vdi = path.join(dstDirPath, options.vmName + '.vdi')
+async function getVDI (info) {
+  const vdi = path.join(info.cfgDirPath, info.vmName + '.vdi')
   await fs.remove(vdi).catch()
 
   const zipfile = await getImageZipfile({
-    imageUrl: options.imageUrl,
-    imageSha256: options.imageSha256
-  }, dstDirPath)
+    imageUrl: info.imageUrl,
+    imageSha256: info.imageSha256
+  })
   const img = await Utils.gunzip(zipfile, path.join(os.tmpdir(), 'temp.img'))
   await VBox.convertImg(img, vdi)
   return vdi
 }
 
 /*
- * @param {object} options: {vmName, imageUrl, imageSha256}
- * @param {string} dstDirPath: 目标文件夹, 用于保存镜像压缩包和vdi文件
+ * @param {object} info: vmName, imageUrl, imageSha256, cfgDirPath
  */
-async function create (options, dstDirPath) {
-  await VBox.create(options.vmName)
+async function create (info) {
+  await VBox.create(info.vmName)
 
   let args = ` --ostype "Linux26_64" --memory "256" --cpus "1" ` +
     ` --boot1 "disk" --boot2 "none" --boot3 "none" --boot4 "none" ` +
     ` --audio "none" --vram "16"`
-  await VBox.modify(options.vmName, args)
+  await VBox.modify(info.vmName, args)
 
   args = `--name "SATA Controller" --add "sata" --portcount "4" ` +
     `--hostiocache "on" --bootable "on"`
-  await VBox.storagectl(options.vmName, args)
+  await VBox.storagectl(info.vmName, args)
 
   const vdi = await getVDI({
-    vmName: options.vmName,
-    imageUrl: options.imageUrl,
-    imageSha256: options.imageSha256
-  }, dstDirPath)
+    vmName: info.vmName,
+    imageUrl: info.imageUrl,
+    imageSha256: info.imageSha256,
+    cfgDirPath: info.cfgDirPath
+  })
   args = ` --storagectl "SATA Controller" --port "1" ` +
     `--type "hdd" --nonrotational "on" --medium "${vdi}"`
-  await VBox.storageattach(options.vmName, args)
+  await VBox.storageattach(info.vmName, args)
 }
 
 /*
- * @param {object} options: {socketFPath, username, password}
+ * @param {object} info: username, password, socketFPath
  */
-async function changePwd (options) {
-  winston.debug('about to change vrouter password', options)
-  const cmd = `echo -e '${options.password}\\n${options.password}' | (passwd ${options.username})`
-  await Utils.serialExec(options.socketFPath, cmd)
+async function changePwd (info) {
+  winston.debug('about to change vrouter password', info)
+  const cmd = `echo -e '${info.password}\\n${info.password}' | (passwd ${info.username})`
+  await Utils.serialExec(info.socketFPath, cmd)
 }
 
 function installPackage (socketFPath) {
@@ -105,48 +103,62 @@ function installPackage (socketFPath) {
 }
 
 /*
- * 通过串口配置lan地址
- * @param {object} options: {socketFPath, IP}
+ * @param {object} info: lanIP, socketFPath
  */
-function configLan (options) {
+function configLan (info) {
   const subCmds = []
-  subCmds.push(`uci set network.lan.ipaddr='${options.IP}'`)
+  subCmds.push(`uci set network.lan.ipaddr='${info.lanIP}'`)
   subCmds.push('uci commit network')
   subCmds.push('/etc/init.d/network restart')
   const cmd = subCmds.join(' && ')
-  return Utils.serialExec(options.socketFPath, cmd)
+  return Utils.serialExec(info.socketFPath, cmd)
 }
 
 /*
- * @param {object} options: {vmName, socketFPath, hostonlyInfIP, openwrtIP, process, username, password, hostonlyINC, bridgeINC, serailPort}
+ * @param {object} info: vmName, startType
  */
-async function init (options) {
-  // await VBox.lockGUIConfig(options.vmName, true)
-  // await VBox.hide(options.vmName, true)
-  await VBox.toggleSerialPort(options.vmName, options.socketFPath, 'on', options.serialPort)
+async function startVrouter (info) {
+  await VBox.start(info.vmName, info.startType)
+  // mock 'press enter key' to skip grub waiting time
+  await Utils.wait(1000)
+  await VBox.sendKeystrokesTo(info.vmName)
+  await Utils.wait(500)
+  await VBox.sendKeystrokesTo(info.vmName)
+  await Utils.wait(30000)
+}
+
+/*
+ * @param {object} info: {vmName, hostonlyINC, hostonlyInfIP, bridgeINC, lanIP, username, password, serailPort, socketFPath, process}
+ */
+async function init (info) {
+  await VBox.lockGUIConfig(info.vmName, true)
+  await VBox.hide(info.vmName, true)
+  await VBox.toggleSerialPort(info.vmName, info.socketFPath, 'on', info.serialPort)
   await initInterface({
-    vmName: options.vmName,
-    hostonlyInfIP: options.hostonlyInfIP,
-    hostonlyINC: options.hostonlyINC,
-    bridgeINC: options.bridgeINC
+    vmName: info.vmName,
+    hostonlyINC: info.hostonlyINC,
+    hostonlyInfIP: info.hostonlyInfIP,
+    bridgeINC: info.bridgeINC
   })
 
-  options.process.emit('init', '等待虚拟机启动, 请稍候30秒')
-  await VBox.start(options.vmName)
-  await Utils.wait(30000)
+  info.process.emit('init', '等待虚拟机启动, 请稍候30秒')
+  await startVrouter({
+    vmName: info.vmName,
+    startType: 'gui'
+  })
 
-  options.process.emit('init', '配置虚拟机网络地址, 请稍候15秒')
+  info.process.emit('init', '配置虚拟机网络地址, 请稍候15秒')
   await configLan({
-    socketFPath: options.socketFPath,
-    IP: options.openwrtIP
+    lanIP: info.lanIP,
+    socketFPath: info.socketFPath
   })
   await Utils.wait(15000)
 
-  options.process.emit('init', '修改虚拟机密码')
+  info.process.emit('init', '修改虚拟机密码')
   await changePwd({
-    socketFPath: options.socketFPath,
-    username: options.username,
-    password: options.password
+    username: info.username,
+    password: info.password,
+    socketFPath: info.socketFPath
   })
   await Utils.wait(8000)
 }
@@ -158,32 +170,38 @@ class VRouter extends Openwrt {
     this.cfgDirPath = path.join(Utils.getAppDir(), config.cfgDirName)
     this.config = config
   }
-
+  async powerOff () {
+    await this.disconnect()
+    const socketFPath = path.join(this.cfgDirPath, this.config.virtualbox.socketFname)
+    await Utils.serialExec(socketFPath, 'poweroff')
+    await Utils.wait(8000)
+  }
   async build (process) {
     await create({
       vmName: this.name,
       imageUrl: this.config.virtualbox.imageUrl,
-      imageSha256: this.config.virtualbox.imageSha256
-    }, this.cfgDirPath)
+      imageSha256: this.config.virtualbox.imageSha256,
+      cfgDirPath: this.cfgDirPath
+    })
 
     await init({
       vmName: this.name,
-      socketFPath: path.join(this.cfgDirPath, this.config.virtualbox.socketFname),
+      hostonlyINC: this.config.virtualbox.hostonlyINC,
       hostonlyInfIP: this.config.virtualbox.hostonlyInfIP,
-      openwrtIP: this.ip,
-      process: process,
+      bridgeINC: this.config.virtualbox.bridgeINC,
+      lanIP: this.ip,
       username: this.config.openwrt.username,
       password: this.config.openwrt.password,
-      hostonlyINC: this.config.virtualbox.hostonlyINC,
-      bridgeINC: this.config.virtualbox.bridgeINC,
-      serialPort: this.config.virtualbox.serialPort
+      serialPort: this.config.virtualbox.serialPort,
+      socketFPath: path.join(this.cfgDirPath, this.config.virtualbox.socketFname),
+      process: process
     })
 
     process.emit('init', '配置Dnsmasq')
     await this.configDnsmasq()
 
     process.emit('init', '修改虚拟机时区')
-    await this.changeTZ()
+    await this.changeTZ(this.name)
 
     process.emit('init', '打开tcp fast open')
     await this.turnOnFastOpen()
@@ -194,7 +212,7 @@ class VRouter extends Openwrt {
     await installPackage(path.join(this.cfgDirPath, this.config.virtualbox.socketFname))
     await Utils.wait(20000)
 
-    const finished = await this.isInstallPackageFinish(4)
+    const finished = await this._isInstallPackageFinish(4)
     if (!finished) {
       process.emit('init', '未能安装必要软件包')
       throw Error('未能安装必要软件包')
@@ -210,11 +228,19 @@ class VRouter extends Openwrt {
 
     process.emit('init', '拷贝代理的管理脚本到虚拟机')
     await this.scpProxiesServices(this.config.profiles[0], this.config.proxiesInfo, `/etc/${this.config.cfgDirName}`, true)
+
+    process.emit('init', '等待虚拟机重新启动')
+    await this.powerOff()
+    await startVrouter({
+      vmName: this.name,
+      startType: 'headless'
+    })
+    process.emit('init', '虚拟机就绪')
   }
 
-  async isInstallPackageFinish (maxRetry = 4) {
+  async _isInstallPackageFinish (maxRetry = 4) {
     for (let i = 0; i < maxRetry; i++) {
-      const log = await this.execute('cat /tmp/log/vrouter')
+      const log = await this.execute('cat /tmp/log/vrouter').catch()
       if (log.trim() === 'done') {
         return true
       }

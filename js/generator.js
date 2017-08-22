@@ -2,7 +2,7 @@ const fs = require('fs-extra')
 const path = require('path')
 const os = require('os')
 const winston = require('winston')
-winston.level = 'debug'
+winston.level = 'info'
 const { Utils } = require('./utils.js')
 
 /*

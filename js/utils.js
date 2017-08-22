@@ -12,7 +12,7 @@ const NetcatClient = require('netcat').client
 const { exec } = require('child_process')
 const sudo = require('sudo-prompt')
 const winston = require('winston')
-winston.level = 'debug'
+winston.level = 'error'
 
 const platform = os.platform()
 

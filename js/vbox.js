@@ -72,11 +72,6 @@ class VBox {
   static async start (name, type = 'headless') {
     const cmd = `${bin} startvm --type ${type} ${name}`
     await execute(cmd)
-    await wait(1000)
-    // mock 'press enter key' to skip grub waiting time
-    await VBox.sendKeystrokesTo(name)
-    await wait(500)
-    await VBox.sendKeystrokesTo(name)
   }
   static attachHeadless (name) {
     const cmd = `${bin} startvm ${name} --type separate`
@@ -99,6 +94,7 @@ class VBox {
     const isRunning = isExisted ? await VBox.isVmRunning(name) : false
     if (isExisted && isRunning) {
       await VBox.powerOff(name)
+      await wait(5000)
     }
     const cmd = `${bin} unregistervm ${name} --delete`
     return isExisted ? execute(cmd) : null

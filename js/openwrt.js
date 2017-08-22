@@ -19,12 +19,19 @@ class Openwrt {
    * @param {int} timeout 连接前的等待时间(毫秒)
    * @return {promise} 当连接成功后resovle
    */
-  connect (heartbeat = 300000, timeout = 2000) {
+  connect (heartbeat = 300000, timeout = 3000) {
     this.conn = new Client()
     return new Promise((resolve, reject) => {
       this.conn.on('ready', () => {
         resolve()
       }).on('close', () => {
+        winston.info('ssh connection was closed')
+        this.conn = null
+      }).on('end', () => {
+        winston.info('ssh connection has been ended')
+        this.conn = null
+      }).on('error', (error) => {
+        winston.error('connecting to openwrt error', error.message)
         this.conn = null
       }).connect({
         host: this.ip,
@@ -36,6 +43,9 @@ class Openwrt {
       })
     })
   }
+  disconnect () {
+    this.conn && this.conn.end()
+  }
 
   /*
    * 在远程openwrt上执行命令. 一些特殊的命令, 即使成功执行, 也会返回stderr
@@ -44,6 +54,7 @@ class Openwrt {
    */
   async execute (cmd) {
     if (this.conn === null) {
+      winston.info('connect to openwrt by ssh')
       await this.connect()
     }
     const specialCmds = [
@@ -244,7 +255,7 @@ class Openwrt {
   }
 
   async scpProxiesCfgs (profile, proxiesInfo, remoteCfgDirPath) {
-    winston.info('active profile', profile)
+    winston.info('active profile', profile.name)
     const cfgFiles = await Generator.genProxiesCfgs(profile, proxiesInfo)
     winston.debug('Generate cfg files', cfgFiles)
     for (let i = 0; i < cfgFiles.length; i++) {
@@ -262,6 +273,7 @@ class Openwrt {
       const cfgName = path.basename(src)
       const dst = `/etc/init.d/${cfgName}`
       await this.scp(src, dst)
+      await this.execute(`chmod +x ${dst}`)
       winston.debug('scp service file to', dst)
     }
   }
