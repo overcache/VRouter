@@ -134,6 +134,19 @@ class Utils {
       .send(`\n\n\n\n\n\n${command}\n\n`)
       .close()
   }
+
+  static changeRouteTo (ip) {
+    switch (platform) {
+      case 'darwin':
+        return Mac.changeRouteTo(ip)
+    }
+  }
+  static resetRoute () {
+    switch (platform) {
+      case 'darwin':
+        return Mac.resetRoute()
+    }
+  }
 }
 
 module.exports = {
