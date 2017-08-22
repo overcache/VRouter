@@ -12,7 +12,7 @@
         "hostonlyInfIP": "10.19.28.46",
         "bridgeINC": 2,
         "macAddress": "080027a8b841",
-        "socketFName": "vrouter.sock",
+        "socketFname": "vrouter.sock",
         "serialPort": 1,
         "imageUrl": "https://mirrors.tuna.tsinghua.edu.cn/openwrt/chaos_calmer/15.05.1/x86/64/openwrt-15.05.1-x86-64-combined-ext4.img.gz",
         "imageSha256": "be29223ee0caf3c5bdc3139e349890d4494a54a266a9d8dd1eb3f66877dc0e1b"
@@ -27,11 +27,14 @@
         {
             "active": true,
             "name": "vps",
-            "mode": "none",
+            "mode": "whitelist",
             "proxies": "ss",
             "relayUDP": false,
             "enableTunnelDns": true,
-            "selectedBL": {"gfwDomains":true, "extraBlackList":true},
+            "speedupServerSSH": false,
+            "dnsServer": "8.8.8.8:53",
+            "serverSSHPort": 22,
+            "selectedBL": {"gfwList":true, "extraBlackList":true},
             "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
             "shadowsocks": {
                 "server": "123.123.123.123",
@@ -49,11 +52,14 @@
             "proxies": "ssKt",
             "relayUDP": false,
             "enableTunnelDns": true,
-            "selectedBL": {"gfwDomains":true, "extraBlackList":true},
+            "dnsServer": "8.8.8.8:53",
+            "speedupServerSSH": false,
+            "serverSSHPort": 22,
+            "selectedBL": {"gfwList":true, "extraBlackList":true},
             "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
             "shadowsocks": {
                 "server": "123.123.123.123",
-                "server_port": "8989",
+                "server_port": 8989,
                 "password": "demo-paswd",
                 "timeout": 300,
                 "method": "chacha20",
@@ -61,7 +67,7 @@
             },
             "kcptun": {
                 "server": "123.123.123.123",
-                "server_port": "5555",
+                "server_port": 5555,
                 "key": "demo-secret",
                 "crypt": "aes-128",
                 "mode": "fast2",
@@ -75,11 +81,14 @@
             "proxies": "ssr",
             "relayUDP": false,
             "enableTunnelDns": true,
-            "selectedBL": {"gfwDomains":true, "extraBlackList":true},
+            "dnsServer": "8.8.8.8:53",
+            "speedupServerSSH": false,
+            "serverSSHPort": 22,
+            "selectedBL": {"gfwList":true, "extraBlackList":true},
             "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
             "shadowsocksr": {
                 "server": "123.123.123.123",
-                "server_port": "9999",
+                "server_port": 9999,
                 "password": "demo-paswd",
                 "timeout": 300,
                 "method": "chacha20",
@@ -130,7 +139,7 @@
         }
     },
     "firewallInfo": {
-        "ipsets": {
+        "ipset": {
             "blackSetName": "BLACKLIST",
             "whiteSetName": "WHITELIST",
             "lanSetName": "LAN"
@@ -145,7 +154,7 @@
             "extraBlackListFname": "extra-blacklist.txt"
         },
         "dnsmasqCustomCfgFname": "custom.conf",
-        "firewallFName": "firewall.user",
-        "ipsetsFName": "custom.ipset"
+        "firewallFname": "firewall.user",
+        "ipsetFname": "custom.ipset"
     }
 }

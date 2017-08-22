@@ -168,7 +168,7 @@ class VRouter extends Openwrt {
 
     await init({
       vmName: this.name,
-      socketFPath: path.join(this.cfgDirPath, this.config.virtualbox.socketFName),
+      socketFPath: path.join(this.cfgDirPath, this.config.virtualbox.socketFname),
       hostonlyInfIP: this.config.virtualbox.hostonlyInfIP,
       openwrtIP: this.ip,
       process: process,
@@ -191,7 +191,7 @@ class VRouter extends Openwrt {
     await this.manageService('cron', 'enable')
 
     process.emit('init', '更新软件源并安装必要软件包, 请稍候20-60秒')
-    await installPackage(path.join(this.cfgDirPath, this.config.virtualbox.socketFName))
+    await installPackage(path.join(this.cfgDirPath, this.config.virtualbox.socketFname))
     await Utils.wait(20000)
 
     const finished = await this.isInstallPackageFinish(4)
@@ -207,6 +207,9 @@ class VRouter extends Openwrt {
       shadowsocksr: path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz'),
       kcptun: path.join(__dirname, '..', 'third_party', 'kcptun.tar.gz')
     })
+
+    process.emit('init', '拷贝代理的管理脚本到虚拟机')
+    await this.scpProxiesServices(this.config.proxiesInfo, `/etc/${this.config.cfgDirName}`)
   }
 
   async isInstallPackageFinish (maxRetry = 4) {

@@ -1,6 +1,7 @@
 const { Client } = require('ssh2')
 const { Generator } = require('./generator.js')
 const path = require('path')
+const winston = require('winston')
 // const os = require('os')
 
 class Openwrt {
@@ -190,7 +191,8 @@ class Openwrt {
     const cmd = `${proxiesInfo[type].binName} -h | grep "shadowsocks-libev" | cut -d" " -f2`
     return this.execute(cmd)
   }
-  async isSsRunning (type = 'shadowsocks', proxiesInfo) {
+  async isSsRunning (proxies, proxiesInfo) {
+    const type = /ssr/ig.test(proxies) ? 'shadowsocksr' : 'shadowsocks'
     const cmd = `ps -w | grep "${proxiesInfo[type].binName} -[c] .*${proxiesInfo[type].cfgName}"`
     const output = await this.execute(cmd)
     return output.trim() !== ''
@@ -206,7 +208,8 @@ class Openwrt {
     return this.execute(cmd)
   }
 
-  async isTunnelDnsRunning (type = 'shadowsocks', proxiesInfo) {
+  async isTunnelDnsRunning (proxies, proxiesInfo) {
+    const type = /ssr/ig.test(proxies) ? 'shadowsocksr' : 'shadowsocks'
     const cmd = `ps -w| grep "${proxiesInfo.tunnelDns.binName[type]} -[c] .*${proxiesInfo.tunnelDns.cfgName}"`
     const output = await this.execute(cmd)
     return output.trim() !== ''
@@ -231,34 +234,107 @@ class Openwrt {
     return output.trim() !== ''
   }
 
-  // @param {object} targzFPaths: {shadowsocks: '', shadowsocksr: '', kcptun: ''}
+  /*
+   * @param {object} targzFPaths: {shadowsocks: '', shadowsocksr: '', kcptun: ''}
+   */
   async installProxies (targzFPaths) {
     await this.installSs(targzFPaths.shadowsocks)
     await this.installSsr(targzFPaths.shadowsocksr)
     await this.installKt(targzFPaths.kcptun)
   }
 
-  async setupProxies (profile, extraInfo, cfgDir) {
-    const cfgFiles = await Generator.genProxyCfg(profile, extraInfo)
-    console.log(cfgFiles)
-    const keys = Object.keys(cfgFiles)
-    for (let i = 0; i < keys.length; i++) {
-      const src = cfgFiles[keys[i]]
-      const dst = `${cfgDir}/${keys[i]}`
+  async scpProxiesCfgs (profile, proxiesInfo, remoteCfgDirPath) {
+    winston.info('active profile', profile)
+    const cfgFiles = await Generator.genProxiesCfgs(profile, proxiesInfo)
+    winston.debug('Generate cfg files', cfgFiles)
+    for (let i = 0; i < cfgFiles.length; i++) {
+      const src = cfgFiles[i]
+      const cfgName = path.basename(src)
+      const dst = `${remoteCfgDirPath}/${cfgName}`
       await this.scp(src, dst)
     }
   }
-  async setupIPset () {
-
+  async scpProxiesServices (profile, proxiesInfo, remoteCfgDirPath) {
+    const cfgFiles = await Generator.genServicesFiles(profile, proxiesInfo, remoteCfgDirPath)
+    winston.debug('Generate services files', cfgFiles)
+    for (let i = 0; i < cfgFiles.length; i++) {
+      const src = cfgFiles[i]
+      const cfgName = path.basename(src)
+      const dst = `/etc/init.d/${cfgName}`
+      await this.scp(src, dst)
+      winston.debug('scp service file to', dst)
+    }
   }
-  async setupFirewall () {
-
+  async toggleProxyService (proxy, proxiesInfo, action) {
+    const serviceName = proxiesInfo[proxy].serviceName
+    const servicePath = `/etc/init.d/${serviceName}`
+    winston.info(`${servicePath} ${action}`)
+    // ${servicePath} enable 执行的结果是1, 而不是常规的0
+    let cmd = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} start`
+    if (action === 'off') {
+      cmd = `${servicePath} disable; ${servicePath} stop`
+    }
+    await this.execute(cmd)
+    winston.debug('execute cmd in openwrt', cmd)
   }
-  async setupDnsmasq () {
-
+  async startProxiesServices (profile, proxiesInfo) {
+    const proxies = profile.proxies
+    const tunnelDnsAction = profile.enableTunnelDns ? 'on' : 'off'
+    const ktAction = /kt/ig.test(proxies) ? 'on' : 'off'
+    const ssAction = /^ss(kt)?$/ig.test(proxies) ? 'on' : 'off'
+    const ssrAction = /ssr/ig.test(proxies) ? 'on' : 'off'
+    await this.toggleProxyService('tunnelDns', proxiesInfo, tunnelDnsAction)
+    await this.toggleProxyService('kcptun', proxiesInfo, ktAction)
+    await this.toggleProxyService('shadowsocks', proxiesInfo, ssAction)
+    await this.toggleProxyService('shadowsocksr', proxiesInfo, ssrAction)
   }
-  async setupWatchdog () {
+  async setupWatchdog (profile, proxiesInfo, remoteCfgDirPath) {
+    const src = await Generator.genWatchdogFile(profile, proxiesInfo)
+    const fname = path.basename(src)
+    const dst = `${remoteCfgDirPath}/${fname}`
+    await this.scp(src, dst)
+    await this.execute(`chmod +x ${dst}`)
+    const cronContent = `* * * * * ${dst}`
+    await this.installCronJob(cronContent)
+  }
+  async setupProxies (profile, proxiesInfo, remoteCfgDirPath) {
+    await this.scpProxiesCfgs(profile, proxiesInfo, remoteCfgDirPath)
+    await this.scpProxiesServices(profile, proxiesInfo, remoteCfgDirPath)
+    await this.startProxiesServices(profile, proxiesInfo)
+    await this.setupWatchdog(profile, proxiesInfo, remoteCfgDirPath)
+  }
+  async setupIPset (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
+    const dirPath = path.join(__dirname, '..', 'config')
 
+    const src = await Generator.genIpsetFile(profile, proxiesInfo, firewallInfo, dirPath)
+    const dst = `${remoteCfgDirPath}/${firewallInfo.ipsetFname}`
+    await this.scp(src, dst)
+  }
+
+  // must setupIPset first. otherwise will occur errors: ipset xxx not exist
+  async setupIptables (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
+    const src = await Generator.genIptablesFile(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
+    const fname = path.basename(src)
+    const dst = `/etc/${fname}`
+    await this.scp(src, dst)
+    await this.manageService('firewall', 'restart')
+  }
+  async setupFirewall (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
+    await this.setupIPset(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
+    await this.setupIptables(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
+  }
+  async setupDnsmasq (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
+    const dirPath = path.join(__dirname, '..', 'config')
+    const src = await Generator.genDnsmasqCfgFile(profile, proxiesInfo, firewallInfo, dirPath)
+    const dst = `${remoteCfgDirPath}/${firewallInfo.dnsmasqCustomCfgFname}`
+    await this.scp(src, dst)
+
+    await this.manageService('dnsmasq', 'restart')
+  }
+  async applyProfile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir) {
+    await this.setupProxies(profile, proxiesInfo, remoteCfgDirPath)
+    await this.setupFirewall(profile, proxiesInfo, remoteCfgDirPath)
+    await this.setupDnsmasq(profile, proxiesInfo, firewallInfo, dnsmasqCfgDir)
   }
 }
 

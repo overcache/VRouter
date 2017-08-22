@@ -4,9 +4,7 @@ const path = require('path')
 const fs = require('fs-extra')
 const { expect } = require('chai')
 const { VRouter } = require('../js/vrouter.js')
-const { VBox } = require('../js/vbox.js')
 // const { Utils } = require('../js/utils.js')
-const { EventEmitter } = require('events')
 
 describe('Test Suite for vroute.js', function () {
   let vrouter = null
@@ -21,15 +19,17 @@ describe('Test Suite for vroute.js', function () {
     cfg.virtualbox.vmName = 'abcd'
     vrouter = new VRouter(cfg)
 
-    await fs.remove(path.join(__dirname, 'config')).catch()
-    await VBox.delete(vrouter.name)
-    await fs.remove(vrouter.cfgDirPath).catch()
-    await fs.copy(path.join(__dirname, '../config'), path.join(__dirname, 'config'))
-    const process = new EventEmitter()
-    process.on('init', info => console.log(info))
-    await vrouter.build(process)
-    await VBox.lockGUIConfig(vrouter.name, false)
-    await VBox.hide(vrouter.name, false)
+    // const { VBox } = require('../js/vbox.js')
+    // const { EventEmitter } = require('events')
+    // await fs.remove(path.join(__dirname, 'config')).catch()
+    // await VBox.delete(vrouter.name)
+    // await fs.remove(vrouter.cfgDirPath).catch()
+    // await fs.copy(path.join(__dirname, '../config'), path.join(__dirname, 'config'))
+    // const process = new EventEmitter()
+    // process.on('init', info => console.log(info))
+    // await vrouter.build(process)
+    // await VBox.lockGUIConfig(vrouter.name, false)
+    // await VBox.hide(vrouter.name, false)
   })
   it('#getIP(br-lan) should return 10.10.10.11', async function () {
     const ip = await vrouter.getIP('br-lan')
@@ -64,5 +64,43 @@ describe('Test Suite for vroute.js', function () {
   it('#getKtVersion should return 20170525', async function () {
     const version = await vrouter.getKtVersion(vrouter.config.proxiesInfo)
     expect(version).to.be.equal('20170525')
+  })
+  it('#setupProxies', async function () {
+    const activedProfile = vrouter.config.profiles.filter(profile => profile.active === true)[0]
+    const proxies = activedProfile.proxies
+    const proxiesInfo = vrouter.config.proxiesInfo
+    // await vrouter.scpProxiesCfgs(activedProfile, vrouter.config.proxiesInfo, '/etc/vrouter')
+    // await vrouter.scpProxiesServices(activedProfile, vrouter.config.proxiesInfo, '/etc/vrouter')
+    await vrouter.setupProxies(activedProfile, proxiesInfo, '/etc/vrouter')
+    if (activedProfile.enableTunnelDns) {
+      const b = await vrouter.isTunnelDnsRunning(proxies, proxiesInfo)
+      expect(b).to.be.true
+    }
+    if (/kt/ig.test(proxies)) {
+      const b = await vrouter.isKtRunning(proxiesInfo)
+      expect(b).to.be.true
+    }
+    const b = await vrouter.isSsRunning(proxies, proxiesInfo)
+    expect(b).to.be.true
+  })
+  it('#setupFirewall', async function () {
+    const activedProfile = vrouter.config.profiles.filter(profile => profile.active === true)[0]
+    const proxiesInfo = vrouter.config.proxiesInfo
+    const firewallInfo = vrouter.config.firewallInfo
+    await vrouter.setupFirewall(activedProfile, proxiesInfo, firewallInfo, '/etc/vrouter')
+  })
+  it('#setupDnsmasq', async function () {
+    this.timeout(50000)
+    const activedProfile = vrouter.config.profiles.filter(profile => profile.active === true)[0]
+    const proxiesInfo = vrouter.config.proxiesInfo
+    const firewallInfo = vrouter.config.firewallInfo
+    await vrouter.setupDnsmasq(activedProfile, proxiesInfo, firewallInfo, '/etc/dnsmasq.d')
+  })
+  it('#applyProfile', async function () {
+    this.timeout(50000)
+    const activedProfile = vrouter.config.profiles.filter(profile => profile.active === true)[0]
+    const proxiesInfo = vrouter.config.proxiesInfo
+    const firewallInfo = vrouter.config.firewallInfo
+    await vrouter.applyProfile(activedProfile, proxiesInfo, firewallInfo, 'etc/vrouter', '/etc/dnsmasq.d')
   })
 })
