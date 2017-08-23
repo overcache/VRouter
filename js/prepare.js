@@ -13,7 +13,7 @@ winston.configure({
   transports: [
     new (winston.transports.File)({
       filename: path.join(vrouter.config.host.configDir, 'vrouter.log'),
-      level: 'error'
+      level: 'info'
     }),
     new (winston.transports.Console)({
       level: 'debug'
