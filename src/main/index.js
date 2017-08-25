@@ -1,10 +1,11 @@
 'use strict'
 
 const { app, BrowserWindow, Menu } = require('electron')
-const path = require('path')
-const url = require('url')
 
 let win
+const winURL = process.env.NODE_ENV === 'development'
+  ? 'http://localhost:9080'
+  : `file://${__dirname}/index.html`
 
 function createWindow () {
   win = new BrowserWindow({
@@ -13,11 +14,8 @@ function createWindow () {
     minWidth: 569,
     minHeight: 744
   })
-  win.loadURL(url.format({
-    pathname: path.join(__dirname, 'html', 'prepare.html'),
-    protocol: 'file',
-    slashes: true
-  }))
+
+  win.loadURL(winURL)
 
   // win.webContents.openDevTools()
 
@@ -132,3 +130,23 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+/**
+ * Auto Updater
+ *
+ * Uncomment the following code below and install `electron-updater` to
+ * support auto updating. Code Signing with a valid certificate is required.
+ * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-electron-builder.html#auto-updating
+ */
+
+/*
+import { autoUpdater } from 'electron-updater'
+
+autoUpdater.on('update-downloaded', () => {
+  autoUpdater.quitAndInstall()
+})
+
+app.on('ready', () => {
+  if (process.env.NODE_ENV === 'production') autoUpdater.checkForUpdates()
+})
+ */

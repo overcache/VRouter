@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "mocha test",
-    "build": "build"
+    "build": "build",
+    "dev": "node .electron-vue/dev-runner.js"
   },
   "author": "icymind (icymindt@gmail.com)",
   "license": "GPL",
@@ -19,11 +20,22 @@
     "winston": "^2.3.1"
   },
   "devDependencies": {
-    "electron": "^1.7.6",
+    "cfonts": "^1.1.3",
     "chai": "^4.1.1",
     "chai-as-promised": "^7.1.1",
+    "chalk": "^2.1.0",
+    "copy-webpack-plugin": "^4.0.1",
+    "devtron": "^1.4.0",
+    "electron": "^1.7.6",
     "electron-builder": "^19.22.4",
-    "mocha": "^3.5.0"
+    "electron-debug": "^1.4.0",
+    "electron-devtools-installer": "^2.2.0",
+    "extract-text-webpack-plugin": "^3.0.0",
+    "html-webpack-plugin": "^2.30.1",
+    "mocha": "^3.5.0",
+    "webpack": "^3.5.5",
+    "webpack-dev-server": "^2.7.1",
+    "webpack-hot-middleware": "^2.18.2"
   },
   "build": {
     "appId": "com.icymind.vrouter",
