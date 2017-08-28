@@ -1,9 +1,12 @@
+import Openwrt from './openwrt.js'
+import Utils from './utils.js'
+import VBox from './vbox.js'
+// const { VBox } = require('./vbox.js')
+// const { Openwrt } = require('./openwrt.js')
+// const { Utils } = require('./utils.js')
 const path = require('path')
 const fs = require('fs-extra')
 const os = require('os')
-const { VBox } = require('./vbox.js')
-const { Openwrt } = require('./openwrt.js')
-const { Utils } = require('./utils.js')
 const winston = require('winston')
 winston.level = 'debug'
 
@@ -141,13 +144,13 @@ async function init (info) {
     bridgeINC: info.bridgeINC
   })
 
-  info.process.emit('init', '等待虚拟机启动, 请稍候30秒')
+  info.process.emit('init', '等待虚拟机启动, 请稍候 30 秒')
   await startVrouter({
     vmName: info.vmName,
     startType: 'gui'
   })
 
-  info.process.emit('init', '配置虚拟机网络地址, 请稍候15秒')
+  info.process.emit('init', '配置虚拟机网络地址, 请稍候 15 秒')
   await configLan({
     lanIP: info.lanIP,
     socketFPath: info.socketFPath
@@ -197,18 +200,18 @@ class VRouter extends Openwrt {
       process: process
     })
 
-    process.emit('init', '配置Dnsmasq')
+    process.emit('init', '配置 Dnsmasq')
     await this.configDnsmasq()
 
     process.emit('init', '修改虚拟机时区')
     await this.changeTZ(this.name)
 
-    process.emit('init', '打开tcp fast open')
+    process.emit('init', '打开 tcp fast open')
     await this.turnOnFastOpen()
 
     await this.manageService('cron', 'enable')
 
-    process.emit('init', '更新软件源并安装必要软件包, 请稍候20-60秒')
+    process.emit('init', '更新软件源并安装必要软件包, 请稍候 20-60 秒')
     await installPackage(path.join(this.cfgDirPath, this.config.virtualbox.socketFname))
     await Utils.wait(20000)
 
@@ -221,15 +224,19 @@ class VRouter extends Openwrt {
 
     process.emit('init', '安装代理软件包')
     await this.installProxies({
-      shadowsocks: path.join(__dirname, '..', 'third_party', 'shadowsocks.tar.gz'),
-      shadowsocksr: path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz'),
-      kcptun: path.join(__dirname, '..', 'third_party', 'kcptun.tar.gz')
+      // shadowsocks: path.join(__dirname, '..', 'third_party', 'shadowsocks.tar.gz'),
+      // shadowsocksr: path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz'),
+      // kcptun: path.join(__dirname, '..', 'third_party', 'kcptun.tar.gz')
+      /* global __static */
+      shadowsocks: path.join(__static, 'bin/shadowsocks.tar.gz'),
+      shadowsocksr: path.join(__static, 'bin/shadowsocksr.tar.gz'),
+      kcptun: path.join(__static, 'bin/kcptun.tar.gz')
     })
 
     process.emit('init', '拷贝代理的管理脚本到虚拟机')
     await this.scpProxiesServices(this.config.profiles[0], this.config.proxiesInfo, `/etc/${this.config.cfgDirName}`, true)
 
-    process.emit('init', '等待虚拟机重新启动')
+    process.emit('init', '等待虚拟机重新启动, 请稍候 30 秒')
     await this.powerOff()
     await startVrouter({
       vmName: this.name,
@@ -249,6 +256,15 @@ class VRouter extends Openwrt {
     return false
   }
 
+  getActivedProfile () {
+    const profiles = this.config.profiles
+    for (let i = 0; i < profiles.length; i++) {
+      if (profiles[i].active) {
+        return JSON.parse(JSON.stringify(profiles[i]))
+      }
+    }
+  }
+
   saveCfg2File () {
     const cfgPath = path.join(this.cfgDir, 'config.json')
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
@@ -262,6 +278,5 @@ class VRouter extends Openwrt {
     await super.applyProfile(activedProfile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir)
   }
 }
-module.exports = {
-  VRouter
-}
+
+export default VRouter

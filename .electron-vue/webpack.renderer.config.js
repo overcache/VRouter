@@ -33,7 +33,7 @@ let rendererConfig = {
       {
         test: /\.(js|vue)$/,
         enforce: 'pre',
-        exclude: /node_modules/,
+        exclude: [/node_modules/, /vendor/],
         use: {
           loader: 'eslint-loader',
           options: {
@@ -55,7 +55,7 @@ let rendererConfig = {
       {
         test: /\.js$/,
         use: 'babel-loader',
-        exclude: /node_modules/
+        exclude: [/node_modules/, /vendor/]
       },
       {
         test: /\.node$/,
@@ -123,16 +123,22 @@ let rendererConfig = {
         : false
     }),
     new webpack.HotModuleReplacementPlugin(),
-    new webpack.NoEmitOnErrorsPlugin()
+    new webpack.NoEmitOnErrorsPlugin(),
+    new webpack.ProvidePlugin({
+      $: 'jquery',
+      jQuery: 'jquery',
+      'window.jQuery': 'jquery'
+    })
   ],
   output: {
-    filename: '[name].js',
+    filename: '[name].bundle.js',
     libraryTarget: 'commonjs2',
     path: path.join(__dirname, '../dist/electron')
   },
   resolve: {
     alias: {
       '@': path.join(__dirname, '../src/renderer'),
+      'assets': path.join(__dirname, '../src/renderer/assets'),
       'vue$': 'vue/dist/vue.esm.js'
     },
     extensions: ['.js', '.vue', '.json', '.css', '.node']

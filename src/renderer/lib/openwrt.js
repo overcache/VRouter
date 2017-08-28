@@ -1,5 +1,6 @@
+import Generator from './generator.js'
 const { Client } = require('ssh2')
-const { Generator } = require('./generator.js')
+// const { Generator } = require('./generator.js')
 const path = require('path')
 const winston = require('winston')
 // const os = require('os')
@@ -352,6 +353,4 @@ class Openwrt {
   }
 }
 
-module.exports = {
-  Openwrt
-}
+export default Openwrt

@@ -1,3 +1,5 @@
+import Mac from './mac.js'
+// const { Mac } = require('./mac.js')
 const { URL } = require('url')
 const http = require('http')
 const https = require('https')
@@ -7,7 +9,6 @@ const fs = require('fs-extra')
 const dns = require('dns')
 const crypto = require('crypto')
 const zlib = require('zlib')
-const { Mac } = require('./mac.js')
 const NetcatClient = require('netcat').client
 const { exec } = require('child_process')
 const sudo = require('sudo-prompt')
@@ -141,14 +142,57 @@ class Utils {
         return Mac.changeRouteTo(ip)
     }
   }
+  static getCurrentDns () {
+    switch (platform) {
+      case 'darwin':
+        return Mac.getCurrentDns()
+    }
+  }
+  static getCurrentGateway () {
+    switch (platform) {
+      case 'darwin':
+        return Mac.getCurrentGateway()
+    }
+  }
   static resetRoute () {
     switch (platform) {
       case 'darwin':
         return Mac.resetRoute()
     }
   }
+  static getProxiesText (proxies) {
+    const dict = {
+      ss: 'Shadowsocks',
+      ssr: 'ShadowsocksR',
+      ssKt: 'Shadowsocks + Kcptun',
+      ssrKt: 'ShadowsocksR + Kcptun'
+    }
+    return dict[proxies]
+  }
+
+  static getModeText (mode) {
+    const dict = {
+      global: '全局模式',
+      whitelist: '绕过白名单',
+      blacklist: '仅代理黑名单',
+      none: '无代理'
+    }
+    return dict[mode]
+  }
+
+  static configureLog (fPath) {
+    const transports = []
+    transports.push(new (winston.transports.File)({
+      filename: fPath,
+      level: 'info'
+    }))
+    if (process.env.NODE_ENV === 'development') {
+      transports.push(new (winston.transports.Console)({
+        level: 'debug'
+      }))
+    }
+    winston.configure({ transports })
+  }
 }
 
-module.exports = {
-  Utils
-}
+export default Utils

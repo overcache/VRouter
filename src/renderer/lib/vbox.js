@@ -222,7 +222,8 @@ class VBox {
       infMatch = infPattern.exec(output)
     }
     const newInf = await VBox.createHostonlyInf()
-    return VBox.ipconfigHostonlyInf(newInf, ip, mask)
+    await VBox.ipconfigHostonlyInf(newInf, ip, mask)
+    return newInf
   }
 
   /*
@@ -262,6 +263,4 @@ class VBox {
   }
 }
 
-module.exports = {
-  VBox
-}
+export default VBox

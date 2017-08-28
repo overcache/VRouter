@@ -13,7 +13,8 @@ function execute (command) {
     })
   })
 }
-function sudoExec (cmd, options = {}) {
+
+function sudoExec (cmd, options = {name: 'VRouter'}) {
   return new Promise((resolve, reject) => {
     sudo.exec(cmd, options, (err, stdout, stderr) => {
       if (err) {
@@ -60,13 +61,13 @@ class Mac {
 
   static async getCurrentGateway () {
     const cmd = "/sbin/route -n get default | grep gateway | awk '{print $2}'"
-    return execute(cmd)
+    return execute(cmd).then(out => out.trim())
   }
   static async getCurrentDns () {
     const activeAdapter = await Mac.getActiveAdapter()
     const networkServiceName = await Mac.getOSXNetworkService(activeAdapter)
     const cmd = `/usr/sbin/networksetup -getdnsservers "${networkServiceName}"`
-    return execute(cmd)
+    return execute(cmd).then(out => out.trim())
   }
 
   static async changeRouteTo (ip) {
@@ -105,6 +106,4 @@ class Mac {
   }
 }
 
-module.exports = {
-  Mac
-}
+export default Mac

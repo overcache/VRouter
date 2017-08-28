@@ -512,6 +512,4 @@ class Generator {
   }
 }
 
-module.exports = {
-  Generator
-}
+export default Generator
