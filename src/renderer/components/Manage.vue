@@ -67,6 +67,7 @@ import ProfileEditor from './Manage/ProfileEditor'
 
 const path = require('path')
 const fs = require('fs-extra')
+const { shell } = require('electron')
 
 // let vueInstance = null
 const appDir = Utils.getAppDir()
@@ -158,9 +159,6 @@ export default {
       await this.getSystemInfo()
       this.activeLoader = false
     },
-    editExtraList: async function (type) {
-      console.log('editExtraList: ', type)
-    },
     getSystemInfo: async function () {
       this.systemInfo.currentGWIP = await Utils.getCurrentGateway()
       this.systemInfo.currentDnsIP = await Utils.getCurrentDns()
@@ -189,6 +187,10 @@ export default {
 
       this.proxiesInfo.enableKt = /kt/ig.test(this.activedProfile.proxies)
       this.proxiesInfo.isKtRunning = await vrouter.isKtRunning(proxiesInfo)
+    },
+    editExtraList: async function (type) {
+      type = type[0].toUpperCase() + type.toLowerCase().slice(1)
+      return shell.openItem(path.join(vrouter.cfgDirPath, vrouter.config.firewallInfo.lists[`extra${type}ListFname`]))
     },
     newProfile: function () {
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
@@ -253,10 +255,11 @@ export default {
       // 每三分钟检测一遍系统路由状态
       await this.getSystemInfo()
     }, 180000)
-    setTimeout(() => {
-      vrouter.config.profiles[0].active = false
-      vrouter.config.profiles[1].active = true
-    }, 3000)
+
+    // setTimeout(() => {
+    //   vrouter.config.profiles[0].active = false
+    //   vrouter.config.profiles[1].active = true
+    // }, 3000)
   }
 }
 </script>
