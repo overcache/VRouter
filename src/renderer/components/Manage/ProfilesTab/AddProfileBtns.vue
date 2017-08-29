@@ -8,7 +8,7 @@
         新建
       </div>
 
-      <div class="item" @click="bus.$emit('importProfile')">
+      <div class="item" @click="bus.$emit('openProfileImporter')">
         <i class="ui paste icon"></i>
         导入
       </div>

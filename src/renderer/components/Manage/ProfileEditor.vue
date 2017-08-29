@@ -1,5 +1,5 @@
 <template>
-  <div class="ui modal">
+  <div class="ui modal profile-editor">
 
     <!-- header -->
     <div class="header">
@@ -19,8 +19,8 @@
 
     <!-- actions -->
     <div class="ui actions">
-      <div class="ui button ok" @click="bus.$emit('editorSave')">保存</div>
-      <div class="ui button cancel" @click="bus.$emit('editorCancel')">取消</div>
+      <div class="ui button ok" @click="editorSave">保存</div>
+      <div class="ui button cancel" @click="editorCancel">取消</div>
     </div>
   </div>
 </template>
@@ -54,19 +54,25 @@ export default {
   watch: {
     showProfileEditor: function (value) {
       const action = value ? 'show' : 'hide'
-      $('.ui.modal').modal(action)
+      $('.ui.modal.profile-editor').modal(action)
     }
   },
   methods: {
+    editorSave: function () {
+      this.bus.$emit('editorSave')
+      $('.ui.modal.profile-editor').modal('hide')
+    },
+    editorCancel: function () {
+      this.bus.$emit('editorCancel')
+      $('.ui.modal.profile-editor').modal('hide')
+    }
   },
   mounted: function () {
-    $('.ui.modal').modal({
-      dimmerSetting: {
-        opacity: 0.3
-      },
+    $('.ui.modal.profile-editor').modal({
+      duration: 300,
       closable: false,
       inverted: true,
-      detachable: false
+      blurring: true
     })
     $('.ui.dropdown').dropdown()
   }
@@ -74,7 +80,7 @@ export default {
 </script>
 
 <style>
-.ui.modal {
+.ui.modal.profile-editor {
   padding: 30px;
 }
 </style>

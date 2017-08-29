@@ -51,6 +51,13 @@
       :bus="bus"
     >
     </profile-editor>
+
+    <profile-importer
+      :showProfileImporter="showProfileImporter"
+      :bus="bus"
+    >
+    </profile-importer>
+
   </div>
 </template>
 
@@ -64,6 +71,7 @@ import StatusTab from './Manage/StatusTab.vue'
 import ProfilesTab from './Manage/ProfilesTab.vue'
 import SystemTab from './Manage/SystemTab'
 import ProfileEditor from './Manage/ProfileEditor'
+import ProfileImporter from './Manage/ProfileImporter'
 
 const path = require('path')
 const fs = require('fs-extra')
@@ -81,7 +89,8 @@ export default {
     StatusTab,
     ProfilesTab,
     SystemTab,
-    ProfileEditor
+    ProfileEditor,
+    ProfileImporter
   },
   data: function () {
     return {
@@ -96,6 +105,7 @@ export default {
         name: 'New Profile'
       },
       showProfileEditor: false,
+      showProfileImporter: false,
       bus: bus,
       systemInfo: {
         // 为了和真实值一致, 这些值需要手动维护
@@ -201,6 +211,7 @@ export default {
     importProfile: function () {
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
       this.editingClone.index = -2
+      this.showProfileImporter = false
       this.showProfileEditor = true
       console.log('import profile')
     },
@@ -239,20 +250,21 @@ export default {
   async mounted () {
     // vueInstance = this
     this.bus.$on('editExtraList', this.editExtraList)
-
     this.bus.$on('newProfile', this.newProfile)
+    this.bus.$on('openProfileImporter', () => { this.showProfileImporter = true })
     this.bus.$on('importProfile', this.importProfile)
-
     this.bus.$on('editProfile', this.editProfile)
     this.bus.$on('applyProfile', this.applyProfile)
     this.bus.$on('deleteProfile', this.deleteProfile)
-
     this.bus.$on('editorCancel', () => { this.showProfileEditor = false })
     this.bus.$on('editorSave', this.editorSave)
+
     $('.tabular.menu .item').tab()
+
     this.getSystemInfo()
     await this.getVrouterInfo()
     await this.getProxiesInfo()
+
     setInterval(async () => {
       // 每三分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
       this.getSystemInfo()
