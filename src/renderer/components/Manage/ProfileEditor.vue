@@ -68,7 +68,11 @@ export default {
     }
   },
   mounted: function () {
+    const self = this
     $('.ui.modal.profile-editor').modal({
+      onHidden: function () {
+        self.bus.$emit('editorCancel')
+      },
       duration: 300,
       closable: false,
       inverted: true,

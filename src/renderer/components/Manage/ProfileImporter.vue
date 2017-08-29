@@ -28,7 +28,12 @@ export default {
     }
   },
   mounted: function () {
+    const self = this
     $('.ui.modal.profile-importer').modal({
+      onHidden: function () {
+        console.log('hide')
+        self.bus.$emit('importerCancel')
+      },
       duration: 300,
       closable: true,
       inverted: true,

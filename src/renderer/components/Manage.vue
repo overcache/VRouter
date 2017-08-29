@@ -252,6 +252,7 @@ export default {
     this.bus.$on('editExtraList', this.editExtraList)
     this.bus.$on('newProfile', this.newProfile)
     this.bus.$on('openProfileImporter', () => { this.showProfileImporter = true })
+    this.bus.$on('importerCancel', () => { this.showProfileImporter = false })
     this.bus.$on('importProfile', this.importProfile)
     this.bus.$on('editProfile', this.editProfile)
     this.bus.$on('applyProfile', this.applyProfile)

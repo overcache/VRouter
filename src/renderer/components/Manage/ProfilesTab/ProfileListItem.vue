@@ -1,5 +1,5 @@
 <template>
-  <div class="ui blurring message dimmable" :class="{positive: active}">
+  <div class="ui blurring message dimmable profile-list-item" :class="{positive: active}">
     <div class="ui dimmer">
       <div class="content">
         <div class="center">
@@ -99,7 +99,7 @@ export default {
 </script>
 
 <style>
-.ui.message {
-  margin: 15px 0 !important;
+.ui.message.profile-list-item {
+  margin: 15px 0;
 }
 </style>
