@@ -214,7 +214,9 @@ export default {
       this.activeLoader = true
       this.activedProfile.active = false
       this.profiles[index].active = true
+      // 耗时较长的原因在于重启dnsmasq, 设置ipset需要处理很多条目
       await vrouter.applyActivedProfile()
+      await this.getProxiesInfo()
       this.activeLoader = false
       console.log('apply profile', index)
       // todo: save to disk
@@ -252,8 +254,10 @@ export default {
     await this.getVrouterInfo()
     await this.getProxiesInfo()
     setInterval(async () => {
-      // 每三分钟检测一遍系统路由状态
-      await this.getSystemInfo()
+      // 每三分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
+      this.getSystemInfo()
+      await this.getVrouterInfo()
+      await this.getProxiesInfo()
     }, 180000)
 
     // setTimeout(() => {
