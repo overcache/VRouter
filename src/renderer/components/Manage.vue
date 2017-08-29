@@ -127,8 +127,7 @@ export default {
   },
   computed: {
     activedProfile: function () {
-      console.log('running activedProfile')
-      let profile = null
+      let profile = {}
       this.profiles.forEach(p => {
         if (p.active) {
           profile = p
@@ -209,13 +208,19 @@ export default {
       this.editingClone.index = index
       this.showProfileEditor = true
     },
-    applyProfile: function (index) {
+    applyProfile: async function (index) {
+      this.activeLoader = true
       this.activedProfile.active = false
       this.profiles[index].active = true
+      await vrouter.applyActivedProfile()
+      this.activeLoader = false
       console.log('apply profile', index)
+      // todo: save to disk
     },
     deleteProfile: function (index) {
       console.log('about to delete index: ', index)
+      this.profiles.splice(index, 1)
+      console.log('todo: save to disk')
     },
     editorSave: async function () {
       this.loaderText = 'Applying Profile'

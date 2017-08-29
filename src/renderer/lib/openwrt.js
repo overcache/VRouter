@@ -4,6 +4,8 @@ const { Client } = require('ssh2')
 const path = require('path')
 const winston = require('winston')
 // const os = require('os')
+// webpack var: __static
+/* global __static */
 
 class Openwrt {
   constructor (config) {
@@ -330,7 +332,8 @@ class Openwrt {
     await this.configProxiesWatchdog(profile, proxiesInfo, remoteCfgDirPath)
   }
   async scpIPsetFile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
-    const dirPath = path.join(__dirname, '..', 'config')
+    // const dirPath = path.join(__dirname, '..', 'config')
+    const dirPath = path.join(__static, 'config-templates')
 
     const src = await Generator.genIpsetFile(profile, proxiesInfo, firewallInfo, dirPath)
     const dst = `${remoteCfgDirPath}/${firewallInfo.ipsetFname}`
@@ -350,7 +353,8 @@ class Openwrt {
     await this.configIptables(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
   }
   async setupDnsmasq (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
-    const dirPath = path.join(__dirname, '..', 'config')
+    // const dirPath = path.join(__dirname, '..', 'config')
+    const dirPath = path.join(__static, 'config-templates')
     const src = await Generator.genDnsmasqCfgFile(profile, proxiesInfo, firewallInfo, dirPath)
     const dst = `${remoteCfgDirPath}/${firewallInfo.dnsmasqCustomCfgFname}`
     await this.scp(src, dst)

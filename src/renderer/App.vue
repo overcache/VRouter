@@ -9,6 +9,7 @@
 import '@/vendor/semantic.min.js'
 import Prepare from '@/components/Prepare'
 import Manage from '@/components/Manage'
+
 export default {
   name: 'vrouter',
   data () {

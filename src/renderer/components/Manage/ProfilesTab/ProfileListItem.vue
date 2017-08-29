@@ -3,15 +3,15 @@
     <div class="ui dimmer">
       <div class="content">
         <div class="center">
-          <div class="ui teal icon labeled button" @click="bus.$emit('applyProfile', index)">
+          <div class="ui teal icon labeled button" @click="applyHandler">
             <i class="ui check icon"></i>
             应用
           </div>
-          <div class="ui icon labeled button" @click="bus.$emit('editProfile', index)">
+          <div class="ui icon labeled button" @click="editHandler">
             <i class="ui write icon"></i>
             编辑
           </div>
-          <div class="ui red icon labeled button" @click="bus.$emit('deleteProfile', index)">
+          <div class="ui red icon labeled button" @click="deleteHandler">
             <i class="ui remove icon"></i>
             删除
           </div>
@@ -72,12 +72,27 @@ export default {
     }
   },
   methods: {
+    hideBtns: function () {
+      $('.ui.message').dimmer('hide')
+    },
+    editHandler: function () {
+      this.bus.$emit('editProfile', this.index)
+      this.hideBtns()
+    },
+    applyHandler: function () {
+      this.bus.$emit('applyProfile', this.index)
+      this.hideBtns()
+    },
+    deleteHandler: function () {
+      this.bus.$emit('deleteProfile', this.index)
+      this.hideBtns()
+    }
   },
   mounted: function () {
     $('.ui.message').dimmer({
       opacity: 0,
       on: 'hover',
-      duration: 10
+      duration: 100
     })
   }
 }

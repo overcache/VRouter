@@ -9,10 +9,10 @@ const winURL = process.env.NODE_ENV === 'development'
 
 function createWindow () {
   win = new BrowserWindow({
-    width: 569,
-    height: 744,
-    minWidth: 569,
-    minHeight: 744
+    width: 600,
+    height: 840,
+    minWidth: 600,
+    minHeight: 840
   })
 
   win.loadURL(winURL)
@@ -129,6 +129,11 @@ app.on('activate', () => {
   if (win === null) {
     createWindow()
   }
+})
+
+process.on('uncaughtException', function (err) {
+  // handle the error safely
+  console.log(err)
 })
 
 /**
