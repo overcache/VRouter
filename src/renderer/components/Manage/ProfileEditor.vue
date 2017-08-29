@@ -11,7 +11,7 @@
       <div class="ui form">
         <div class="field">
           <label>配置名称</label>
-          <input type="text" v-model="name">
+          <input type="text" v-model="editingClone.name">
         </div>
       </div>
       <!-- <mode-form></mode-form> -->
@@ -36,9 +36,6 @@ export default {
   components: {
     // ProxiesForm,
     ModeForm
-  },
-  data: function () {
-    return this.editingClone
   },
   computed: {
     header: function () {

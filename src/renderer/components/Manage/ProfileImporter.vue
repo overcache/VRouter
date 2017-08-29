@@ -31,7 +31,6 @@ export default {
     const self = this
     $('.ui.modal.profile-importer').modal({
       onHidden: function () {
-        console.log('hide')
         self.bus.$emit('importerCancel')
       },
       duration: 300,
