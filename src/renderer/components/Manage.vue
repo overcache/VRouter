@@ -285,7 +285,20 @@ export default {
 .ui.attached.segment {
   border: none !important;
 }
-.ui.item.menu > a.item.active {
+#app .ui.item.menu {
+  border-bottom: none;
+}
+#app .ui.item.menu > a.item {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 2px solid #E0E1E2;
+}
+#app .ui.item.menu > a.item.active {
   color: #00B5AD;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 3px solid #00B5AD;
 }
 </style>
