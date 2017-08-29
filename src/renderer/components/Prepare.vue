@@ -1,6 +1,11 @@
 <template>
   <div id="prepare">
-    <h2 class="ui header teal">checking Requirement...</h2>
+    <div class="ui icon message positive" v-for="step of steps">
+      <i class="check icon"></i>
+      <div class="content">
+        <div class="header">{{ step}}</div>
+      </div>
+    </div>
     <ui-modal v-bind:info="modalInfo"></ui-modal>
   </div>
 </template>
@@ -117,7 +122,8 @@ export default {
         closable: true
       },
       vrouter: {},
-      vmName: ''
+      vmName: '',
+      steps: []
     }
   },
   components: {
@@ -131,15 +137,18 @@ export default {
         this.modalInfo = installVBOrNotModal
         return
       }
+      this.steps.push('check virualbox installation')
       if (!(await VBox.isVmExisted(this.vmName))) {
         winston.info('no vrouter vm detected')
         this.modalInfo = buildVmOrNotModal
         return
       }
+      this.steps.push('check virtual machine')
       if (!(await VBox.isVmRunning(this.vmName))) {
         winston.info('vrouter vm not running')
         return this.startVm()
       }
+      this.steps.push('check virtual machine runing state')
       this.$emit('prepared')
       // emit done
     },
@@ -187,13 +196,17 @@ export default {
   async mounted () {
     vueInstance = this
     const appDir = Utils.getAppDir()
-    this.vrouter = new VRouter(fs.readJsonSync(path.join(__static, '/config-templates/config.json')))
-    this.vmName = this.vrouter.config.virtualbox.vmName
-    Utils.configureLog(path.join(appDir, this.vmName + '.log'))
+    this.vrouter = new VRouter(fs.readJsonSync(await VRouter.copyOrUpgradeCfg()))
+    this.vmName = this.vrouter.name
+    Utils.configureLog(path.join(appDir, 'vrouter.log'))
     await this.checkRequirement()
   }
 }
 </script>
 
 <style>
+#prepare .list {
+  list-style: none !important;
+  list-style-type: none;
+}
 </style>

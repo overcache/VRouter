@@ -20,7 +20,7 @@ class Openwrt {
    * @param {int} timeout 连接前的等待时间(毫秒)
    * @return {promise} 当连接成功后resovle
    */
-  connect (heartbeat = 300000, timeout = 3000) {
+  connect (heartbeat = 0, timeout = 3000) {
     this.conn = new Client()
     return new Promise((resolve, reject) => {
       this.conn.on('ready', () => {
@@ -53,7 +53,8 @@ class Openwrt {
    * @param {string} cmd 待执行命令
    * @return {promise}
    */
-  async execute (cmd) {
+  async execute (cmd, retry = false) {
+    const self = this
     if (this.conn === null) {
       winston.info('connect to openwrt by ssh')
       await this.connect()
@@ -62,8 +63,18 @@ class Openwrt {
       '/etc/init.d/firewall restart'
     ]
     return new Promise((resolve, reject) => {
-      this.conn.exec(cmd, (err, stream) => {
-        if (err) reject(err)
+      this.conn.exec(cmd, async (err, stream) => {
+        if (err) {
+          console.log(err)
+          console.log(this.conn)
+          if (!retry) {
+            const output = await self.execute(cmd, true)
+            return resolve(output.toString().trim())
+          } else {
+            winston.error(`execute cmd: ${cmd} error. ${err}`)
+            reject(err)
+          }
+        }
         let stdout = ''
         let stderr = ''
         stream.on('data', (data) => {

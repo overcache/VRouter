@@ -27,6 +27,7 @@
     "ssh2": "^0.5.5",
     "sudo-prompt": "^7.1.1",
     "vue": "^2.4.2",
+    "vue-async-computed": "^3.3.0",
     "winston": "^2.3.1"
   },
   "devDependencies": {

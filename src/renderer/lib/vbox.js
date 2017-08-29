@@ -199,7 +199,7 @@ class VBox {
   static async getAssignedBridgeService (name, nic = '2') {
     const vmInfo = await VBox.getVmInfo(name)
     const pattern = new RegExp(String.raw`^bridgeadapter${nic}=(.*)$`, 'mg')
-    return pattern.exec(vmInfo)[1]
+    return pattern.exec(vmInfo)[1].replace(/["']/ig, '')
   }
 
   /*

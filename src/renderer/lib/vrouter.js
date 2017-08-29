@@ -180,6 +180,9 @@ class VRouter extends Openwrt {
     await Utils.wait(8000)
   }
   async build (process) {
+    await this.copyTemplatesIfNotExist()
+
+    process.emit('init', '下载 openwrt 镜像, 创建虚拟机')
     await create({
       vmName: this.name,
       imageUrl: this.config.virtualbox.imageUrl,
@@ -222,7 +225,7 @@ class VRouter extends Openwrt {
     }
     process.emit('init', '必要软件包安装完成')
 
-    process.emit('init', '安装代理软件包')
+    process.emit('init', '离线安装代理软件包')
     await this.installProxies({
       // shadowsocks: path.join(__dirname, '..', 'third_party', 'shadowsocks.tar.gz'),
       // shadowsocksr: path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz'),
@@ -233,7 +236,7 @@ class VRouter extends Openwrt {
       kcptun: path.join(__static, 'bin/kcptun.tar.gz')
     })
 
-    process.emit('init', '拷贝代理的管理脚本到虚拟机')
+    process.emit('init', '拷贝管理脚本到虚拟机')
     await this.scpProxiesServices(this.config.profiles[0], this.config.proxiesInfo, `/etc/${this.config.cfgDirName}`, true)
 
     process.emit('init', '等待虚拟机重新启动, 请稍候 30 秒')
@@ -256,13 +259,13 @@ class VRouter extends Openwrt {
     return false
   }
 
-  getActivedProfile () {
-    const profiles = this.config.profiles
-    for (let i = 0; i < profiles.length; i++) {
-      if (profiles[i].active) {
-        return JSON.parse(JSON.stringify(profiles[i]))
-      }
-    }
+  async copyTemplatesIfNotExist () {
+    const templatesDir = path.join(__static, 'config-templates')
+    const dst = this.cfgDirPath
+    await fs.copy(templatesDir, dst, {
+      overwrite: false,
+      errorOnExist: false
+    })
   }
 
   saveCfg2File () {
@@ -276,6 +279,20 @@ class VRouter extends Openwrt {
     const remoteCfgDirPath = path.join('/etc', this.config.cfgDirName)
     const dnsmasqCfgDir = '/etc/dnsmasq.d'
     await super.applyProfile(activedProfile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir)
+  }
+
+  static async copyOrUpgradeCfg () {
+    const src = path.join(__static, 'config-templates', 'config.json')
+    const dst = path.join(Utils.getAppDir(), 'vrouter', 'config.json')
+    try {
+      await fs.stat(dst)
+      console.log('need to upgrade')
+      // todo: fix
+      await fs.copy(src, dst)
+    } catch (error) {
+      await fs.copy(src, dst)
+    }
+    return dst
   }
 }
 

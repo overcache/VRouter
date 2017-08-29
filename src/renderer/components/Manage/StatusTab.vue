@@ -1,7 +1,7 @@
 <template>
   <div>
     <div id="logo">
-      <img src="./Status/logo.png" alt="logo">
+      <img src="./StatusTab/logo.png" alt="logo">
     </div>
 
     <div id="demonstration" class="ui message">
@@ -30,7 +30,7 @@
       </div>
     </div>
 
-    <div class="ui labeled icon button right floated" :class="[routing ? 'red' : 'teal']" @click="$emit('toggle')">
+    <div class="ui labeled icon button right floated" :class="[routing ? 'red' : 'teal']" @click="$emit('toggleRouting')">
       <i class="icon" :class="[routing ? 'pause' : 'play']"></i>
       {{ routing ? '暂停' : '启用' }}
     </div>
@@ -40,9 +40,7 @@
 <script>
 export default {
   name: 'status-tab',
-  props: ['routing', 'proxies', 'mode'],
-  methods: {
-  }
+  props: ['routing', 'proxies', 'mode']
 }
 </script>
 
