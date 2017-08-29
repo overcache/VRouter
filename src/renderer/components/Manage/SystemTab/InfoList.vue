@@ -21,6 +21,6 @@ export default {
 
 <style lang="css">
 .info-list {
-  margin: 20px 0;
+  margin-bottom: 20px;
 }
 </style>

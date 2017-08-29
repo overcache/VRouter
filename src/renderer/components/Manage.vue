@@ -286,6 +286,7 @@ export default {
   border: none !important;
 }
 #app .ui.item.menu {
+  margin-bottom: 20px !important;
   border-bottom: none;
 }
 #app .ui.item.menu > a.item {
