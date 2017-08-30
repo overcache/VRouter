@@ -2,8 +2,9 @@
 <div class="ui modal profile-importer">
   <div class="ui top left attached label">导入URI</div>
   <div class="ui fluid input">
-    <input type="text">
+    <input type="text" placeholder="ss://YWVzLTEyOC1nY206dGVzdA==@192.168.100.1:8888#Example1">
   </div>
+  <div class="ui pointing label teal">支持 shadowsocks[r] 的<a class="ui red" href="https://shadowsocks.org/en/config/quick-guide.html">原始格式</a>以及<a href="https://shadowsocks.org/en/spec/SIP002-URI-Scheme.html"> SIP002 </a>格式</div>
   <div class="ui divider hidden"></div>
   <div class="ui button negative right floated" @click="cancelImport">取消</div>
   <div class="ui button teal right floated" @click="importProfile">导入</div>

@@ -276,6 +276,11 @@ export default {
     setTimeout(() => {
       this.showProfileEditor = true
     }, 0)
+
+    $(document).on('click', 'a[href^="http"]', function (event) {
+      event.preventDefault()
+      shell.openExternal(this.href)
+    })
   }
 }
 </script>
