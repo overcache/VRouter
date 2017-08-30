@@ -75,7 +75,6 @@ async function getSsCfgFrom (profile, proxiesInfo) {
   if (profile.proxies === 'ssKt') {
     cfg.server = '127.0.0.1'
     cfg.server_port = proxiesInfo.kcptun.localPort
-    cfg.timeout = 50
   } else {
     cfg.server = await Utils.resolveDomain(cfg.server)
   }
@@ -108,7 +107,6 @@ async function getSsrCfgFrom (profile, proxiesInfo) {
   if (profile.proxies === 'ssrKt') {
     cfg.server = '127.0.0.1'
     cfg['server_port'] = proxiesInfo.kcptun.localPort
-    cfg.timeout = 50
   } else {
     cfg.server = await Utils.resolveDomain(cfg.server)
   }
@@ -123,7 +121,6 @@ async function getTunnelDnsCfgFrom (profile, proxiesInfo) {
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
-    cfg.timeout = 300
     cfg.server_port = profile[type].server_port
   }
   cfg.local_port = proxiesInfo.tunnelDns.localPort
@@ -166,7 +163,6 @@ async function getRelayUDPCfgFrom (profile, proxiesInfo) {
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
-    cfg.timeout = 300
     cfg.server_port = profile[type].server_port
   }
   cfg.local_port = proxiesInfo.relayUDP.localPort
