@@ -77,11 +77,12 @@ import ProfileImporter from './Manage/ProfileImporter'
 const path = require('path')
 const fs = require('fs-extra')
 const { shell } = require('electron')
+const winston = require('winston')
 
 // let vueInstance = null
 const appDir = Utils.getAppDir()
 const vrouter = new VRouter(fs.readJsonSync(path.join(appDir, 'vrouter', 'config.json')))
-Utils.configureLog(path.join(vrouter.cfgDirPath, vrouter.name + '.log'))
+Utils.configureLog(path.join(vrouter.cfgDirPath, 'vrouter.log'))
 const bus = new Vue()
 
 const templateProfile = {
@@ -251,7 +252,6 @@ export default {
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
       this.editingClone.index = -1
       this.showProfileEditor = true
-      console.log('new profile')
     },
     importProfile: function (profile) {
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
@@ -274,13 +274,12 @@ export default {
       await vrouter.applyActivedProfile()
       await this.getProxiesInfo()
       this.activeLoader = false
-      console.log('apply profile', index)
-      // todo: save to disk
+      winston.info(`apply profile: ${this.activedProfile.name}`)
     },
-    deleteProfile: function (index) {
+    deleteProfile: async function (index) {
       console.log('about to delete index: ', index)
       this.profiles.splice(index, 1)
-      console.log('todo: save to disk')
+      await vrouter.saveCfg2File()
     },
     editorSave: async function (profile) {
       // 子组件传回的 profile 对象, 是 this.editingClone 的深度拷贝
@@ -294,17 +293,17 @@ export default {
       } else {
         this.profiles.push(profile)
       }
+      winston.info(`save profile: ${profile.name} to disk`)
+      await vrouter.saveCfg2File()
 
       if (profile.active) {
         this.loaderText = 'Applying Profile'
         this.activeLoader = true
         await vrouter.applyActivedProfile()
         this.activeLoader = false
-        // 恢复 loader 提示
+        winston.info(`apply editting profile: ${this.activedProfile.name}`)
         this.loaderText = 'Loading'
       }
-      // console.log('save profile', profile)
-      // await Utils.wait(3000)
     }
   },
   async mounted () {

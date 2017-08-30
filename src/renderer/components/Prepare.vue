@@ -195,10 +195,9 @@ export default {
   },
   async mounted () {
     vueInstance = this
-    const appDir = Utils.getAppDir()
     this.vrouter = new VRouter(fs.readJsonSync(await VRouter.copyOrUpgradeCfg()))
     this.vmName = this.vrouter.name
-    Utils.configureLog(path.join(appDir, 'vrouter.log'))
+    Utils.configureLog(path.join(this.vrouter.cfgDirPath, 'vrouter.log'))
     await this.checkRequirement()
   }
 }
