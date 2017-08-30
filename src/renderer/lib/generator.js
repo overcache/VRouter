@@ -204,10 +204,12 @@ async function genProxyCfgHelper (proxy, profile, proxiesInfo) {
 
 async function genServiceFileHelper (proxy, proxies, proxiesInfo, remoteCfgDirPath) {
   winston.debug('genServiceFileHelper, proxy', proxy)
-  const serviceName = proxiesInfo[proxy].serviceName
+  let serviceName = proxiesInfo[proxy].serviceName
   let binName = proxiesInfo[proxy].binName
-  if (proxy === 'tunnelDns' || proxy === 'relayUDP') {
+  // if (proxy === 'tunnelDns' || proxy === 'relayUDP') {
+  if (/^(tunnelDns|relayUDP)$/ig.test(proxy)) {
     binName = /ssr/ig.test(proxies) ? binName.shadowsocksr : binName.shadowsocks
+    serviceName = /ssr/ig.test(proxies) ? serviceName.shadowsocksr : serviceName.shadowsocks
   }
   const binPath = `/usr/bin/${binName}`
   const cfgPath = `${remoteCfgDirPath}/${proxiesInfo[proxy].cfgName}`
@@ -233,11 +235,12 @@ async function genServiceFileHelper (proxy, proxies, proxiesInfo, remoteCfgDirPa
 }
 function genWatchdogFileHelper (proxy, proxies, proxiesInfo) {
   let binName = proxiesInfo[proxy].binName
-  if (proxy === 'tunnelDns' || proxy === 'relayUDP') {
+  let serviceName = proxiesInfo[proxy].serviceName
+  if (/^(tunnelDns|relayUDP)$/ig.test(proxies)) {
     binName = /ssr/ig.test(proxies) ? binName.shadowsocksr : binName.shadowsocks
+    serviceName = /ssr/ig.test(proxies) ? serviceName.shadowsocksr : serviceName.shadowsocks
   }
   const cfgName = proxiesInfo[proxy].cfgName
-  const serviceName = proxiesInfo[proxy].serviceName
 
   const script = String.raw`
     output=$(ps -w| grep "${binName} -[c] .*${cfgName}")
@@ -332,10 +335,12 @@ class Generator {
     const cfgFiles = []
     const proxies = profile.proxies
     if (scpAllService || profile.enableTunnelDns) {
-      cfgFiles.push(await genServiceFileHelper('tunnelDns', proxies, proxiesInfo, remoteCfgDirPath))
+      cfgFiles.push(await genServiceFileHelper('tunnelDns', 'ss', proxiesInfo, remoteCfgDirPath))
+      cfgFiles.push(await genServiceFileHelper('tunnelDns', 'ssr', proxiesInfo, remoteCfgDirPath))
     }
     if (scpAllService || profile.enableRelayUDP) {
-      cfgFiles.push(await genServiceFileHelper('relayUDP', proxies, proxiesInfo, remoteCfgDirPath))
+      cfgFiles.push(await genServiceFileHelper('relayUDP', 'ss', proxiesInfo, remoteCfgDirPath))
+      cfgFiles.push(await genServiceFileHelper('relayUDP', 'ssr', proxiesInfo, remoteCfgDirPath))
     }
     if (scpAllService || /kt/ig.test(proxies)) {
       cfgFiles.push(await genServiceFileHelper('kcptun', proxies, proxiesInfo, remoteCfgDirPath))

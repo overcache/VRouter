@@ -292,30 +292,68 @@ class Openwrt {
       winston.debug('scp service file to', dst)
     }
   }
-  async toggleProxyService (proxy, proxiesInfo, action) {
-    const serviceName = proxiesInfo[proxy].serviceName
+  async toggleSpecialService (proxy, proxies, proxiesInfo, tunnelDnsAction) {
+    // tunnelDns 和 relayUDP 是两种特殊的情况.
+    // 如果action是off, 那么要将/etc/init.d/tunnelDns, /etc/init.d/tunnelDnsR都关闭
+    // 如果action是on, 那么打开一个的同时要关闭另一个.
+    const serviceName = proxiesInfo[proxy].serviceName.shadowsocks
+    const servicePath = `/etc/init.d/${serviceName}`
+    const serviceStop = `${servicePath} disable; ${servicePath} stop;`
+    const serviceStart = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} start;`
+
+    const serviceNameR = proxiesInfo[proxy].serviceName.shadowsocksr
+    const servicePathR = `/etc/init.d/${serviceNameR}`
+    const serviceStopR = `${servicePathR} disable; ${servicePathR} stop;`
+    const serviceStartR = `chmod +x ${servicePathR} && ${servicePathR} enable; ${servicePathR} start;`
+
+    if (tunnelDnsAction === 'off') {
+      let cmd = `${serviceStop}${serviceStopR}`
+      return this.execute(cmd)
+    }
+
+    if (/ssr/ig.test(proxies)) {
+      let cmd = `${serviceStop}${serviceStartR}`
+      return this.execute(cmd)
+    } else {
+      let cmd = `${serviceStopR}${serviceStart}`
+      return this.execute(cmd)
+    }
+  }
+  async toggleProxyService (proxy, proxies, proxiesInfo, action) {
+    let serviceName = proxiesInfo[proxy].serviceName
     const servicePath = `/etc/init.d/${serviceName}`
     winston.info(`${servicePath} ${action}`)
+
     // ${servicePath} enable 执行的结果是1, 而不是常规的0
-    let cmd = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} start`
+    const startCmd = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} start`
+    const stopCmd = `${servicePath} disable; ${servicePath} stop`
     if (action === 'off') {
-      cmd = `${servicePath} disable; ${servicePath} stop`
+      return this.execute(stopCmd)
     }
-    await this.execute(cmd)
-    winston.debug('execute cmd in openwrt', cmd)
+    return this.execute(startCmd)
   }
   async startProxiesServices (profile, proxiesInfo) {
     const proxies = profile.proxies
     const tunnelDnsAction = profile.enableTunnelDns ? 'on' : 'off'
     const relayUDPAction = profile.enableRelayUDP ? 'on' : 'off'
     const ktAction = /kt/ig.test(proxies) ? 'on' : 'off'
-    const ssAction = /^ss(kt)?$/ig.test(proxies) ? 'on' : 'off'
-    const ssrAction = /ssr/ig.test(proxies) ? 'on' : 'off'
-    await this.toggleProxyService('tunnelDns', proxiesInfo, tunnelDnsAction)
-    await this.toggleProxyService('relayUDP', proxiesInfo, relayUDPAction)
-    await this.toggleProxyService('kcptun', proxiesInfo, ktAction)
-    await this.toggleProxyService('shadowsocks', proxiesInfo, ssAction)
-    await this.toggleProxyService('shadowsocksr', proxiesInfo, ssrAction)
+    // const ssAction = /^(ss|ssKt)$/ig.test(proxies) ? 'on' : 'off'
+    // const ssrAction = /ssr/ig.test(proxies) ? 'on' : 'off'
+    await this.toggleSpecialService('tunnelDns', proxies, proxiesInfo, tunnelDnsAction)
+    await this.toggleSpecialService('relayUDP', proxies, proxiesInfo, relayUDPAction)
+    await this.toggleProxyService('kcptun', proxies, proxiesInfo, ktAction)
+
+    // because ss/ssr listen at same port(1010)
+    // make sure stop another service first. otherwise the second one can not be started
+    if (/ssr/ig.test(proxies)) {
+      // ssr profile
+      await this.toggleProxyService('shadowsocks', proxies, proxiesInfo, 'off')
+      await this.toggleProxyService('shadowsocksr', proxies, proxiesInfo, 'on')
+    } else {
+      // ss profile
+      await this.toggleProxyService('shadowsocksr', proxies, proxiesInfo, 'off')
+      await this.toggleProxyService('shadowsocks', proxies, proxiesInfo, 'on')
+    }
   }
   async configProxiesWatchdog (profile, proxiesInfo, remoteCfgDirPath) {
     const src = await Generator.genWatchdogFile(profile, proxiesInfo)

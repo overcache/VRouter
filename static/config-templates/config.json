@@ -126,7 +126,10 @@
                 "shadowsocksr": "ssr-tunnel"
             },
             "cfgName": "tunnel-dns.json",
-            "serviceName": "tunnelDns",
+            "serviceName": {
+                "shadowsocks": "tunnelDns",
+                "shadowsocksr": "tunnelDnsR"
+            },
             "localPort": 1030
         },
         "relayUDP": {
@@ -135,7 +138,10 @@
                 "shadowsocksr": "ssr-redir-udp"
             },
             "cfgName": "relay-udp.json",
-            "serviceName": "relayUDP",
+            "serviceName": {
+                "shadowsocks": "relayUDP",
+                "shadowsocksr": "relayUDPR"
+            },
             "localPort": 1040
         }
     },
