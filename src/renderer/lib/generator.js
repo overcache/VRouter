@@ -59,7 +59,7 @@ async function genDnsmasqHelper (fPath, dnsServer, ipsetName) {
  * @param {object} profile 配置信息
  * @param {object} proxiesInfo: {shadowsocks, shadowsocksr, kcptun, tunnelDns} 各代理的端口信息
  */
-function getSsCfgFrom (profile, proxiesInfo) {
+async function getSsCfgFrom (profile, proxiesInfo) {
   const data = profile.shadowsocks
   const cfg = {
     'server': data.server,
@@ -76,11 +76,13 @@ function getSsCfgFrom (profile, proxiesInfo) {
     cfg.server = '127.0.0.1'
     cfg.server_port = proxiesInfo.kcptun.localPort
     cfg.timeout = 50
+  } else {
+    cfg.server = await Utils.resolveDomain(cfg.server)
   }
   return cfg
 }
 
-function getSsrCfgFrom (profile, proxiesInfo) {
+async function getSsrCfgFrom (profile, proxiesInfo) {
   const data = profile.shadowsocksr
   const cfg = {
     'server': data.server,
@@ -107,27 +109,30 @@ function getSsrCfgFrom (profile, proxiesInfo) {
     cfg.server = '127.0.0.1'
     cfg['server_port'] = proxiesInfo.kcptun.localPort
     cfg.timeout = 50
+  } else {
+    cfg.server = await Utils.resolveDomain(cfg.server)
   }
   return cfg
 }
 
-function getTunnelDnsCfgFrom (profile, proxiesInfo) {
+async function getTunnelDnsCfgFrom (profile, proxiesInfo) {
   const cfg = /ssr/ig.test(profile.proxies)
-    ? getSsrCfgFrom(profile, proxiesInfo)
-    : getSsCfgFrom(profile, proxiesInfo)
+    ? await getSsrCfgFrom(profile, proxiesInfo)
+    : await getSsCfgFrom(profile, proxiesInfo)
 
   if (/kt/ig.test(profile.proxies)) {
-    cfg.server = profile.kcptun.server
+    cfg.server = await Utils.resolveDomain(profile.kcptun.server)
   }
   cfg.local_port = proxiesInfo.tunnelDns.localPort
   cfg.mode = 'udp_only'
   cfg.tunnel_address = profile.dnsServer
   return cfg
 }
-function getKtCfgFrom (profile, proxiesInfo) {
+async function getKtCfgFrom (profile, proxiesInfo) {
   const data = profile.kcptun
+  const serverIP = await Utils.resolveDomain(data.server)
   const cfg = {
-    'remoteaddr': `${data.server}:${data.server_port}`,
+    'remoteaddr': `${serverIP}:${data.server_port}`,
     'localaddr': `:${proxiesInfo.kcptun.localPort}`,
     'key': data.key,
     'crypt': data.crypt,
@@ -150,13 +155,13 @@ function getKtCfgFrom (profile, proxiesInfo) {
   })
   return cfg
 }
-function getRelayUDPCfgFrom (profile, proxiesInfo) {
+async function getRelayUDPCfgFrom (profile, proxiesInfo) {
   const cfg = /ssr/ig.test(profile.proxies)
-    ? getSsrCfgFrom(profile, proxiesInfo)
-    : getSsCfgFrom(profile, proxiesInfo)
+    ? await getSsrCfgFrom(profile, proxiesInfo)
+    : await getSsCfgFrom(profile, proxiesInfo)
 
   if (/kt/ig.test(profile.proxies)) {
-    cfg.server = profile.kcptun.server
+    cfg.server = await Utils.resolveDomain(profile.kcptun.server)
   }
   cfg.local_port = proxiesInfo.relayUDP.localPort
   cfg.mode = 'udp_only'
@@ -189,7 +194,7 @@ async function genProxyCfgHelper (proxy, profile, proxiesInfo) {
       func = getRelayUDPCfgFrom
       break
   }
-  const data = func(profile, proxiesInfo)
+  const data = await func(profile, proxiesInfo)
   winston.debug('get proxy config from profile', data)
   await fs.writeJson(tempFPath, data, {spaces: 2})
   return tempFPath
@@ -377,8 +382,6 @@ class Generator {
       const pattern = /\d+.\d+.\d+.\d+/g
       let ip = ips[i]
       if (!pattern.test(ip)) {
-        winston.debug(`about to resolveDomain: ${ip}`)
-        winston.debug(`Utils: ${Utils}`)
         ip = await Utils.resolveDomain(ips[i])
       }
       contents.push(genFWRulesHelper(`-d ${ip} -j RETURN`))

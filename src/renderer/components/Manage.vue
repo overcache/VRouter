@@ -277,7 +277,6 @@ export default {
       winston.info(`apply profile: ${this.activedProfile.name}`)
     },
     deleteProfile: async function (index) {
-      console.log('about to delete index: ', index)
       this.profiles.splice(index, 1)
       await vrouter.saveCfg2File()
     },

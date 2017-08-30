@@ -28,7 +28,6 @@ export default {
     EditExtraListBtns
   },
   mounted: function () {
-    console.log(this.profiles)
   }
 }
 </script>

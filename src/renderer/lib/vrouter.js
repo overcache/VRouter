@@ -270,6 +270,7 @@ class VRouter extends Openwrt {
 
   saveCfg2File () {
     const cfgPath = path.join(this.cfgDirPath, 'config.json')
+    winston.debug(`about to save config to ${cfgPath}`)
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
   async applyActivedProfile () {

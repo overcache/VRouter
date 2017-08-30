@@ -149,7 +149,9 @@ function parseSsSIP002URI (uri, templateProfile) {
       }
     })
     profile.kcptun.server = profile.shadowsocks.server
-    profile.kcptun.port = profile.kcptun.port || profile.shadowsocks.server_port
+    profile.kcptun.server_port = profile.shadowsocks.server_port
+    // 用ss+kt代理时, 也要填ss的服务器端口号, 因为tunnelDNS/relayUDP都需要用
+    profile.shadowsocks.server_port = 0
     if (others !== '') {
       profile.kcptun.others = others
     }
