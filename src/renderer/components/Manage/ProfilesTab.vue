@@ -1,7 +1,5 @@
 <template>
-  <div>
-
-
+  <div id="profiles-tab">
     <profile-list-item
       v-for="(item, index) in profiles"
       :profile="item"
@@ -34,3 +32,9 @@ export default {
   }
 }
 </script>
+
+<style>
+#profiles-tab {
+  padding-bottom: 60px;
+}
+</style>
