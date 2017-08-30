@@ -83,6 +83,50 @@ const vrouter = new VRouter(fs.readJsonSync(path.join(appDir, 'vrouter', 'config
 Utils.configureLog(path.join(vrouter.cfgDirPath, vrouter.name + '.log'))
 const bus = new Vue()
 
+const templateProfile = {
+  'index': 0, // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
+
+  'active': false,
+  'name': '新配置',
+  'mode': 'whitelist',
+  'proxies': 'ssKt',
+  'enableRelayUDP': false,
+  'enableTunnelDns': true,
+  'dnsServer': '8.8.8.8:53',
+  'speedupServerSSH': false,
+  'serverSSHPort': 22,
+  'selectedBL': {'gfwList': true, 'extraBlackList': true},
+  'selectedWL': {'chinaIPs': true, 'lanNetworks': true, 'extraWhiteList': true},
+  'shadowsocks': {
+    'server': '123.123.123.123',
+    'server_port': 8989,
+    'password': 'demo-paswd',
+    'timeout': 300,
+    'method': 'chacha20',
+    'fast_open': false
+  },
+  'shadowsocksr': {
+    'server': '123.123.123.123',
+    'server_port': 9999,
+    'password': 'demo-paswd',
+    'timeout': 300,
+    'method': 'chacha20',
+    'protocol': 'auth_aes128_md5',
+    'protocol_param': '32',
+    'obfs': 'tls1.2_ticket_auth',
+    'obfs_param': '',
+    'others': '',
+    'fast_open': false
+  },
+  'kcptun': {
+    'server': '123.123.123.123',
+    'server_port': 5555,
+    'key': 'demo-secret',
+    'crypt': 'aes-128',
+    'mode': 'fast2',
+    'others': 'sndwnd=256;rcvwnd=2048;nocomp=true'
+  }
+}
 export default {
   name: 'manage',
   components: {
@@ -100,10 +144,7 @@ export default {
       loaderText: 'Loading',
       // vue 不能检测用常规方法对对象属性的进行'增加','删除'.
       // https://vuejs.org/v2/guide/list.html#Object-Change-Detection-Caveats
-      editingClone: {
-        index: 0,
-        name: 'New Profile'
-      },
+      editingClone: Object.assign({}, templateProfile),
       showProfileEditor: false,
       showProfileImporter: false,
       bus: bus,

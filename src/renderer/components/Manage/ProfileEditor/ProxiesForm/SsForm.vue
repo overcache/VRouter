@@ -1,5 +1,5 @@
 <template lang="html">
-  <form class="ui form shadowsocks">
+  <form id="shadowsocks-form" class="ui form">
     <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocks/shadowsocks-libev#usage">Shadowsocks<i class="small icon external square"></i></a></h4>
 
     <div class="field">
@@ -49,7 +49,7 @@ export default {
 </script>
 
 <style lang="css">
-.shadowsocks {
-  margin: 20px 0;
+#shadowsocks-form.ui.form {
+  margin: 40px 0;
 }
 </style>

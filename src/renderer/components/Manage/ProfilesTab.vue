@@ -28,6 +28,9 @@ export default {
     AddProfileBtns,
     ProfileListItem,
     EditExtraListBtns
+  },
+  mounted: function () {
+    console.log(this.profiles)
   }
 }
 </script>
