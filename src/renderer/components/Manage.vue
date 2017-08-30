@@ -278,14 +278,29 @@ export default {
       this.profiles.splice(index, 1)
       console.log('todo: save to disk')
     },
-    editorSave: async function () {
-      this.loaderText = 'Applying Profile'
-      this.activeLoader = true
-      console.log('save profile', this.editingClone)
-      await Utils.wait(3000)
+    editorSave: async function (profile) {
+      // 子组件传回的 profile 对象, 是 this.editingClone 的深度拷贝
+      // console.log(profile === this.editingClone) // false
+
       this.showProfileEditor = false
-      this.loaderText = 'Loading'
-      this.activeLoader = false
+      const index = profile.index
+      delete profile.index
+      if (index >= 0) {
+        this.profiles.splice(index, 1, profile)
+      } else {
+        this.profiles.push(profile)
+      }
+
+      if (profile.active) {
+        this.loaderText = 'Applying Profile'
+        this.activeLoader = true
+        await vrouter.applyActivedProfile()
+        this.activeLoader = false
+        // 恢复 loader 提示
+        this.loaderText = 'Loading'
+      }
+      // console.log('save profile', profile)
+      // await Utils.wait(3000)
     }
   },
   async mounted () {
@@ -313,10 +328,6 @@ export default {
       await this.getVrouterInfo()
       await this.getProxiesInfo()
     }, 180000)
-
-    setTimeout(() => {
-      this.showProfileEditor = true
-    }, 0)
 
     $(document).on('click', 'a[href^="http"]', function (event) {
       event.preventDefault()

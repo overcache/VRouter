@@ -66,7 +66,7 @@ export default {
   },
   methods: {
     editorSave: function () {
-      this.bus.$emit('editorSave')
+      this.bus.$emit('editorSave', Object.assign({}, this.editingClone))
       $('#profile-editor').modal('hide')
     },
     editorCancel: function () {
