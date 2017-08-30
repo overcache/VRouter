@@ -188,6 +188,7 @@ class Openwrt {
         this.conn.sftp((err, sftp) => {
           err && reject(err)
           sftp.fastPut(s, d, (err) => {
+            sftp.end()
             err ? reject(err) : resolve()
           })
         })

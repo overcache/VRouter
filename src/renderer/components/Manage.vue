@@ -337,6 +337,10 @@ export default {
       event.preventDefault()
       shell.openExternal(this.href)
     })
+
+    // setTimeout(async () => {
+    //   await vrouter.disconnect()
+    // }, 4000)
   }
 }
 </script>
