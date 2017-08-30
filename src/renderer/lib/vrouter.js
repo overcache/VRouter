@@ -288,9 +288,14 @@ class VRouter extends Openwrt {
     const dst = path.join(Utils.getAppDir(), 'vrouter', 'config.json')
     try {
       await fs.stat(dst)
-      console.log('need to upgrade')
-      // todo: fix
-      await fs.copy(src, dst)
+      const srcCfg = await fs.readJSON(src)
+      const dstCfg = await fs.readJSON(dst)
+      if (srcCfg.version !== dstCfg.version) {
+        winston.info('an older config file exiesd. need to upgrade.')
+        console.log('need to upgrade. simplely replace it by now')
+        await fs.copy(src, dst)
+        // todo: fix
+      }
     } catch (error) {
       await fs.copy(src, dst)
     }

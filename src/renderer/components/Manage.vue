@@ -275,6 +275,7 @@ export default {
       this.profiles[index].active = true
       // 耗时较长的原因在于重启dnsmasq, 设置ipset需要处理很多条目
       await vrouter.applyActivedProfile()
+      await vrouter.saveCfg2File()
       await this.getProxiesInfo()
       this.activeLoader = false
       winston.info(`apply profile: ${this.activedProfile.name}`)
