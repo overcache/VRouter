@@ -6,15 +6,15 @@
       <div class="three fields">
         <div class="eight wide field">
           <label for="">Server</label>
-          <input type="text" v-model="server">
+          <input type="text" v-model="shadowsocksr.server">
         </div>
         <div class="four wide field">
           <label>Server Port</label>
-          <input type="text" v-model.number="server_port">
+          <input type="text" v-model.number="shadowsocksr.server_port">
         </div>
         <div class="four wide field">
           <label>Timeout</label>
-          <input type="text" v-model.number="timeout">
+          <input type="text" v-model.number="shadowsocksr.timeout">
         </div>
       </div>
     </div>
@@ -23,19 +23,19 @@
       <div class="four fields">
         <div class="four wide field">
           <label for="">Password</label>
-          <input type="text" v-model="password">
+          <input type="text" v-model="shadowsocksr.password">
         </div>
         <div class="four wide field">
           <label for="">Encrypt Method</label>
-          <input type="text" v-model="method">
+          <input type="text" v-model="shadowsocksr.method">
         </div>
         <div class="four wide field">
           <label for="">Protocol</label>
-          <input type="text" v-model="protocol">
+          <input type="text" v-model="shadowsocksr.protocol">
         </div>
         <div class="four wide field">
           <label for="">Obfs</label>
-          <input type="text" v-model="obfs">
+          <input type="text" v-model="shadowsocksr.obfs">
         </div>
       </div>
     </div>
@@ -44,19 +44,19 @@
       <div class="four fields">
         <div class="four wide field">
           <label for="">Protocol Param</label>
-          <input type="text" v-model="protocol_param">
+          <input type="text" v-model="shadowsocksr.protocol_param">
         </div>
         <div class="four wide field">
           <label for="">Obfs Param</label>
-          <input type="text" v-model="obfs_param">
+          <input type="text" v-model="shadowsocksr.obfs_param">
         </div>
         <div class="four wide field">
           <label for="">Fast Open</label>
-          <input type="text" v-model="fast_open">
+          <input type="text" v-model="shadowsocksr.fast_open">
         </div>
         <div class="four wide field">
           <label for="">Others</label>
-          <input type="text" v-model="others">
+          <input type="text" v-model="shadowsocksr.others">
         </div>
       </div>
     </div>
@@ -66,10 +66,7 @@
 <script>
 export default {
   name: 'ssr-form',
-  props: ['shadowsocksr'],
-  data: function () {
-    return this.shadowsocksr
-  }
+  props: ['shadowsocksr']
 }
 </script>
 

@@ -6,15 +6,15 @@
       <div class="three fields">
         <div class="eight wide field">
           <label for="">Server</label>
-          <input type="text" v-model="server">
+          <input type="text" v-model="kcptun.server">
         </div>
         <div class="four wide field">
           <label>Server Port</label>
-          <input type="text" v-model.number="server_port">
+          <input type="text" v-model.number="kcptun.server_port">
         </div>
         <div class="four wide field">
           <label>Mode</label>
-          <input type="text" v-model="mode">
+          <input type="text" v-model="kcptun.mode">
         </div>
       </div>
     </div>
@@ -23,18 +23,18 @@
       <div class="two fields">
         <div class="eight wide field">
           <label for="">Key</label>
-          <input type="text" v-model="key">
+          <input type="text" v-model="kcptun.key">
         </div>
         <div class="eight wide field">
           <label for="">Encrypt Method</label>
-          <input type="text" v-model="crypt">
+          <input type="text" v-model="kcptun.crypt">
         </div>
       </div>
     </div>
 
     <div class="field">
       <label for="">Others</label>
-      <input type="text" v-model="others">
+      <input type="text" v-model="kcptun.others">
     </div>
   </form>
 </template>
@@ -42,10 +42,7 @@
 <script>
 export default {
   name: 'kt-form',
-  props: ['kcptun'],
-  data: function () {
-    return this.kcptun
-  }
+  props: ['kcptun']
 }
 </script>
 

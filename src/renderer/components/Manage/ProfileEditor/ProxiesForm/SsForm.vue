@@ -6,15 +6,15 @@
       <div class="three fields">
         <div class="eight wide field">
           <label for="">Server</label>
-          <input type="text" v-model="server">
+          <input type="text" v-model="shadowsocks.server">
         </div>
         <div class="four wide field">
           <label>Server Port</label>
-          <input type="text" v-model.number="server_port">
+          <input type="text" v-model.number="shadowsocks.server_port">
         </div>
         <div class="four wide field">
           <label>Timeout</label>
-          <input type="text" v-model.number="timeout">
+          <input type="text" v-model.number="shadowsocks.timeout">
         </div>
       </div>
     </div>
@@ -23,15 +23,15 @@
       <div class="three fields">
         <div class="eight wide icon field">
           <label for="">Password</label>
-          <input type="text" v-model="password">
+          <input type="text" v-model="shadowsocks.password">
         </div>
         <div class="four wide field">
           <label for="">Encrypt Method</label>
-          <input type="text" v-model="method">
+          <input type="text" v-model="shadowsocks.method">
         </div>
         <div class="four wide field">
           <label for="">Fast Open</label>
-          <input type="text" v-model="fast_open">
+          <input type="text" v-model="shadowsocks.fast_open">
         </div>
       </div>
     </div>
@@ -41,10 +41,7 @@
 <script>
 export default {
   name: 'ss-form',
-  props: ['shadowsocks'],
-  data: function () {
-    return this.shadowsocks
-  }
+  props: ['shadowsocks']
 }
 </script>
 
