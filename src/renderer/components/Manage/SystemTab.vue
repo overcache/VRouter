@@ -44,7 +44,7 @@
         <p>重建一个挺花时间的, 确定删除么 ?</p>
       </div>
       <div class="ui button right floated" @click="toggleDeleteVRouterModal('hide')">取消</div>
-      <div class="ui button red right floated" @click="bus.$emit('deleteVRouter')">删除</div>
+      <div class="ui button red right floated" @click="toggleDeleteVRouterModal('hide');bus.$emit('deleteVRouter')">删除</div>
     </div>
   </div>
 </template>

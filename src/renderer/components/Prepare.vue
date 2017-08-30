@@ -18,7 +18,7 @@ import VRouter from '@/lib/vrouter.js'
 
 const fs = require('fs-extra')
 const path = require('path')
-const { app } = require('electron').remote
+const { app, getCurrentWindow } = require('electron').remote
 const { EventEmitter } = require('events')
 const winston = require('winston')
 
@@ -110,6 +110,13 @@ const startVmModal = {
   closable: false
 }
 
+function adjustModal () {
+  const win = getCurrentWindow()
+  const size = win.getSize()
+  win.setSize(size[0], size[1] + 1)
+  win.setSize(size[0], size[1])
+}
+
 export default {
   name: 'prepare',
   data () {
@@ -158,6 +165,7 @@ export default {
       const process = new EventEmitter()
       process.on('init', (msg) => {
         this.modalInfo.content += `<li class="ui">${msg}</li>`
+        adjustModal()
       })
       try {
         await this.vrouter.build(process)

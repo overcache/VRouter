@@ -123,6 +123,7 @@ function parseSsSIP002URI (uri, templateProfile) {
   const pluginIndex = uri.indexOf('plugin=')
   if (pluginIndex > 0) {
     const lastSharpIndex = uri.lastIndexOf('#')
+    profile.name = uri.substr(lastSharpIndex + 1)
     const pluginCfgStrIndex = pluginIndex + 'plugin='.length
     const pluginCfgStrLen = lastSharpIndex < 0 ? undefined : lastSharpIndex - pluginCfgStrIndex
     const pluginCfgStr = uri.substr(pluginCfgStrIndex, pluginCfgStrLen)
