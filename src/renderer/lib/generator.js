@@ -122,6 +122,7 @@ async function getTunnelDnsCfgFrom (profile, proxiesInfo) {
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
+    cfg.timeout = 300
   }
   cfg.local_port = proxiesInfo.tunnelDns.localPort
   cfg.mode = 'udp_only'
@@ -162,6 +163,7 @@ async function getRelayUDPCfgFrom (profile, proxiesInfo) {
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
+    cfg.timeout = 300
   }
   cfg.local_port = proxiesInfo.relayUDP.localPort
   cfg.mode = 'udp_only'
