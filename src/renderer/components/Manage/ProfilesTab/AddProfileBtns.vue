@@ -1,18 +1,8 @@
 <template>
-  <div class="ui dropdown button left pointing labeled icon teal">
-    <i class="add user icon"></i>
-    添加配置
-    <div class="menu">
-      <div class="item" @click="bus.$emit('newProfile')">
-        <i class="ui plus icon"></i>
-        新建
-      </div>
-
-      <div class="item" @click="bus.$emit('openProfileImporter')">
-        <i class="ui paste icon"></i>
-        导入
-      </div>
-    </div>
+  <div class="ui buttons right floated">
+    <button class="ui button teal" @click="bus.$emit('newProfile')">新建</button>
+    <div class="or"></div>
+    <button class="ui button green" @click="bus.$emit('openProfileImporter')">导入</button>
   </div>
 </template>
 

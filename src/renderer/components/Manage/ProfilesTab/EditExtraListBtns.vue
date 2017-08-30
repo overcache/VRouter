@@ -1,13 +1,14 @@
 <template>
-  <div>
-    <div class="ui teal labeled icon button right floated" @click="bus.$emit('editExtraList', 'white')">
-      <i class="ui write icon"></i>
-      自定义白名单
-    </div>
-
-    <div class="ui teal labeled icon button right floated" @click="bus.$emit('editExtraList', 'black')">
-      <i class="ui write icon"></i>
-      自定义黑名单
+  <div class="ui dropdown button left floated labeled icon">
+    <i class="ellipsis horizontal icon"></i>
+    自定义名单
+    <div class="menu">
+      <div class="item" @click="bus.$emit('editExtraList', 'black')">
+        黑名单
+      </div>
+      <div class="item" @click="bus.$emit('editExtraList', 'white')">
+        白名单
+      </div>
     </div>
   </div>
 </template>

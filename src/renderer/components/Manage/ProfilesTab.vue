@@ -1,7 +1,6 @@
 <template>
   <div>
 
-    <add-profile-btns :bus="bus"></add-profile-btns>
 
     <profile-list-item
       v-for="(item, index) in profiles"
@@ -11,8 +10,9 @@
       :key="index"
     ></profile-list-item>
 
-    <edit-extra-list-btns :bus="bus"></edit-extra-list-btns>
+    <add-profile-btns :bus="bus"></add-profile-btns>
 
+    <edit-extra-list-btns :bus="bus"></edit-extra-list-btns>
   </div>
 </template>
 

@@ -1,12 +1,12 @@
 <template lang="html">
-<div class="ui basic modal profile-importer">
-  <div class="ui action fluid input">
+<div class="ui modal profile-importer">
+  <div class="ui top left attached label">导入URI</div>
+  <div class="ui fluid input">
     <input type="text">
-    <div class="ui button teal right labeled icon" @click="importProfile">
-      <i class="copy icon"></i>
-      导入URI
-    </div>
   </div>
+  <div class="ui divider hidden"></div>
+  <div class="ui button negative right floated" @click="cancelImport">取消</div>
+  <div class="ui button teal right floated" @click="importProfile">导入</div>
 </div>
 </template>
 
@@ -18,6 +18,9 @@ export default {
   methods: {
     importProfile: function () {
       this.bus.$emit('importProfile')
+      $('.ui.modal.profile-importer').modal('hide')
+    },
+    cancelImport: function () {
       $('.ui.modal.profile-importer').modal('hide')
     }
   },
@@ -34,7 +37,7 @@ export default {
         self.bus.$emit('importerCancel')
       },
       duration: 300,
-      closable: true,
+      closable: false,
       inverted: true,
       blurring: true
     })
@@ -43,4 +46,7 @@ export default {
 </script>
 
 <style lang="css">
+.profile-importer {
+  padding: 40px;
+}
 </style>

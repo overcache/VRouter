@@ -273,10 +273,9 @@ export default {
       await this.getProxiesInfo()
     }, 180000)
 
-    // setTimeout(() => {
-    //   vrouter.config.profiles[0].active = false
-    //   vrouter.config.profiles[1].active = true
-    // }, 3000)
+    setTimeout(() => {
+      this.showProfileEditor = true
+    }, 0)
   }
 }
 </script>

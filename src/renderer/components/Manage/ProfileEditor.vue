@@ -1,27 +1,21 @@
 <template>
   <div class="ui modal profile-editor">
-
-    <!-- header -->
-    <div class="header">
-      {{ header }}
-    </div>
+    <div class="ui top left attached label">{{ header }}</div>
 
     <!-- content -->
     <div class="scrolling content">
       <div class="ui form">
-        <div class="field">
+        <div class="inline fluid field">
           <label>配置名称</label>
           <input type="text" v-model="editingClone.name">
         </div>
       </div>
-      <!-- <mode-form></mode-form> -->
+      <mode-form></mode-form>
     </div>
 
     <!-- actions -->
-    <div class="ui actions">
-      <div class="ui button ok" @click="editorSave">保存</div>
-      <div class="ui button cancel" @click="editorCancel">取消</div>
-    </div>
+    <div class="ui button negative right floated" @click="editorCancel">取消</div>
+    <div class="ui button teal right floated" @click="editorSave">保存</div>
   </div>
 </template>
 
@@ -82,6 +76,6 @@ export default {
 
 <style>
 .ui.modal.profile-editor {
-  padding: 30px;
+  padding: 20px;
 }
 </style>

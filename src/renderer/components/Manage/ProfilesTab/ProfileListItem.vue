@@ -19,6 +19,10 @@
       </div>
     </div>
 
+    <div class="ui right corner label" v-show="active">
+      <i class="check circle icon green"></i>
+    </div>
+
     <div class="header">{{ name }}</div>
     <div class="list">
       <li>{{ server }}</li>
@@ -100,6 +104,6 @@ export default {
 
 <style>
 .ui.message.profile-list-item {
-  margin: 15px 0;
+  margin-bottom: 25px;
 }
 </style>
