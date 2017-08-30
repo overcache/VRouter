@@ -116,13 +116,15 @@ async function getSsrCfgFrom (profile, proxiesInfo) {
 }
 
 async function getTunnelDnsCfgFrom (profile, proxiesInfo) {
-  const cfg = /ssr/ig.test(profile.proxies)
+  const type = /ssr/ig.test(profile.proxies) ? 'shadowsocksr' : 'shadowsocks'
+  const cfg = type === 'shadowsocksr'
     ? await getSsrCfgFrom(profile, proxiesInfo)
     : await getSsCfgFrom(profile, proxiesInfo)
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
     cfg.timeout = 300
+    cfg.server_port = profile[type].server_port
   }
   cfg.local_port = proxiesInfo.tunnelDns.localPort
   cfg.mode = 'udp_only'
@@ -157,13 +159,15 @@ async function getKtCfgFrom (profile, proxiesInfo) {
   return cfg
 }
 async function getRelayUDPCfgFrom (profile, proxiesInfo) {
-  const cfg = /ssr/ig.test(profile.proxies)
+  const type = /ssr/ig.test(profile.proxies) ? 'shadowsocksr' : 'shadowsocks'
+  const cfg = type === 'shadowsocksr'
     ? await getSsrCfgFrom(profile, proxiesInfo)
     : await getSsCfgFrom(profile, proxiesInfo)
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
     cfg.timeout = 300
+    cfg.server_port = profile[type].server_port
   }
   cfg.local_port = proxiesInfo.relayUDP.localPort
   cfg.mode = 'udp_only'
@@ -359,6 +363,7 @@ class Generator {
     await fs.remove(tempFPath).catch()
 
     const proxies = profile.proxies
+    // kcptun 在 shadowsocks[r] 后端, 并不需要在firewall中转发
     const type = /ssr/ig.test(proxies) ? 'shadowsocksr' : 'shadowsocks'
     const redirPort = proxiesInfo[type].localPort
     const udpRedirPort = proxiesInfo.relayUDP.localPort

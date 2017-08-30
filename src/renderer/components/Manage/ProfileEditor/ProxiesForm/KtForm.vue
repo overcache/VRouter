@@ -10,7 +10,7 @@
         </div>
         <div class="four wide field">
           <label>Server Port</label>
-          <input type="text" v-model="server_port">
+          <input type="text" v-model.number="server_port">
         </div>
         <div class="four wide field">
           <label>Mode</label>
