@@ -28,6 +28,25 @@
       </div>
     </div>
 
+    <div class="ui divider"></div>
+
+    <div class="field">
+      <div class="ui checkbox">
+        <input type="checkbox" value="enableTunnelDns" v-model="enableTunnelDns">
+        <label>转发 DNS 查询</label>
+      </div>
+    </div>
+    <div class="inline field" v-show="enableTunnelDns.length !== 0">
+      <label for="">DNS 地址</label>
+      <input type="text" v-model="dnsServer" :disabled="enableTunnelDns.length === 0">
+    </div>
+    <div class="field">
+      <div class="ui checkbox">
+        <input type="checkbox" value="enableRelayUDP" v-model="enableRelayUDP">
+        <label>转发 UDP 流量</label>
+      </div>
+    </div>
+
     <ss-form :shadowsocks="shadowsocks" v-show="enableSs"></ss-form>
 
     <ssr-form :shadowsocksr="shadowsocksr" v-show="enableSsr"></ssr-form>
@@ -58,12 +77,36 @@ export default {
     enableKt: function () {
       return /kt/ig.test(this.editingClone.proxies)
     },
+    enableRelayUDP: {
+      get: function () {
+        return this.editingClone.enableRelayUDP ? ['enableRelayUDP'] : []
+      },
+      set: function (value) {
+        this.editingClone.enableRelayUDP = (value.length !== 0)
+      }
+    },
+    enableTunnelDns: {
+      get: function () {
+        return this.editingClone.enableTunnelDns ? ['enableTunnelDns'] : []
+      },
+      set: function (value) {
+        this.editingClone.enableTunnelDns = (value.length !== 0)
+      }
+    },
     proxies: {
       get: function () {
         return this.editingClone.proxies
       },
       set: function (value) {
         this.editingClone.proxies = value
+      }
+    },
+    dnsServer: {
+      get: function () {
+        return this.editingClone.dnsServer
+      },
+      set: function (value) {
+        this.editingClone.dnsServer = value
       }
     },
     shadowsocks: function () {
