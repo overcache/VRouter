@@ -38,16 +38,8 @@ export default {
           ]
         },
         {
-          header: 'Vrouter 信息',
+          header: 'VRouter 信息',
           infoList: [
-            {
-              label: 'Openwrt Version',
-              value: this.vrouterInfo.openwrtVersion
-            },
-            {
-              label: 'BR-LAN',
-              value: this.vrouterInfo.brLanIP
-            },
             {
               label: 'Bridged Adapter',
               value: this.vrouterInfo.bridgeAdapter
@@ -61,16 +53,29 @@ export default {
               value: this.vrouterInfo.macAddress
             },
             {
+              label: 'Openwrt Version',
+              value: this.vrouterInfo.openwrtVersion,
+              hide: true
+            },
+            {
+              label: 'BR-LAN',
+              value: this.vrouterInfo.brLanIP,
+              hide: true
+            },
+            {
               label: 'Shadowsocks Version',
-              value: this.vrouterInfo.ssVersion
+              value: this.vrouterInfo.ssVersion,
+              hide: true
             },
             {
               label: 'ShadowsocksR Version',
-              value: this.vrouterInfo.ssrVersion
+              value: this.vrouterInfo.ssrVersion,
+              hide: true
             },
             {
               label: 'Kcptun Version',
-              value: this.vrouterInfo.ktVersion
+              value: this.vrouterInfo.ktVersion,
+              hide: true
             }
           ]
         },

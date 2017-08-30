@@ -54,7 +54,7 @@ export default {
         setTimeout(() => {
           this.uri = ''
           this.showErrorMsg = false
-        }, 1000)
+        }, 1500)
       }
     }
   },
