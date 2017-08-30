@@ -54,6 +54,7 @@
 
     <profile-importer
       :showProfileImporter="showProfileImporter"
+      :templateProfile="templateProfile()"
       :bus="bus"
     >
     </profile-importer>
@@ -243,18 +244,21 @@ export default {
       type = type[0].toUpperCase() + type.toLowerCase().slice(1)
       return shell.openItem(path.join(vrouter.cfgDirPath, vrouter.config.firewallInfo.lists[`extra${type}ListFname`]))
     },
+    templateProfile: function () {
+      return Object.assign({}, templateProfile)
+    },
     newProfile: function () {
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
       this.editingClone.index = -1
       this.showProfileEditor = true
       console.log('new profile')
     },
-    importProfile: function () {
+    importProfile: function (profile) {
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
+      this.editingClone = Object.assign({}, profile)
       this.editingClone.index = -2
       this.showProfileImporter = false
       this.showProfileEditor = true
-      console.log('import profile')
     },
     editProfile: function (index) {
       this.editingClone = Object.assign({}, vrouter.config.profiles[index])

@@ -440,11 +440,6 @@ echo ""`
     }
   }
   parseProfileURI (uri) {
-    // ssr://dnBzLmljeW1pbmQuY29tOjk5OTk6YXV0aF9hZXMxMjhfbWQ1OmNoYWNoYTIwOnRsczEuMl90aWNrZXRfYXV0aDphR0Z3Y0hramMzTnlJekl3TVRjLz9vYmZzcGFyYW09JnByb3RvcGFyYW09TXpJJnJlbWFya3M9UVc1a2NtOXBaQ0JUVTFJZ1JHVm1ZWFZzZEEmZ3JvdXA9ZG5Ceg
-
-    // ss://Y2hhY2hhMjA6aGFwcHkjc3MjMjAxNw@vps.icymind.com:7979?plugin=kcptun%3Bnocomp%3Dtrue%3Bmode%3Dfast%3Bkey%3Dhappy%23kt%232017%3Bcrypt%3Dnone#kcptun
-
-    // ss://Y2hhY2hhMjA6aGFwcHkjc3MjMjAxNw@vps.icymind.com:8989#%E6%98%8E%E6%98%8E%E6%98%8E
     let profile = {
       'name': '配置xx',
       'action': 'new',
