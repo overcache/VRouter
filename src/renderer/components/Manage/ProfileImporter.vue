@@ -1,6 +1,6 @@
 <template lang="html">
 <div class="ui modal profile-importer">
-  <div class="ui top left attached label">导入URI</div>
+  <div class="ui top left attached label green">导入URI</div>
   <div class="ui fluid input">
     <input type="text" placeholder="ss://YWVzLTEyOC1nY206dGVzdA==@192.168.100.1:8888#Example1" v-model.trim="uri">
   </div>

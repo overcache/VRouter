@@ -4,11 +4,11 @@
       <div class="ui text loader">{{ loaderText }}</div>
     </div>
     <div class="ui three item top attached tabular menu">
-      <a class="item" data-tab="status-tab">
+      <a class="item active" data-tab="status-tab">
         <i class="dashboard icon"></i>
         状态
       </a>
-      <a class="item active" data-tab="profiles-tab">
+      <a class="item" data-tab="profiles-tab">
         <i class="send icon"></i>
         配置
       </a>
@@ -18,7 +18,7 @@
       </a>
     </div>
 
-    <div class="ui bottom attached tab segment" data-tab="status-tab">
+    <div class="ui bottom attached tab segment active" data-tab="status-tab">
       <status-tab
         :routing="routing"
         :proxies="proxies"
@@ -28,7 +28,7 @@
       </status-tab>
     </div>
 
-    <div class="ui bottom attached tab segment active" data-tab="profiles-tab">
+    <div class="ui bottom attached tab segment" data-tab="profiles-tab">
       <profiles-tab
         :profiles="profiles"
         :bus="bus"
@@ -41,6 +41,7 @@
         :systemInfo="systemInfo"
         :vrouterInfo="vrouterInfo"
         :proxiesInfo="proxiesInfo"
+        :bus="bus"
       >
       </system-tab>
     </div>
@@ -78,6 +79,7 @@ const path = require('path')
 const fs = require('fs-extra')
 const { shell } = require('electron')
 const winston = require('winston')
+const { app } = require('electron').remote
 
 // let vueInstance = null
 const appDir = Utils.getAppDir()
@@ -149,6 +151,7 @@ export default {
       editingClone: Object.assign({}, templateProfile),
       showProfileEditor: false,
       showProfileImporter: false,
+      showAboutModal: false,
       bus: bus,
       systemInfo: {
         // 为了和真实值一致, 这些值需要手动维护
@@ -303,6 +306,31 @@ export default {
         winston.info(`apply editting profile: ${this.activedProfile.name}`)
         this.loaderText = 'Loading'
       }
+    },
+    refreshInfos: async function (silent = true) {
+      if (!silent) this.activeLoader = true
+      this.getSystemInfo()
+      await this.getProxiesInfo()
+      await this.getVrouterInfo()
+      if (!silent) this.activeLoader = false
+    },
+    openLogFile: function () {
+      const file = path.join(vrouter.cfgDirPath, 'vrouter.log')
+      return shell.openItem(file)
+    },
+    shutdownVRouter: async function () {
+      this.activeLoader = true
+      await Utils.resetRoute()
+      await VBox.saveState(vrouter.name)
+      this.activeLoader = false
+      app.quit()
+    },
+    deleteVRouter: async function () {
+      this.activeLoader = true
+      await Utils.resetRoute()
+      await VBox.delete(vrouter.name)
+      this.activeLoader = false
+      app.quit()
     }
   },
   async mounted () {
@@ -317,18 +345,19 @@ export default {
     this.bus.$on('deleteProfile', this.deleteProfile)
     this.bus.$on('editorCancel', () => { this.showProfileEditor = false })
     this.bus.$on('editorSave', this.editorSave)
+    this.bus.$on('deleteVRouter', this.deleteVRouter)
+    this.bus.$on('shutdownVRouter', this.shutdownVRouter)
+    this.bus.$on('openLogFile', this.openLogFile)
+    this.bus.$on('showAboutModal', () => { this.showAboutModal = true })
+    this.bus.$on('refreshInfos', this.refreshInfos)
 
     $('.tabular.menu .item').tab()
 
-    this.getSystemInfo()
-    await this.getVrouterInfo()
-    await this.getProxiesInfo()
+    await this.refreshInfos()
 
     setInterval(async () => {
       // 每三分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
-      this.getSystemInfo()
-      await this.getVrouterInfo()
-      await this.getProxiesInfo()
+      this.refreshInfos()
     }, 180000)
 
     $(document).on('click', 'a[href^="http"]', function (event) {

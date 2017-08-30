@@ -38,7 +38,7 @@ export default {
       return more
     },
     moreBtnLabel: function () {
-      return this.showAllLabel ? 'less' : 'more'
+      return this.showAllLabel ? 'LESS' : 'MORE'
     },
     moreBtnIconClass: function () {
       return this.showAllLabel ? 'up' : 'down'
@@ -47,6 +47,9 @@ export default {
   methods: {
     toggleHidden: function () {
       this.showAllLabel = !this.showAllLabel
+      setTimeout(() => {
+        this.showAllLabel = false
+      }, 6000)
     }
   }
 }

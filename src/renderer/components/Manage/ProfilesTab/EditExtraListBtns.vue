@@ -1,5 +1,5 @@
 <template>
-  <div class="ui dropdown button left floated labeled icon">
+  <div id="edit-extra-list-buttons" class="ui dropdown button left floated labeled icon">
     <i class="ellipsis horizontal icon"></i>
     自定义名单
     <div class="menu">
@@ -15,7 +15,11 @@
 
 <script>
 export default {
+  /* global $ */
   name: 'editExtraListBtns',
-  props: ['bus']
+  props: ['bus'],
+  mounted: function () {
+    $('#edit-extra-list-buttons').dropdown()
+  }
 }
 </script>

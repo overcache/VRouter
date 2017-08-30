@@ -7,15 +7,10 @@
 </template>
 
 <script>
-/* global $ */
 export default {
   name: 'addProfile',
   props: ['bus'],
   mounted: function () {
-    // 直接初始化的话不管用, 试过在updated钩子上初始化, 也不管用
-    setTimeout(() => {
-      $('.ui.dropdown').dropdown({on: 'hover'})
-    }, 1000)
   }
 }
 </script>

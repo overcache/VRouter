@@ -176,8 +176,8 @@ class VRouter extends Openwrt {
   async powerOff () {
     await this.disconnect()
     const socketFPath = path.join(this.cfgDirPath, this.config.virtualbox.socketFname)
+    winston.info(`about to poweroff vrouter. socketFPath: ${socketFPath}`)
     await Utils.serialExec(socketFPath, 'poweroff')
-    await Utils.wait(8000)
   }
   async build (process) {
     await this.copyTemplatesIfNotExist()
@@ -241,6 +241,7 @@ class VRouter extends Openwrt {
 
     process.emit('init', '等待虚拟机重新启动, 请稍候 30 秒')
     await this.powerOff()
+    await Utils.wait(8000)
     await startVrouter({
       vmName: this.name,
       startType: 'headless'

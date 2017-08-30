@@ -1,6 +1,6 @@
 <template>
   <div id="profile-editor" class="ui large modal">
-    <div class="ui top left attached label">{{ header }}</div>
+    <div class="ui top left attached label" :class="headerLabelColor">{{ header }}</div>
 
     <!-- content -->
     <div class="scrolling content">
@@ -47,6 +47,15 @@ export default {
         return '新建配置'
       }
       return '编辑配置'
+    },
+    headerLabelColor: function () {
+      if (this.editingClone.index === -2) {
+        return 'green'
+      }
+      if (this.editingClone.index === -1) {
+        return 'teal'
+      }
+      return 'teal'
     }
   },
   watch: {
