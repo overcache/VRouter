@@ -1,9 +1,10 @@
+import Utils from './utils'
+
 const fs = require('fs-extra')
 const path = require('path')
 const os = require('os')
 const winston = require('winston')
 winston.level = 'info'
-const { Utils } = require('./utils.js')
 
 /*
  * 根据rule, 生成PREROUTING和OUTPUT两条iptables规则
@@ -370,6 +371,8 @@ class Generator {
       const pattern = /\d+.\d+.\d+.\d+/g
       let ip = ips[i]
       if (!pattern.test(ip)) {
+        winston.debug(`about to resolveDomain: ${ip}`)
+        winston.debug(`Utils: ${Utils}`)
         ip = await Utils.resolveDomain(ips[i])
       }
       contents.push(genFWRulesHelper(`-d ${ip} -j RETURN`))
