@@ -116,6 +116,9 @@ function getTunnelDnsCfgFrom (profile, proxiesInfo) {
     ? getSsrCfgFrom(profile, proxiesInfo)
     : getSsCfgFrom(profile, proxiesInfo)
 
+  if (/kt/ig.test(profile.proxies)) {
+    cfg.server = profile.kcptun.server
+  }
   cfg.local_port = proxiesInfo.tunnelDns.localPort
   cfg.mode = 'udp_only'
   cfg.tunnel_address = profile.dnsServer
@@ -152,6 +155,9 @@ function getRelayUDPCfgFrom (profile, proxiesInfo) {
     ? getSsrCfgFrom(profile, proxiesInfo)
     : getSsCfgFrom(profile, proxiesInfo)
 
+  if (/kt/ig.test(profile.proxies)) {
+    cfg.server = profile.kcptun.server
+  }
   cfg.local_port = proxiesInfo.relayUDP.localPort
   cfg.mode = 'udp_only'
   return cfg
