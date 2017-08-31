@@ -2,7 +2,7 @@
   <div class="info-list">
     <h4 class="ui header teal">{{ header }}</h4>
     <div class="ui list" v-for="item in infoList">
-      <transition name="fade" duration="{ enter: 500, leave: 800 }">
+      <transition name="fade">
         <div class="item" v-show="showAllLabel || !item.hide">
           <div class="ui label">
             {{ item.label }}: <span class="detail">{{ item.value }}</span>
@@ -60,9 +60,9 @@ export default {
   margin-bottom: 20px;
 }
 .fade-enter-active, .fade-leave-active {
-  transition: opacity .3s
+  transition: opacity .5s
 }
-.fade-enter, .fade-leave-to /* .fade-leave-active in below version 2.1.8 */ {
+.fade-enter, .fade-leave-to {
   opacity: 0
 }
 </style>
