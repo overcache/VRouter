@@ -14,20 +14,20 @@
         </div>
         <div class="item" @click="toggleLoginVRouterModal('show')">
           <i class="ui sign in icon teal"></i>
-          登陆
+          登录
         </div>
         <div class="item" @click="bus.$emit('openLogFile')">
           <i class="ui terminal icon teal"></i>
           日志
         </div>
-        <div class="item" @click="bus.$emit('showAboutModal')">
+        <div class="item" @click="toggleAboutModal('show')">
           <i class="ui info icon teal"></i>
           关于
         </div>
       </div>
     </div>
 
-    <div id="delete-vrouter-modal" class="ui modal">
+    <div id="delete-vrouter-modal" class="ui tiny modal">
       <div class="ui top left attached label red">删除 VRouter</div>
       <div class="content">
         <p>重建一个挺花时间的, 确定删除么 ?</p>
@@ -36,7 +36,7 @@
       <div class="ui button red right floated" @click="toggleDeleteVRouterModal('hide');bus.$emit('deleteVRouter')">删除</div>
     </div>
 
-    <div id="login-vrouter-modal" class="ui modal">
+    <div id="login-vrouter-modal" class="ui tiny modal">
       <div class="ui top left attached label red">登录</div>
       <div class="content">
         <p>后台虚拟机 IP 为 10.19.28.37 , 用户名密码均为 root , 你还可以用 Web 或者 SSH 的方式登录. 但是, VRouter 和后台的虚拟机紧密关联, 各项功能都依赖于正确设置了虚拟机. 修改虚拟机可能会造成 VRouter 无法正常工作.</p>
@@ -52,20 +52,52 @@
         VirtualBox 登录
       </div>
     </div>
+
+    <div id="about-modal" class="ui tiny modal">
+      <div class="ui top left attached label teal">关于</div>
+      <div class="content">
+        <p><i class="ui fork icon green"></i> Version: {{ version }}</p>
+        <p><i class="ui idea icon teal"></i> Build by {{ author }}</p>
+        <p><i class="ui heart icon red"></i> Base on virtualbox/openwrt/electron/vue/semantic-ui</p>
+        <p><i class="ui copyright icon"></i> Released under GPL license.</p>
+      </div>
+      <div class="ui button right floated" @click="toggleAboutModal('hide')">
+        确定
+      </div>
+      <div class="ui button right floated" @click="goToHomepage">
+        主页
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 /* global $ */
+const { shell } = require('electron')
+const packageJson = require('package.json')
+
 export default {
   name: 'more-buttons',
   props: ['bus'],
+  data: function () {
+    return {
+      version: packageJson.version,
+      author: packageJson.author
+    }
+  },
   methods: {
     toggleDeleteVRouterModal: function (action) {
       $('#delete-vrouter-modal').modal(action)
     },
     toggleLoginVRouterModal: function (action) {
       $('#login-vrouter-modal').modal(action)
+    },
+    toggleAboutModal: function (action) {
+      $('#about-modal').modal(action)
+    },
+    goToHomepage () {
+      this.toggleAboutModal('hide')
+      return shell.openExternal('https://github.com/icymind/VRouter')
     }
   },
   mounted: function () {
@@ -79,6 +111,11 @@ export default {
       inverted: true,
       blurring: true
     })
+    $('#about-modal').modal({
+      closable: true,
+      inverted: true,
+      blurring: true
+    })
     $('#more-buttons-dropdown.ui.dropdown').dropdown({
       on: 'click'
     })
@@ -88,7 +125,8 @@ export default {
 
 <style lang="css">
 #login-vrouter-modal,
-#delete-vrouter-modal {
+#delete-vrouter-modal,
+#about-modal {
   padding: 30px;
 }
 </style>
