@@ -31,7 +31,12 @@
 import ProxiesForm from './ProfileEditor/ProxiesForm'
 import ModeForm from './ProfileEditor/ModeForm'
 
+import Vue from 'vue'
+import VeeValidate from 'vee-validate'
+Vue.use(VeeValidate, { inject: false })
+
 export default {
+  $validates: true,
   name: 'profile-editor',
   props: ['editingClone', 'showProfileEditor', 'bus'],
   components: {
@@ -61,20 +66,15 @@ export default {
   watch: {
     showProfileEditor: function (value) {
       const action = value ? 'show' : 'hide'
-      // $('#profile-editor').modal({
-      //   onHidden: function () {
-      //     self.bus.$emit('editorCancel')
-      //   },
-      //   duration: 300,
-      //   closable: false,
-      //   inverted: true,
-      //   blurring: true
-      // }).modal(action)
       $('#profile-editor').modal(action)
     }
   },
   methods: {
     editorSave: function () {
+      this.$validator.validateAll()
+      if (this.$validator.errors.any()) {
+        return
+      }
       this.bus.$emit('editorSave', Object.assign({}, this.editingClone))
       $('#profile-editor').modal('hide')
     },
@@ -94,6 +94,8 @@ export default {
       inverted: true,
       blurring: true
     })
+  },
+  created: function () {
   }
 }
 </script>
@@ -109,7 +111,6 @@ export default {
   margin-right: 20px;
 }
 #profile-editor .content.scrolling {
-  /*padding-top: 30px !important;*/
   margin-bottom: 30px;
 }
 
