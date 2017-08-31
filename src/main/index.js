@@ -9,9 +9,9 @@ const winURL = process.env.NODE_ENV === 'development'
 
 function createWindow () {
   win = new BrowserWindow({
-    width: 560,
+    width: 580,
     height: 760,
-    minWidth: 560,
+    minWidth: 580,
     minHeight: 760
   })
 

@@ -201,9 +201,11 @@ export default {
       app.quit()
     }
   },
-  async mounted () {
+  created: async function () {
     vueInstance = this
-    this.vrouter = new VRouter(fs.readJsonSync(await VRouter.copyOrUpgradeCfg()))
+    // prepare 阶段, 永远使用配置模板, 如果使用旧版本的config.json, 可能会无法正确构建虚拟机
+    const templateCfg = path.join(__static, 'config-templates', 'config.json')
+    this.vrouter = new VRouter(fs.readJsonSync(templateCfg))
     this.vmName = this.vrouter.name
     Utils.configureLog(path.join(this.vrouter.cfgDirPath, 'vrouter.log'))
     await this.checkRequirement()

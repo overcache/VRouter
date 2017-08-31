@@ -283,23 +283,27 @@ class VRouter extends Openwrt {
     await super.applyProfile(activedProfile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir)
   }
 
-  static async copyOrUpgradeCfg () {
-    const src = path.join(__static, 'config-templates', 'config.json')
-    const dst = path.join(Utils.getAppDir(), 'vrouter', 'config.json')
+  static async latestCfgObject () {
+    const templateCfgPath = path.join(__static, 'config-templates', 'config.json')
+    const appDirCfgPath = path.join(Utils.getAppDir(), 'vrouter', 'config.json')
+    let appDirCfg = {}
     try {
-      await fs.stat(dst)
-      const srcCfg = await fs.readJSON(src)
-      const dstCfg = await fs.readJSON(dst)
-      if (srcCfg.version !== dstCfg.version) {
-        winston.info('an older config file exiesd. need to upgrade.')
-        console.log('need to upgrade. simplely replace it by now')
-        await fs.copy(src, dst)
-        // todo: fix
-      }
+      appDirCfg = await fs.readJSON(appDirCfgPath)
     } catch (error) {
-      await fs.copy(src, dst)
+      // appdircfg 不存在
+      await fs.copy(templateCfgPath, appDirCfgPath)
+      return fs.readJSON(templateCfgPath)
     }
-    return dst
+
+    // update existed config file
+    const templateCfg = await fs.readJSON(templateCfgPath)
+    if (appDirCfg.version !== templateCfg.version) {
+      winston.info('an older config file exiesd. need to upgrade.')
+      console.log('need to upgrade. simplely replace it by now')
+      await fs.copy(templateCfgPath, appDirCfgPath)
+      // after upgrade, save to disk
+    }
+    return appDirCfg
   }
 }
 
