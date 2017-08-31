@@ -21,6 +21,7 @@
 </template>
 
 <script>
+let clearTimeoutID = null
 export default {
   name: 'info-list',
   props: ['header', 'infoList'],
@@ -46,8 +47,9 @@ export default {
   },
   methods: {
     toggleHidden: function () {
+      if (clearTimeoutID) clearTimeout(clearTimeoutID)
       this.showAllLabel = !this.showAllLabel
-      setTimeout(() => {
+      clearTimeoutID = setTimeout(() => {
         this.showAllLabel = false
       }, 6000)
     }
