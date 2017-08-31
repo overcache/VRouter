@@ -76,16 +76,11 @@ import ProfileEditor from './Manage/ProfileEditor'
 import ProfileImporter from './Manage/ProfileImporter'
 
 const path = require('path')
-const fs = require('fs-extra')
 const { shell } = require('electron')
 const winston = require('winston')
 const { app } = require('electron').remote
 
 // let vueInstance = null
-const appDir = Utils.getAppDir()
-const vrouter = new VRouter(fs.readJsonSync(path.join(appDir, 'vrouter', 'config.json')))
-Utils.configureLog(path.join(vrouter.cfgDirPath, 'vrouter.log'))
-
 const templateProfile = {
   'index': 0, // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
 
@@ -141,8 +136,8 @@ export default {
   },
   data: function () {
     return {
-      // 因为 profiles 是对象, 和 vrouter.config.profiles 指向同一个地址, 因此两者的值是同步的
-      profiles: vrouter.config.profiles,
+      vrouter: {},
+      profiles: [],
       activeLoader: false,
       loaderText: 'Loading',
       // vue 不能检测用常规方法对对象属性的进行'增加','删除'.
@@ -200,7 +195,7 @@ export default {
       }
     },
     routing: function () {
-      return (this.systemInfo.currentGWIP === vrouter.ip) && (this.systemInfo.currentDnsIP === vrouter.ip)
+      return (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
     }
   },
   methods: {
@@ -209,7 +204,7 @@ export default {
       if (await this.routing) {
         await Utils.resetRoute()
       } else {
-        await Utils.changeRouteTo(vrouter.ip)
+        await Utils.changeRouteTo(this.vrouter.ip)
       }
       await this.getSystemInfo()
       this.activeLoader = false
@@ -220,32 +215,32 @@ export default {
     },
     getVrouterInfo: async function () {
       // can not make vrouterinfo an asyncComputed attribute for unkown error
-      this.vrouterInfo.openwrtVersion = await vrouter.getOpenwrtVersion()
-      this.vrouterInfo.brLanIP = await vrouter.getLan()
-      this.vrouterInfo.bridgeAdapter = await VBox.getAssignedBridgeService(vrouter.name)
-      this.vrouterInfo.lanIP = await vrouter.getWan()
-      this.vrouterInfo.macAddress = await vrouter.getMacAddress()
-      this.vrouterInfo.ssVersion = await vrouter.getSsVersion('shadowsocks', vrouter.config.proxiesInfo)
-      this.vrouterInfo.ssrVersion = await vrouter.getSsVersion('shadowsocksr', vrouter.config.proxiesInfo)
-      this.vrouterInfo.ktVersion = await vrouter.getKtVersion(vrouter.config.proxiesInfo)
+      this.vrouterInfo.openwrtVersion = await this.vrouter.getOpenwrtVersion()
+      this.vrouterInfo.brLanIP = await this.vrouter.getLan()
+      this.vrouterInfo.bridgeAdapter = await VBox.getAssignedBridgeService(this.vrouter.name)
+      this.vrouterInfo.lanIP = await this.vrouter.getWan()
+      this.vrouterInfo.macAddress = await this.vrouter.getMacAddress()
+      this.vrouterInfo.ssVersion = await this.vrouter.getSsVersion('shadowsocks', this.vrouter.config.proxiesInfo)
+      this.vrouterInfo.ssrVersion = await this.vrouter.getSsVersion('shadowsocksr', this.vrouter.config.proxiesInfo)
+      this.vrouterInfo.ktVersion = await this.vrouter.getKtVersion(this.vrouter.config.proxiesInfo)
     },
     getProxiesInfo: async function () {
-      const proxiesInfo = vrouter.config.proxiesInfo
+      const proxiesInfo = this.vrouter.config.proxiesInfo
 
       this.proxiesInfo.enableTunnelDns = this.activedProfile.enableTunnelDns
-      this.proxiesInfo.isTunnelDnsRunning = await vrouter.isTunnelDnsRunning(this.activedProfile.proxies, proxiesInfo)
+      this.proxiesInfo.isTunnelDnsRunning = await this.vrouter.isTunnelDnsRunning(this.activedProfile.proxies, proxiesInfo)
 
       this.proxiesInfo.enableSs = /^(ss|ssKt)$/ig.test(this.activedProfile.proxies)
-      this.proxiesInfo.isSsRunning = await vrouter.isSsRunning(this.activedProfile.proxies, proxiesInfo)
+      this.proxiesInfo.isSsRunning = await this.vrouter.isSsRunning(this.activedProfile.proxies, proxiesInfo)
       this.proxiesInfo.enableSsr = /ssr/ig.test(this.activedProfile.proxies)
-      this.proxiesInfo.isSsrRunning = await vrouter.isSsRunning(this.activedProfile.proxies, proxiesInfo)
+      this.proxiesInfo.isSsrRunning = await this.vrouter.isSsRunning(this.activedProfile.proxies, proxiesInfo)
 
       this.proxiesInfo.enableKt = /kt/ig.test(this.activedProfile.proxies)
-      this.proxiesInfo.isKtRunning = await vrouter.isKtRunning(proxiesInfo)
+      this.proxiesInfo.isKtRunning = await this.vrouter.isKtRunning(proxiesInfo)
     },
     editExtraList: async function (type) {
       type = type[0].toUpperCase() + type.toLowerCase().slice(1)
-      return shell.openItem(path.join(vrouter.cfgDirPath, vrouter.config.firewallInfo.lists[`extra${type}ListFname`]))
+      return shell.openItem(path.join(this.vrouter.cfgDirPath, this.vrouter.config.firewallInfo.lists[`extra${type}ListFname`]))
     },
     templateProfile: function () {
       return Object.assign({}, templateProfile)
@@ -263,7 +258,7 @@ export default {
       this.showProfileEditor = true
     },
     editProfile: function (index) {
-      this.editingClone = Object.assign({}, vrouter.config.profiles[index])
+      this.editingClone = Object.assign({}, this.vrouter.config.profiles[index])
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
       this.editingClone.index = index
       this.showProfileEditor = true
@@ -273,15 +268,15 @@ export default {
       this.activedProfile.active = false
       this.profiles[index].active = true
       // 耗时较长的原因在于重启dnsmasq, 设置ipset需要处理很多条目
-      await vrouter.applyActivedProfile()
-      await vrouter.saveCfg2File()
+      await this.vrouter.applyActivedProfile()
+      await this.vrouter.saveCfg2File()
       await this.getProxiesInfo()
       this.activeLoader = false
       winston.info(`apply profile: ${this.activedProfile.name}`)
     },
     deleteProfile: async function (index) {
       this.profiles.splice(index, 1)
-      await vrouter.saveCfg2File()
+      await this.vrouter.saveCfg2File()
     },
     editorSave: async function (profile) {
       // 子组件传回的 profile 对象, 是 this.editingClone 的深度拷贝
@@ -296,12 +291,12 @@ export default {
         this.profiles.push(profile)
       }
       winston.info(`save profile: ${profile.name} to disk`)
-      await vrouter.saveCfg2File()
+      await this.vrouter.saveCfg2File()
 
       if (profile.active) {
         this.loaderText = 'Applying Profile'
         this.activeLoader = true
-        await vrouter.applyActivedProfile()
+        await this.vrouter.applyActivedProfile()
         this.activeLoader = false
         winston.info(`apply editting profile: ${this.activedProfile.name}`)
         this.loaderText = 'Loading'
@@ -315,27 +310,27 @@ export default {
       if (!silent) this.activeLoader = false
     },
     openLogFile: function () {
-      const file = path.join(vrouter.cfgDirPath, 'vrouter.log')
+      const file = path.join(this.vrouter.cfgDirPath, 'vrouter.log')
       return shell.openItem(file)
     },
     shutdownVRouter: async function () {
       this.activeLoader = true
       await Utils.resetRoute()
-      await VBox.saveState(vrouter.name)
+      await VBox.saveState(this.vrouter.name)
       this.activeLoader = false
       app.quit()
     },
     deleteVRouter: async function () {
       this.activeLoader = true
       await Utils.resetRoute()
-      await VBox.delete(vrouter.name)
+      await VBox.delete(this.vrouter.name)
       this.activeLoader = false
       app.quit()
     },
     loginVRouter: function () {
-      VBox.attachHeadless(vrouter.name)
+      VBox.attachHeadless(this.vrouter.name)
       Utils.wait(3000)
-      VBox.sendKeystrokesTo(vrouter.name)
+      VBox.sendKeystrokesTo(this.vrouter.name)
     }
   },
   mounted: function () {
@@ -352,6 +347,10 @@ export default {
     })
   },
   created: async function () {
+    this.vrouter = new VRouter(await VRouter.getLatestCfg())
+    this.profiles = this.vrouter.config.profiles
+    Utils.configureLog(path.join(this.vrouter.cfgDirPath, 'vrouter.log'))
+
     this.bus = new Vue()
     this.bus.$on('editExtraList', this.editExtraList)
     this.bus.$on('newProfile', this.newProfile)

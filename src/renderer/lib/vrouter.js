@@ -283,7 +283,7 @@ class VRouter extends Openwrt {
     await super.applyProfile(activedProfile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir)
   }
 
-  static async getLatestCfgObject () {
+  static async getLatestCfg () {
     const templateCfgPath = path.join(__static, 'config-templates', 'config.json')
     const appDirCfgPath = path.join(Utils.getAppDir(), 'vrouter', 'config.json')
     let appDirCfg = {}
