@@ -1,5 +1,5 @@
 <template>
-  <div class="ui blurring message dimmable profile-list-item" :class="{positive: active}">
+  <div id="profile-list-item" class="ui blurring message dimmable profile-list-item" :class="{positive: active}">
 
     <div class="ui top left attached label" :class="{green: active}">{{ name }}</div>
 
@@ -114,5 +114,8 @@ export default {
 .ui.message.profile-list-item {
   margin-bottom: 25px;
   padding-top: 30px;
+}
+.ui.message#profile-list-item .dimmer {
+  margin-top: 0 !important;
 }
 </style>
