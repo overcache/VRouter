@@ -1,5 +1,8 @@
 <template>
   <div class="ui blurring message dimmable profile-list-item" :class="{positive: active}">
+
+    <div class="ui top left attached label" :class="{green: active}">{{ name }}</div>
+
     <div class="ui dimmer">
       <div class="content">
         <div class="center">
@@ -19,11 +22,6 @@
       </div>
     </div>
 
-    <div class="ui right corner label" v-show="active">
-      <i class="check circle icon green"></i>
-    </div>
-
-    <div class="header">{{ name }}</div>
     <div class="list">
       <li>{{ server }}</li>
       <li>{{ proxies }}
@@ -115,5 +113,6 @@ export default {
 <style>
 .ui.message.profile-list-item {
   margin-bottom: 25px;
+  padding-top: 30px;
 }
 </style>
