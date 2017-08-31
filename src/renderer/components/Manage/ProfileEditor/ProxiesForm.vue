@@ -110,13 +110,13 @@ export default {
       }
     },
     shadowsocks: function () {
-      return this.editingClone.shadowsocks
+      return this.editingClone.shadowsocks || {}
     },
     shadowsocksr: function () {
-      return this.editingClone.shadowsocksr
+      return this.editingClone.shadowsocksr || {}
     },
     kcptun: function () {
-      return this.editingClone.kcptun
+      return this.editingClone.kcptun || {}
     }
   }
 }
