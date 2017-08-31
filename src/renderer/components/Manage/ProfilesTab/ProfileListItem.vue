@@ -26,8 +26,12 @@
     <div class="header">{{ name }}</div>
     <div class="list">
       <li>{{ server }}</li>
-      <li>{{ proxies }}</li>
-      <li>{{ mode }}</li>
+      <li>{{ proxies }}
+      <li>
+        <span>{{ mode }}</span>
+        <span>{ 转发 DNS 查询 <i class="ui toggle on icon teal" :class="enableTunnelDns ? 'on teal': 'off'"></i>}</span>
+        <span>{ 转发 UDP 流量 <i class="ui toggle off icon" :class="enableRelayUDP ? 'on teal' : 'off'"></i>}</span>
+      </li>
     </div>
   </div>
 </template>
@@ -54,6 +58,12 @@ export default {
     },
     name: function () {
       return this.profile.name
+    },
+    enableTunnelDns: function () {
+      return this.profile.enableTunnelDns
+    },
+    enableRelayUDP: function () {
+      return this.profile.enableRelayUDP
     },
     proxies: function () {
       return Utils.getProxiesText(this.profile.proxies)
