@@ -99,13 +99,13 @@
     ],
     "mac": {
       "target": "dmg",
-      "icon": "build/icons/icon.icns"
+      "icon": "static/icons/icon.icns"
     },
     "win": {
-      "icon": "build/icons/icon.ico"
+      "icon": "static/icons/icon.ico"
     },
     "linux": {
-      "icon": "build/icons/icons"
+      "icon": "static/icons/icons"
     }
   },
   "false": {}
