@@ -275,7 +275,7 @@ class VRouter extends Openwrt {
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
   async applyActivedProfile () {
-    const activedProfile = this.config.profiles.filter(profile => profile.active === true)[0]
+    const activedProfile = this.config.profiles.filter(profile => profile.active)[0]
     const proxiesInfo = this.config.proxiesInfo
     const firewallInfo = this.config.firewallInfo
     const remoteCfgDirPath = path.join('/etc', this.config.cfgDirName)
@@ -283,26 +283,27 @@ class VRouter extends Openwrt {
     await super.applyProfile(activedProfile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir)
   }
 
-  static async latestCfgObject () {
+  static async getLatestCfgObject () {
     const templateCfgPath = path.join(__static, 'config-templates', 'config.json')
     const appDirCfgPath = path.join(Utils.getAppDir(), 'vrouter', 'config.json')
     let appDirCfg = {}
+    const templateCfg = await fs.readJSON(templateCfgPath)
+
     try {
       appDirCfg = await fs.readJSON(appDirCfgPath)
     } catch (error) {
       // appdircfg 不存在
       await fs.copy(templateCfgPath, appDirCfgPath)
-      return fs.readJSON(templateCfgPath)
+      return templateCfg
     }
 
-    // update existed config file
-    const templateCfg = await fs.readJSON(templateCfgPath)
-    if (appDirCfg.version !== templateCfg.version) {
-      winston.info('an older config file exiesd. need to upgrade.')
-      console.log('need to upgrade. simplely replace it by now')
+    if (appDirCfg.version < 0.4) {
+      // 对 0.4 以下版本不作兼容
       await fs.copy(templateCfgPath, appDirCfgPath)
-      // after upgrade, save to disk
+      return templateCfg
     }
+
+    // appDirCfg 已经是最新版本的配置文件
     return appDirCfg
   }
 }
