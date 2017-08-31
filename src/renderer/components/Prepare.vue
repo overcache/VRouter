@@ -170,8 +170,11 @@ export default {
       try {
         await this.vrouter.build(process)
       } catch (error) {
+        winston.error(`build error: ${error}`)
+        console.error(`build error: ${error}`)
         errorModal.content = `<pre>${error.stack}</pre>`
         this.modalInfo = errorModal
+        adjustModal()
         return
       }
       return this.checkRequirement()

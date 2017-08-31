@@ -1,3 +1,4 @@
 dist/
 build/
 test/config
+node_modules/

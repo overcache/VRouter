@@ -134,7 +134,7 @@ const myApp = new Vue({
   },
   methods: {
 
-// Status Tab
+    // Status Tab
     showErrModal (err) {
       if (err.message === 'User did not grant permission.') {
         return
@@ -348,7 +348,7 @@ const myApp = new Vue({
       // this.toggleBlink(isGWVRouter)
     },
 
-// Proxies Tab
+    // Proxies Tab
     resetProxiesDropdown () {
       this.$refs.proxiesText.innerHTML = this.ui.proxiesTextDict[this.editingProfile.proxies]
       const items = document.querySelectorAll('#proxies-chains .menu .item')
@@ -423,7 +423,7 @@ const myApp = new Vue({
       }
     },
 
-// Mode Tab
+    // Mode Tab
     resetProxiesMode () {
       this.$refs.proxiesModeText.innerHTML = this.ui.proxiesModeTextDict[this.editingProfile.mode]
       const items = document.querySelectorAll('#bypass-mode .menu .item')
@@ -478,7 +478,7 @@ const myApp = new Vue({
       }
     },
 
-// System Tab
+    // System Tab
     async guiLogin () {
       try {
         await vrouter.guiLogin()

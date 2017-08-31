@@ -7,6 +7,9 @@ let bin = (function () {
   switch (os.platform()) {
     case 'darwin':
       return '/usr/local/bin/VBoxManage'
+    case 'win32':
+      const vbInstallPath = process.env.VBOX_INSTALL_PATH || process.env.VBOX_MSI_INSTALL_PATH
+      return `"${path.join(vbInstallPath, 'VBoxManage.exe')}"`
     default:
       return 'VBoxManage'
   }
@@ -159,7 +162,7 @@ class VBox {
     const cmd = `${bin} modifyvm ${name} ` +
       ` --nic${nic} hostonly ` +
       ` --nictype${nic} "82540EM" ` +
-      ` --hostonlyadapter${nic} ${inf} ` +
+      ` --hostonlyadapter${nic} "${inf}" ` +
       ` --cableconnected${nic} "on"`
     return execute(cmd)
   }
@@ -258,7 +261,7 @@ class VBox {
    * @return undefined
    */
   static async ipconfigHostonlyInf (inf, ip, netmask = '255.255.255.0') {
-    const cmd = `${bin} hostonlyif ipconfig ${inf} --ip ${ip} --netmask ${netmask}`
+    const cmd = `${bin} hostonlyif ipconfig "${inf}" --ip ${ip} --netmask ${netmask}`
     return execute(cmd)
   }
 }
