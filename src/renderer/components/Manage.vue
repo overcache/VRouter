@@ -85,7 +85,6 @@ const { app } = require('electron').remote
 const appDir = Utils.getAppDir()
 const vrouter = new VRouter(fs.readJsonSync(path.join(appDir, 'vrouter', 'config.json')))
 Utils.configureLog(path.join(vrouter.cfgDirPath, 'vrouter.log'))
-const bus = new Vue()
 
 const templateProfile = {
   'index': 0, // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
@@ -152,7 +151,7 @@ export default {
       showProfileEditor: false,
       showProfileImporter: false,
       showAboutModal: false,
-      bus: bus,
+      bus: {},
       systemInfo: {
         // 为了和真实值一致, 这些值需要手动维护
         currentGWIP: '',
@@ -332,10 +331,28 @@ export default {
       await VBox.delete(vrouter.name)
       this.activeLoader = false
       app.quit()
+    },
+    loginVRouter: function () {
+      VBox.attachHeadless(vrouter.name)
+      Utils.wait(3000)
+      VBox.sendKeystrokesTo(vrouter.name)
     }
   },
-  async mounted () {
-    // vueInstance = this
+  mounted: function () {
+    $('.tabular.menu .item').tab()
+
+    setInterval(async () => {
+      // 每三分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
+      this.refreshInfos()
+    }, 180000)
+
+    $(document).on('click', 'a[href^="http"]', function (event) {
+      event.preventDefault()
+      shell.openExternal(this.href)
+    })
+  },
+  created: async function () {
+    this.bus = new Vue()
     this.bus.$on('editExtraList', this.editExtraList)
     this.bus.$on('newProfile', this.newProfile)
     this.bus.$on('openProfileImporter', () => { this.showProfileImporter = true })
@@ -351,24 +368,9 @@ export default {
     this.bus.$on('openLogFile', this.openLogFile)
     this.bus.$on('showAboutModal', () => { this.showAboutModal = true })
     this.bus.$on('refreshInfos', this.refreshInfos)
-
-    $('.tabular.menu .item').tab()
+    this.bus.$on('loginVRouter', this.loginVRouter)
 
     await this.refreshInfos()
-
-    setInterval(async () => {
-      // 每三分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
-      this.refreshInfos()
-    }, 180000)
-
-    $(document).on('click', 'a[href^="http"]', function (event) {
-      event.preventDefault()
-      shell.openExternal(this.href)
-    })
-
-    // setTimeout(async () => {
-    //   await vrouter.disconnect()
-    // }, 4000)
   }
 }
 </script>
