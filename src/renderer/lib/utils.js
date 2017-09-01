@@ -274,6 +274,27 @@ class Utils {
     }
   }
 
+  static async getBridgeService (bridgeServices) {
+    switch (platform) {
+      case 'darwin':
+        const macActiveAdapter = await Mac.getActiveAdapter()
+        for (let i = 0; i < bridgeServices.length; i++) {
+          if (macActiveAdapter === bridgeServices[i].split(':')[0]) {
+            return bridgeServices[i]
+          }
+        }
+        break
+      case 'win32':
+        const winActiveAdapter = await Win.getActiveAdapter()
+        for (let i = 0; i < bridgeServices.length; i++) {
+          if (winActiveAdapter === bridgeServices[i]) {
+            return bridgeServices[i]
+          }
+        }
+        break
+    }
+  }
+
   static async serialExec (file, command) {
     const nc = new NetcatClient()
     nc.unixSocket(file).enc('utf8')

@@ -246,14 +246,6 @@ class VBox {
     return bridgeServices
   }
 
-  static async getBridgeService (inf) {
-    const bridgeServices = await VBox.getAllBridgeServices()
-    const filter = bridgeServices.filter((service) => {
-      return inf === service.split(':')[0]
-    })
-    return filter[0]
-  }
-
   /*
    * 配置对应的hostonly接口
    * @param {string} inf 接口名称

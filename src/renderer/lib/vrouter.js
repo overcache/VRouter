@@ -17,9 +17,10 @@ async function initInterface (info) {
   const hostonlyInf = await VBox.getAvailableHostonlyInf(info.hostonlyInfIP, '255.255.255.0')
   winston.info('hostonlyInf', hostonlyInf)
   await VBox.initHostonlyNetwork(info.vmName, hostonlyInf, info.hostonlyINC)
-  const activeAdapter = await Utils.getActiveAdapter()
-  winston.info('activeAdapter', activeAdapter)
-  const bridgeService = await VBox.getBridgeService(activeAdapter)
+  // const activeAdapter = await Utils.getActiveAdapter()
+  const bridgeServices = await VBox.getAllBridgeServices()
+  winston.info('bridgeServices', bridgeServices)
+  const bridgeService = await Utils.getBridgeService(bridgeServices)
   winston.info('bridgeService', bridgeService)
   await VBox.initBridgeNetwork(info.vmName, bridgeService, info.bridgeINC)
 }

@@ -1,3 +1,4 @@
+// import VBox from './vbox.js'
 // const path = require('path')
 const { exec } = require('child_process')
 // const sudo = require('sudo-prompt')
@@ -49,7 +50,5 @@ class Win {
     return physicalIfs[0].infName
   }
 }
-
-Win.getActiveAdapter().then(console.log)
 
 export default Win
