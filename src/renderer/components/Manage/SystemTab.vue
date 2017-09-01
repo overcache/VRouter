@@ -57,7 +57,7 @@ export default {
               value: this.vrouterInfo.brLanIP
             },
             {
-              label: 'Bridged Adapter',
+              label: 'Bridged Service',
               value: this.vrouterInfo.bridgeAdapter
             },
             {
