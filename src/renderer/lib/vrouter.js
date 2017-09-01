@@ -1,7 +1,7 @@
 import Openwrt from './openwrt.js'
 import Utils from './utils.js'
 import VBox from './vbox.js'
-import winston from './debugger'
+import winston from './logger'
 // const { VBox } = require('./vbox.js')
 // const { Openwrt } = require('./openwrt.js')
 // const { Utils } = require('./utils.js')
@@ -306,5 +306,5 @@ class VRouter extends Openwrt {
     return appDirCfg
   }
 }
-
+console.log(winston)
 export default VRouter

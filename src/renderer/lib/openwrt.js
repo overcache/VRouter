@@ -1,5 +1,5 @@
 import Generator from './generator.js'
-import winston from './debugger'
+import winston from './logger'
 const { Client } = require('ssh2')
 // const { Generator } = require('./generator.js')
 const path = require('path')

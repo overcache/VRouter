@@ -15,7 +15,7 @@ import UIModal from '@/components/Prepare/UIModal.vue'
 import VBox from '@/lib/vbox.js'
 import Utils from '@/lib/utils.js'
 import VRouter from '@/lib/vrouter.js'
-import winston from '@/lib/debugger.js'
+import winston from '@/lib/logger.js'
 
 const fs = require('fs-extra')
 const path = require('path')

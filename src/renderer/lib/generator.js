@@ -1,5 +1,5 @@
 import Utils from './utils'
-import winston from './debugger'
+import winston from './logger'
 
 const fs = require('fs-extra')
 const path = require('path')

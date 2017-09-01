@@ -1,5 +1,5 @@
 // import Utils from './utils'
-import winston from './debugger'
+import winston from './logger'
 const { exec } = require('child_process')
 const os = require('os')
 const fs = require('fs-extra')

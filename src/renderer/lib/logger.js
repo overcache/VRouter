@@ -9,6 +9,7 @@ fs.ensureFileSync(logFilePath)
 const transports = []
 
 if (process.env.NODE_ENV === 'development') {
+  winston.level = 'debug'
   transports.push(new (winston.transports.Console)({
     level: 'debug'
   }))
@@ -17,6 +18,7 @@ if (process.env.NODE_ENV === 'development') {
     level: 'debug'
   }))
 } else {
+  winston.level = 'info'
   transports.push(new (winston.transports.File)({
     filename: logFilePath,
     level: 'info'
