@@ -1,4 +1,5 @@
 import Mac from './mac.js'
+import Win from './win.js'
 // const { Mac } = require('./mac.js')
 const { URL } = require('url')
 const http = require('http')
@@ -266,6 +267,8 @@ class Utils {
     switch (platform) {
       case 'darwin':
         return Mac.getActiveAdapter()
+      case 'win32':
+        return Win.getActiveAdapter()
       default:
         return Mac.getActiveAdapter()
     }
@@ -324,6 +327,7 @@ class Utils {
   }
 
   static configureLog (fPath) {
+    fs.ensureFileSync(fPath)
     const transports = []
     transports.push(new (winston.transports.File)({
       filename: fPath,

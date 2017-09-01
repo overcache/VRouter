@@ -8,7 +8,8 @@ let bin = (function () {
     case 'darwin':
       return '/usr/local/bin/VBoxManage'
     case 'win32':
-      const vbInstallPath = process.env.VBOX_INSTALL_PATH || process.env.VBOX_MSI_INSTALL_PATH
+      const defaultInstallPath = 'C:\\Program Files\\Oracle\\VirtualBox'
+      const vbInstallPath = process.env.VBOX_INSTALL_PATH || process.env.VBOX_MSI_INSTALL_PATH || defaultInstallPath
       return `"${path.join(vbInstallPath, 'VBoxManage.exe')}"`
     default:
       return 'VBoxManage'
