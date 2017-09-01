@@ -175,9 +175,9 @@ class Utils {
   }
 
   /*
-   * @param {string} 待执行命令
-   * @param {object} options 选项, 可包含name, icns属性
-   */
+  * @param {string} 待执行命令
+  * @param {object} options 选项, 可包含name, icns属性
+  */
   static sudoExec (cmd, options) {
     return new Promise((resolve, reject) => {
       sudo.exec(cmd, options, (err, stdout, stderr) => {
@@ -295,11 +295,11 @@ class Utils {
     }
   }
 
-  static async serialExec (file, command) {
+  static async serialExec (serialTcpPort, command) {
     const nc = new NetcatClient()
-    nc.unixSocket(file).enc('utf8')
+    nc.addr('127.0.0.1').port(serialTcpPort)
       .connect()
-      .send(`\n\n\n\n\n\n${command}\n\n`)
+      .send(`\r\n\r\n${command}\r\n\r\n`)
       .close()
   }
 

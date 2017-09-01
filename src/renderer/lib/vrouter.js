@@ -85,10 +85,10 @@ async function create (info) {
 async function changePwd (info) {
   winston.debug('about to change vrouter password', info)
   const cmd = `echo -e '${info.password}\\n${info.password}' | (passwd ${info.username})`
-  await Utils.serialExec(info.socketFPath, cmd)
+  await Utils.serialExec(info.serialTcpPort, cmd)
 }
 
-function installPackage (socketFPath) {
+function installPackage (serialTcpPort) {
   const subCmds = []
   subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
   subCmds.push('opkg update')
@@ -103,11 +103,11 @@ function installPackage (socketFPath) {
    */
 
   // return this.serialExec(subCmds.join(' && '))
-  return Utils.serialExec(socketFPath, cmd)
+  return Utils.serialExec(serialTcpPort, cmd)
 }
 
 /*
- * @param {object} info: lanIP, socketFPath
+ * @param {object} info: lanIP, serialTcpPort
  */
 function configLan (info) {
   const subCmds = []
@@ -115,7 +115,7 @@ function configLan (info) {
   subCmds.push('uci commit network')
   subCmds.push('/etc/init.d/network restart')
   const cmd = subCmds.join(' && ')
-  return Utils.serialExec(info.socketFPath, cmd)
+  return Utils.serialExec(info.serialTcpPort, cmd)
 }
 
 /*
@@ -132,12 +132,12 @@ async function startVrouter (info) {
 }
 
 /*
- * @param {object} info: {vmName, hostonlyINC, hostonlyInfIP, bridgeINC, lanIP, username, password, serailPort, socketFPath, process}
+ * @param {object} info: {vmName, hostonlyINC, hostonlyInfIP, bridgeINC, lanIP, username, password, serailPort, serialTcpPort, process}
  */
 async function init (info) {
   await VBox.lockGUIConfig(info.vmName, true)
   await VBox.hide(info.vmName, true)
-  await VBox.toggleSerialPort(info.vmName, info.socketFPath, 'on', info.serialPort)
+  await VBox.toggleSerialPort(info.vmName, info.serialTcpPort, 'on', info.serialPort)
   await initInterface({
     vmName: info.vmName,
     hostonlyINC: info.hostonlyINC,
@@ -154,7 +154,7 @@ async function init (info) {
   info.process.emit('init', '配置虚拟机网络地址, 请稍候 15 秒')
   await configLan({
     lanIP: info.lanIP,
-    socketFPath: info.socketFPath
+    serialTcpPort: info.serialTcpPort
   })
   await Utils.wait(15000)
 
@@ -162,7 +162,7 @@ async function init (info) {
   await changePwd({
     username: info.username,
     password: info.password,
-    socketFPath: info.socketFPath
+    serialTcpPort: info.serialTcpPort
   })
   await Utils.wait(8000)
 }
@@ -176,9 +176,8 @@ class VRouter extends Openwrt {
   }
   async powerOff () {
     await this.disconnect()
-    const socketFPath = path.join(this.cfgDirPath, this.config.virtualbox.socketFname)
-    winston.info(`about to poweroff vrouter. socketFPath: ${socketFPath}`)
-    await Utils.serialExec(socketFPath, 'poweroff')
+    winston.info('about to poweroff vrouter via serial port')
+    await Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff')
   }
   async build (process) {
     await this.copyTemplatesIfNotExist()
@@ -200,7 +199,7 @@ class VRouter extends Openwrt {
       username: this.config.openwrt.username,
       password: this.config.openwrt.password,
       serialPort: this.config.virtualbox.serialPort,
-      socketFPath: path.join(this.cfgDirPath, this.config.virtualbox.socketFname),
+      serialTcpPort: this.config.virtualbox.serialTcpPort,
       process: process
     })
 
@@ -216,7 +215,7 @@ class VRouter extends Openwrt {
     await this.manageService('cron', 'enable')
 
     process.emit('init', '更新软件源并安装必要软件包, 请稍候 20-60 秒')
-    await installPackage(path.join(this.cfgDirPath, this.config.virtualbox.socketFname))
+    await installPackage(this.config.virtualbox.serialTcpPort)
     await Utils.wait(20000)
 
     const finished = await this._isInstallPackageFinish(4)

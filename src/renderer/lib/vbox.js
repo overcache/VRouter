@@ -133,16 +133,15 @@ class VBox {
     const state = await VBox.getVmState(name)
     return state === 'running'
   }
-  static toggleSerialPort (name, file, action = 'on', portNum = '1') {
-    // const serialPath = path.join(VBox.config.host.configDir, VBox.config.host.serialFile)
-    const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${portNum} server "${file}"` : 'off'
+  static toggleSerialPort (name, tcpServerPort, action = 'on', portNum = '1') {
+    const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${portNum} tcpserver "${tcpServerPort}"` : 'off'
     const cmd = `${bin} modifyvm ${name} --uart${portNum} ${subCmd}`
     return execute(cmd)
   }
   static async isSerialPortOn (name, portNum = 1) {
     // VBoxManage showvminfo com.icymind.test --machinereadable  | grep "uart\(mode\)\?1"
     // uart1="0x03f8,4"
-    // uartmode1="server,/Users/simon/Library/Application Support/VRouter/serial"
+    // uartmode1="tcpserver,10192"
     const vmInfo = await VBox.getVmInfo(name)
     const pattern = new RegExp(String.raw`^uart${portNum}="0x03f8,4"$`, 'mg')
     return pattern.exec(vmInfo) !== undefined
