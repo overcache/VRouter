@@ -277,7 +277,7 @@ class VRouter extends Openwrt {
     const activedProfile = this.config.profiles.filter(profile => profile.active)[0]
     const proxiesInfo = this.config.proxiesInfo
     const firewallInfo = this.config.firewallInfo
-    const remoteCfgDirPath = path.join('/etc', this.config.cfgDirName)
+    const remoteCfgDirPath = `/etc/${this.config.cfgDirName}`
     const dnsmasqCfgDir = '/etc/dnsmasq.d'
     await super.applyProfile(activedProfile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir)
   }
@@ -306,5 +306,4 @@ class VRouter extends Openwrt {
     return appDirCfg
   }
 }
-console.log(winston)
 export default VRouter

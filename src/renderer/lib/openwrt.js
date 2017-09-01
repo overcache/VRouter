@@ -271,7 +271,7 @@ class Openwrt {
   }
 
   async scpProxiesCfgs (profile, proxiesInfo, remoteCfgDirPath) {
-    winston.info(`active profile: ${profile.name}`)
+    winston.debug(`active profile: ${profile.name}`)
     const cfgFiles = await Generator.genProxiesCfgs(profile, proxiesInfo)
     winston.debug(`Generate cfg files: ${cfgFiles}`)
     for (let i = 0; i < cfgFiles.length; i++) {
@@ -367,9 +367,13 @@ class Openwrt {
   }
   async setupProxies (profile, proxiesInfo, remoteCfgDirPath) {
     await this.scpProxiesCfgs(profile, proxiesInfo, remoteCfgDirPath)
+    winston.debug('拷贝代理配置文件到虚拟机, 完成')
     await this.scpProxiesServices(profile, proxiesInfo, remoteCfgDirPath)
+    winston.debug('拷贝代理管理脚本到虚拟机, 完成')
     await this.startProxiesServices(profile, proxiesInfo)
+    winston.debug('启动关闭相应代理, 完成')
     await this.configProxiesWatchdog(profile, proxiesInfo, remoteCfgDirPath)
+    winston.debug('拷贝代理监护脚本到虚拟机, 完成')
   }
   async scpIPsetFile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
     // const dirPath = path.join(__dirname, '..', 'config')
@@ -403,8 +407,11 @@ class Openwrt {
   }
   async applyProfile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir) {
     await this.setupProxies(profile, proxiesInfo, remoteCfgDirPath)
+    winston.debug('设置代理, 完成')
     await this.setupFirewall(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
+    winston.debug('设置防火墙, 完成')
     await this.setupDnsmasq(profile, proxiesInfo, firewallInfo, dnsmasqCfgDir)
+    winston.debug('设置dnsmasq, 完成')
   }
 }
 
