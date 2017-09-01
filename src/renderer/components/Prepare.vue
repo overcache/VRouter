@@ -182,7 +182,7 @@ export default {
     },
     async buildVm () {
       winston.info('building vm')
-      this.modalInfo = buildingVmModal
+      this.modalInfo = Object.assign({}, buildingVmModal)
       const process = new EventEmitter()
       process.on('init', (msg) => {
         this.modalInfo.content += `<li class="ui">${msg}</li>`
@@ -200,11 +200,12 @@ export default {
       return this.checkRequirement()
     },
     async startVm () {
+      this.modalInfo.show = false
       const saved = (await VBox.getVmState(this.vmName)) === 'saved'
       const waitTime = saved ? 10 : 30
       const action = saved ? '恢复' : '启动'
       let time = waitTime
-      this.modalInfo = startVmModal
+      this.modalInfo = Object.assign({}, startVmModal)
       const interval = setInterval(() => {
         time = time > 0 ? --time : 0
         startVmModal.content = `正在${action}虚拟机, 请稍候...${time}`
@@ -214,8 +215,9 @@ export default {
         await Utils.wait(waitTime * 1000)
         winston.debug('vm started')
       } catch (error) {
+        clearInterval(interval)
         winston.error('fail to start vm')
-        errorModal.content = `<pre>${error.stack}</pre>`
+        startVMErrorModal.content = `<pre>${error.stack}</pre>`
         this.modalInfo = startVMErrorModal
         adjustModal()
         return
