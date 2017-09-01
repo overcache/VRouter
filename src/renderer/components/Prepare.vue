@@ -102,6 +102,27 @@ const errorModal = {
   closable: false
 }
 
+const startVMErrorModal = {
+  header: '启动错误',
+  content: '',
+  buttons: [
+    {
+      label: '重试',
+      handler: function () {
+        return vueInstance.startVm()
+      }
+    },
+    {
+      label: '退出',
+      handler: function () {
+        app.quit()
+      }
+    }
+  ],
+  show: true,
+  closable: false
+}
+
 const startVmModal = {
   header: '启动虚拟机',
   content: '',
@@ -171,7 +192,6 @@ export default {
         await this.vrouter.build(process)
       } catch (error) {
         winston.error(`build error: ${error}`)
-        console.error(`build error: ${error}`)
         errorModal.content = `<pre>${error.stack}</pre>`
         this.modalInfo = errorModal
         adjustModal()
@@ -195,6 +215,10 @@ export default {
         winston.debug('vm started')
       } catch (error) {
         winston.error('fail to start vm')
+        errorModal.content = `<pre>${error.stack}</pre>`
+        this.modalInfo = startVMErrorModal
+        adjustModal()
+        return
       }
       clearInterval(interval)
       return this.checkRequirement()
@@ -210,6 +234,8 @@ export default {
     const templateCfg = path.join(__static, 'config-templates', 'config.json')
     this.vrouter = new VRouter(fs.readJsonSync(templateCfg))
     this.vmName = this.vrouter.name
+  },
+  mounted: async function () {
     await this.checkRequirement()
   }
 }
