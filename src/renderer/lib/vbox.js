@@ -1,9 +1,9 @@
 import Utils from './utils'
+import winston from './debugger'
 const { exec } = require('child_process')
 const os = require('os')
 const fs = require('fs-extra')
 const path = require('path')
-const winston = require('winston')
 
 Utils.configureLog(path.join(Utils.getAppDir(), 'vrouter', 'vrouter.log'))
 

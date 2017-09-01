@@ -1,8 +1,9 @@
 import Generator from './generator.js'
+import winston from './debugger'
 const { Client } = require('ssh2')
 // const { Generator } = require('./generator.js')
 const path = require('path')
-const winston = require('winston')
+// const winston = require('winston')
 // const os = require('os')
 // webpack var: __static
 /* global __static */
@@ -34,7 +35,7 @@ class Openwrt {
         winston.info('ssh connection has been ended')
         this.conn = null
       }).on('error', (error) => {
-        winston.error('connecting to openwrt error', error.message)
+        winston.error(`connecting to openwrt error: ${error.message}`)
         this.conn = null
       }).connect({
         host: this.ip,
@@ -270,9 +271,9 @@ class Openwrt {
   }
 
   async scpProxiesCfgs (profile, proxiesInfo, remoteCfgDirPath) {
-    winston.info('active profile', profile.name)
+    winston.info(`active profile: ${profile.name}`)
     const cfgFiles = await Generator.genProxiesCfgs(profile, proxiesInfo)
-    winston.debug('Generate cfg files', cfgFiles)
+    winston.debug(`Generate cfg files: ${cfgFiles}`)
     for (let i = 0; i < cfgFiles.length; i++) {
       const src = cfgFiles[i]
       const cfgName = path.basename(src)
@@ -282,14 +283,14 @@ class Openwrt {
   }
   async scpProxiesServices (profile, proxiesInfo, remoteCfgDirPath, scpAllService) {
     const cfgFiles = await Generator.genServicesFiles(profile, proxiesInfo, remoteCfgDirPath, scpAllService)
-    winston.debug('Generate services files', cfgFiles)
+    winston.debug(`Generate services files: ${cfgFiles}`)
     for (let i = 0; i < cfgFiles.length; i++) {
       const src = cfgFiles[i]
       const cfgName = path.basename(src)
       const dst = `/etc/init.d/${cfgName}`
       await this.scp(src, dst)
       await this.execute(`chmod +x ${dst}`)
-      winston.debug('scp service file to', dst)
+      winston.debug(`scp service file to: ${dst}`)
     }
   }
   async toggleSpecialService (proxy, proxies, proxiesInfo, tunnelDnsAction) {

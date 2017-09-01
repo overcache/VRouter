@@ -1,10 +1,9 @@
 import Utils from './utils'
+import winston from './debugger'
 
 const fs = require('fs-extra')
 const path = require('path')
 const os = require('os')
-const winston = require('winston')
-winston.level = 'info'
 
 /*
  * 根据rule, 生成PREROUTING和OUTPUT两条iptables规则
@@ -176,7 +175,6 @@ async function getRelayUDPCfgFrom (profile, proxiesInfo) {
 async function genProxyCfgHelper (proxy, profile, proxiesInfo) {
   const cfgName = proxiesInfo[proxy].cfgName
   const tempFPath = path.join(os.tmpdir(), cfgName)
-  winston.debug('tempFPath', tempFPath)
   await fs.remove(tempFPath).catch()
   let func = null
   switch (proxy) {
@@ -197,13 +195,11 @@ async function genProxyCfgHelper (proxy, profile, proxiesInfo) {
       break
   }
   const data = await func(profile, proxiesInfo)
-  winston.debug('get proxy config from profile', data)
   await fs.writeJson(tempFPath, data, {spaces: 2})
   return tempFPath
 }
 
 async function genServiceFileHelper (proxy, proxies, proxiesInfo, remoteCfgDirPath) {
-  winston.debug('genServiceFileHelper, proxy', proxy)
   let serviceName = proxiesInfo[proxy].serviceName
   let binName = proxiesInfo[proxy].binName
   // if (proxy === 'tunnelDns' || proxy === 'relayUDP') {
@@ -270,7 +266,6 @@ function getFileIpsetPairArray (profile, proxiesInfo, firewallInfo, dirPath) {
     if (profile.selectedBL[key] === false) {
       continue
     }
-    winston.debug(`dirPath, firewallInfo.lists[${key}Fname]`, firewallInfo.lists[`${key}Fname`])
 
     const item = {
       fPath: path.join(dirPath, firewallInfo.lists[`${key}Fname`]),
@@ -364,8 +359,8 @@ class Generator {
     const redirPort = proxiesInfo[type].localPort
     const udpRedirPort = proxiesInfo.relayUDP.localPort
 
-    winston.debug('tcp redirPort', redirPort)
-    winston.debug('udp redirPort', udpRedirPort)
+    winston.debug(`tcp redirPort: ${redirPort}`)
+    winston.debug(`udp redirPort: ${udpRedirPort}`)
 
     const contents = ['# com.icymind.vrouter']
     contents.push(`# workMode: ${profile.mode}`)
@@ -462,7 +457,6 @@ class Generator {
     let contents = []
 
     const ipsetArray = getFileIpsetPairArray(profile, proxiesInfo, firewallInfo, dirPath)
-    winston.debug('ipsetArray', ipsetArray)
     collectIpsetNames(ipsetArray).forEach((ipsetName) => {
       contents.push(`create ${ipsetName} hash:net family inet hashsize 1024 maxelem 65536 -exist`)
     })

@@ -1,14 +1,13 @@
 import Openwrt from './openwrt.js'
 import Utils from './utils.js'
 import VBox from './vbox.js'
+import winston from './debugger'
 // const { VBox } = require('./vbox.js')
 // const { Openwrt } = require('./openwrt.js')
 // const { Utils } = require('./utils.js')
 const path = require('path')
 const fs = require('fs-extra')
 const os = require('os')
-const winston = require('winston')
-winston.level = 'debug'
 
 Utils.configureLog(path.join(Utils.getAppDir(), 'vrouter', 'vrouter.log'))
 /*
@@ -16,13 +15,13 @@ Utils.configureLog(path.join(Utils.getAppDir(), 'vrouter', 'vrouter.log'))
  */
 async function initInterface (info) {
   const hostonlyInf = await VBox.getAvailableHostonlyInf(info.hostonlyInfIP, '255.255.255.0')
-  winston.info('hostonlyInf', hostonlyInf)
+  winston.info(`hostonlyInf: ${hostonlyInf}`)
   await VBox.initHostonlyNetwork(info.vmName, hostonlyInf, info.hostonlyINC)
   // const activeAdapter = await Utils.getActiveAdapter()
   const bridgeServices = await VBox.getAllBridgeServices()
-  winston.info('bridgeServices', bridgeServices)
+  winston.info(`bridgeServices: ${bridgeServices}`)
   const bridgeService = await Utils.getBridgeService(bridgeServices)
-  winston.info('bridgeService', bridgeService)
+  winston.info(`bridgeService: ${bridgeService}`)
   await VBox.initBridgeNetwork(info.vmName, bridgeService, info.bridgeINC)
 }
 
@@ -84,7 +83,6 @@ async function create (info) {
  * @param {object} info: username, password, socketFPath
  */
 async function changePwd (info) {
-  winston.debug('about to change vrouter password', info)
   const cmd = `echo -e '${info.password}\\n${info.password}' | (passwd ${info.username})`
   await Utils.serialExec(info.serialTcpPort, cmd)
 }
@@ -180,7 +178,6 @@ class VRouter extends Openwrt {
   }
   async powerOff () {
     await this.disconnect()
-    winston.info('about to poweroff vrouter via serial port')
     await Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff')
   }
   async build (process) {
@@ -275,7 +272,6 @@ class VRouter extends Openwrt {
 
   saveCfg2File () {
     const cfgPath = path.join(this.cfgDirPath, 'config.json')
-    winston.debug(`about to save config to ${cfgPath}`)
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
   }
   async applyActivedProfile () {

@@ -13,11 +13,6 @@ const zlib = require('zlib')
 const NetcatClient = require('netcat').client
 const { exec } = require('child_process')
 const sudo = require('sudo-prompt')
-const winston = require('winston')
-
-if (process.env.NODE_ENV === 'development') {
-  winston.level = 'debug'
-}
 
 const platform = os.platform()
 
@@ -105,7 +100,6 @@ function parseSsSIP002URI (uri, templateProfile) {
   const firstAtIndex = uri.indexOf('@')
   // bf-cfb:test
   const decodedString = Buffer.from(uri.substr(5, firstAtIndex - 5), 'base64').toString()
-  winston.debug('decodedString', decodedString)
   ;[
     profile.shadowsocks.method,
     profile.shadowsocks.password
@@ -113,7 +107,6 @@ function parseSsSIP002URI (uri, templateProfile) {
 
   const serverAndPortPattern = /@(.*:\d+)/ig
   const serverAndPortStr = serverAndPortPattern.exec(uri)[1]
-  winston.debug('serverAndPortStr', serverAndPortStr)
 
   ;[
     profile.shadowsocks.server,
@@ -128,11 +121,9 @@ function parseSsSIP002URI (uri, templateProfile) {
     const pluginCfgStrIndex = pluginIndex + 'plugin='.length
     const pluginCfgStrLen = lastSharpIndex < 0 ? undefined : lastSharpIndex - pluginCfgStrIndex
     const pluginCfgStr = uri.substr(pluginCfgStrIndex, pluginCfgStrLen)
-    winston.debug('pluginCfgStr', pluginCfgStr)
 
     const pluginCfgArray = decodeURIComponent(pluginCfgStr).split(';')
     if (pluginCfgArray[0] !== 'kcptun') {
-      winston.error(`unsupported plugin: ${pluginCfgArray[0]}`)
       return profile
     }
 
@@ -244,7 +235,6 @@ class Utils {
     try {
       fs.statSync(file)
     } catch (err) {
-      winston.error(err)
       return Promise.resolve('')
     }
     const algo = 'sha256'
@@ -345,21 +335,6 @@ class Utils {
       none: '无代理'
     }
     return dict[mode]
-  }
-
-  static configureLog (fPath) {
-    fs.ensureFileSync(fPath)
-    const transports = []
-    transports.push(new (winston.transports.File)({
-      filename: fPath,
-      level: 'info'
-    }))
-    if (process.env.NODE_ENV === 'development') {
-      transports.push(new (winston.transports.Console)({
-        level: 'debug'
-      }))
-    }
-    winston.configure({ transports })
   }
 
   static parseProfileURI (uri, templateProfile) {

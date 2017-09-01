@@ -1,7 +1,6 @@
 // import VBox from './vbox.js'
 // const path = require('path')
 const { exec } = require('child_process')
-// const sudo = require('sudo-prompt')
 
 function execute (command) {
   return new Promise((resolve, reject) => {
@@ -14,17 +13,6 @@ function execute (command) {
     })
   })
 }
-// function sudoExec (cmd, options = {name: 'VRouter'}) {
-//   return new Promise((resolve, reject) => {
-//     sudo.exec(cmd, options, (err, stdout, stderr) => {
-//       if (err) {
-//         reject(err)
-//       } else {
-//         resolve(stdout || stderr)
-//       }
-//     })
-//   })
-// }
 
 class Win {
   static async getActiveAdapter () {
