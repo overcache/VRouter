@@ -1,7 +1,11 @@
+import Utils from './utils'
 const { exec } = require('child_process')
 const os = require('os')
 const fs = require('fs-extra')
 const path = require('path')
+const winston = require('winston')
+
+Utils.configureLog(path.join(Utils.getAppDir(), 'vrouter', 'vrouter.log'))
 
 let bin = (function () {
   switch (os.platform()) {
@@ -212,18 +216,23 @@ class VBox {
    */
   static async getAvailableHostonlyInf (ip, mask) {
     const cmd = `${bin} list hostonlyifs`
-    const output = await execute(cmd)
-    const infPattern = /^Name:\s*(.*)\n[\s\S]*?IPAddress:\s*(.*)\nNetworkMask:\s*(.*)\n/mg
-    let infMatch = infPattern.exec(output)
-    while (infMatch) {
-      let name = infMatch[1]
-      let ipMatch = infMatch[2]
-      let maskMatch = infMatch[3]
-      if (ip === ipMatch && mask === maskMatch) {
-        return name
+    const ifsInfo = await execute(cmd)
+
+    let retInf = null
+    ifsInfo.trim().split(/(\r)?\n(\r)?\n/).forEach(infInfo => {
+      let infObj = {}
+      infInfo.trim().split(/\n/).forEach(keyAndValue => {
+        let [key, value] = keyAndValue.trim().split(':').map(item => item.trim())
+        infObj[key] = value
+      })
+
+      if (infObj['IPAddress'] === ip && infObj['NetworkMask'] === mask) {
+        retInf = infObj
       }
-      infMatch = infPattern.exec(output)
-    }
+    })
+    if (retInf) return retInf['Name']
+
+    winston.info(`no hostonlyifs with ${ip} available. create a new one then configure it`)
     const newInf = await VBox.createHostonlyInf()
     await VBox.ipconfigHostonlyInf(newInf, ip, mask)
     return newInf

@@ -10,6 +10,7 @@ const os = require('os')
 const winston = require('winston')
 winston.level = 'debug'
 
+Utils.configureLog(path.join(Utils.getAppDir(), 'vrouter', 'vrouter.log'))
 /*
  * @param {object} info: vmName, hostonlyINC, hostonlyInfIP, bridgeINC
  */
@@ -135,8 +136,11 @@ async function startVrouter (info) {
  * @param {object} info: {vmName, hostonlyINC, hostonlyInfIP, bridgeINC, lanIP, username, password, serailPort, serialTcpPort, process}
  */
 async function init (info) {
-  await VBox.lockGUIConfig(info.vmName, true)
-  await VBox.hide(info.vmName, true)
+  if (process.env.NODE_ENV !== 'development') {
+    console.log(process.env.NODE_ENV)
+    await VBox.lockGUIConfig(info.vmName, true)
+    await VBox.hide(info.vmName, true)
+  }
   await VBox.toggleSerialPort(info.vmName, info.serialTcpPort, 'on', info.serialPort)
   await initInterface({
     vmName: info.vmName,
