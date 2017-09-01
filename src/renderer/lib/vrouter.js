@@ -9,7 +9,6 @@ const path = require('path')
 const fs = require('fs-extra')
 const os = require('os')
 
-Utils.configureLog(path.join(Utils.getAppDir(), 'vrouter', 'vrouter.log'))
 /*
  * @param {object} info: vmName, hostonlyINC, hostonlyInfIP, bridgeINC
  */

@@ -69,6 +69,7 @@ import Vue from 'vue'
 import Utils from '@/lib/utils.js'
 import VRouter from '@/lib/vrouter.js'
 import VBox from '@/lib/vbox.js'
+import winston from '@/lib/debugger.js'
 import StatusTab from './Manage/StatusTab.vue'
 import ProfilesTab from './Manage/ProfilesTab.vue'
 import SystemTab from './Manage/SystemTab'
@@ -77,7 +78,6 @@ import ProfileImporter from './Manage/ProfileImporter'
 
 const path = require('path')
 const { shell } = require('electron')
-const winston = require('winston')
 const { app } = require('electron').remote
 
 // let vueInstance = null
@@ -349,7 +349,6 @@ export default {
   created: async function () {
     this.vrouter = new VRouter(await VRouter.getLatestCfg())
     this.profiles = this.vrouter.config.profiles
-    Utils.configureLog(path.join(this.vrouter.cfgDirPath, 'vrouter.log'))
 
     this.bus = new Vue()
     this.bus.$on('editExtraList', this.editExtraList)

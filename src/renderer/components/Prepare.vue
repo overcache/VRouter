@@ -15,12 +15,12 @@ import UIModal from '@/components/Prepare/UIModal.vue'
 import VBox from '@/lib/vbox.js'
 import Utils from '@/lib/utils.js'
 import VRouter from '@/lib/vrouter.js'
+import winston from '@/lib/debugger.js'
 
 const fs = require('fs-extra')
 const path = require('path')
 const { app, getCurrentWindow } = require('electron').remote
 const { EventEmitter } = require('events')
-const winston = require('winston')
 
 let vueInstance = null
 
@@ -210,7 +210,6 @@ export default {
     const templateCfg = path.join(__static, 'config-templates', 'config.json')
     this.vrouter = new VRouter(fs.readJsonSync(templateCfg))
     this.vmName = this.vrouter.name
-    Utils.configureLog(path.join(this.vrouter.cfgDirPath, 'vrouter.log'))
     await this.checkRequirement()
   }
 }
