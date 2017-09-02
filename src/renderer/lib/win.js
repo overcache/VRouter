@@ -16,6 +16,16 @@ function execute (command) {
 
 class Win {
   static async getActiveAdapter () {
+    const indexAndName = await Win.getActiveAdapterIndexAndName()
+    return indexAndName.infName
+  }
+
+  static async getActiveAdapterIndex () {
+    const indexAndName = await Win.getActiveAdapterIndexAndName()
+    return indexAndName.index
+  }
+
+  static async getActiveAdapterIndexAndName () {
     const cmd = 'WMIC nic where "PhysicalAdapter = TRUE and NetConnectionStatus = 2" get InterfaceIndex,Name'
 
     // InterfaceIndex  Name
@@ -35,7 +45,33 @@ class Win {
         })
       }
     })
-    return physicalIfs[0].infName
+    return physicalIfs[0]
+  }
+
+  static async getCurrentGateway () {
+    const infIndex = await Win.getActiveAdapterIndex()
+    const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DefaultIPGateway`
+
+    const headerIncludedOutput = await execute(cmd)
+    // DefaultIPGateway
+    // {"192.168.10.1", "xxxx"}
+
+    // 删除以下字符: {, }, ", 空格
+    const gateways = headerIncludedOutput.split('\n')[1].replace(/({|}|"|\s)/ig, '').split(',')
+    return gateways[0]
+  }
+
+  static async getCurrentDns () {
+    const infIndex = await Win.getActiveAdapterIndex()
+    const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DNSServerSearchOrder`
+
+    const headerIncludedOutput = await execute(cmd)
+    // DefaultIPGateway
+    // {"192.168.10.1", "xxxx"}
+
+    // 删除以下字符: {, }, ", 空格
+    const dnses = headerIncludedOutput.split('\n')[1].replace(/({|}|"|\s)/ig, '').split(',')
+    return dnses[0]
   }
 }
 

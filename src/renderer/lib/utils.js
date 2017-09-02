@@ -330,12 +330,16 @@ class Utils {
     switch (platform) {
       case 'darwin':
         return Mac.getCurrentDns()
+      case 'win32':
+        return Win.getCurrentDns()
     }
   }
   static getCurrentGateway () {
     switch (platform) {
       case 'darwin':
         return Mac.getCurrentGateway()
+      case 'win32':
+        return Win.getCurrentGateway()
     }
   }
   static resetRoute () {
