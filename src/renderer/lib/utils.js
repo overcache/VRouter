@@ -295,20 +295,6 @@ class Utils {
       nc.addr('127.0.0.1').port(serialTcpPort)
         .connect()
         .on('data', data => { output += data.toString('utf8') })
-        // .on('close', () => {
-        //   logger.debug('detected serialTcpPort connection close event. run callback.')
-        //   const result = output.trim().split('\r\n').filter(line => {
-        //     if (/^root@.+?:\/#$/ig.test(line.trim())) {
-        //       return false
-        //     } else if (line.trim() === command.trim()) {
-        //       return false
-        //     } else {
-        //       return true
-        //     }
-        //   })
-        //   logger.debug(`command: "${command}"'s output: ${result}`)
-        //   resolve(result)
-        // })
         .on('error', (err) => {
           logger.error(`error when connect to serialTcpPort. ${err}`)
           reject(err)
@@ -317,20 +303,18 @@ class Utils {
 
       setTimeout(() => {
         logger.debug('about to close the connection of serialTcpPort')
-        nc.close(() => {
-          logger.debug('run serialTcp connection close callback.')
-          const result = output.trim().split('\r\n').filter(line => {
-            if (/^root@.+?:\/#$/ig.test(line.trim())) {
-              return false
-            } else if (line.trim() === command.trim()) {
-              return false
-            } else {
-              return true
-            }
-          })
-          logger.debug(`command: "${command}"'s output: ${result}`)
-          resolve(result)
+        nc.close()
+        const result = output.trim().split('\r\n').filter(line => {
+          if (/^root@.+?:\/#$/ig.test(line.trim())) {
+            return false
+          } else if (line.trim() === command.trim()) {
+            return false
+          } else {
+            return true
+          }
         })
+        logger.debug(`command: "${command}"'s output: ${result}`)
+        resolve(result)
       }, waitTime)
     })
     return promise
