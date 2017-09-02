@@ -30,7 +30,7 @@
     <div id="delete-vrouter-modal" class="ui tiny modal">
       <div class="ui top left attached label red">删除 VRouter</div>
       <div class="content">
-        <p>确定删除么 ?</p>
+        <p>如果能移步至 <a href="https://github.com/icymind/VRouter/issues">github</a> 提交 issues, 将不胜感激.</p>
       </div>
       <div class="ui button right floated" @click="toggleDeleteVRouterModal('hide')">取消</div>
       <div class="ui button red right floated" @click="toggleDeleteVRouterModal('hide');bus.$emit('deleteVRouter')">删除</div>

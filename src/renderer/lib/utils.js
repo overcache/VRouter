@@ -300,7 +300,7 @@ class Utils {
             return true
           }
         })
-        logger.debug(`command: "${command}"'s output: ${result}`)
+        logger.debug(`command: "${command}"'s output: ${result.substr(1, 10)}`)
         return result
       }
       const nc = new NetcatClient()
@@ -309,6 +309,7 @@ class Utils {
         .wait(waitTime)
         .connect()
         .on('close', () => {
+          logger.debug('netcat close-event detected')
           resolve(trimOutput(output))
         })
         .on('data', data => { output += data.toString('utf8') })
