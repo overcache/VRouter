@@ -81,9 +81,9 @@ async function create (info) {
 /*
  * @param {object} info: username, password, socketFPath
  */
-async function changePwd (info) {
+function changePwd (info) {
   const cmd = `echo -e '${info.password}\\n${info.password}' | (passwd ${info.username})`
-  await Utils.serialExec(info.serialTcpPort, cmd, 1000)
+  return Utils.serialExec(info.serialTcpPort, cmd, 3000)
 }
 
 function installPackage (serialTcpPort) {
@@ -101,7 +101,7 @@ function installPackage (serialTcpPort) {
    */
 
   // return this.serialExec(subCmds.join(' && '))
-  return Utils.serialExec(serialTcpPort, cmd, 500)
+  return Utils.serialExec(serialTcpPort, cmd, 15000)
 }
 
 /*
@@ -113,7 +113,7 @@ function configLan (info) {
   subCmds.push('uci commit network')
   subCmds.push('/etc/init.d/network restart')
   const cmd = subCmds.join(' && ')
-  return Utils.serialExec(info.serialTcpPort, cmd, 500)
+  return Utils.serialExec(info.serialTcpPort, cmd, 5000)
 }
 
 /*
@@ -164,7 +164,7 @@ async function init (info) {
     password: info.password,
     serialTcpPort: info.serialTcpPort
   })
-  await Utils.wait(8000)
+  await Utils.wait(5000)
 }
 
 class VRouter extends Openwrt {
@@ -176,7 +176,7 @@ class VRouter extends Openwrt {
   }
   async powerOff () {
     await this.disconnect()
-    await Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff', 100)
+    return Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff', 100)
   }
   async build (process) {
     await this.copyTemplatesIfNotExist()

@@ -286,7 +286,7 @@ class Utils {
     }
   }
 
-  static async serialExec (serialTcpPort, command, waitTime = 500) {
+  static serialExec (serialTcpPort, command, waitTime = 1000) {
     logger.debug(`about to run command: "${command}" via serialTcpPort.`)
     const promise = new Promise((resolve, reject) => {
       const nc = new NetcatClient()
@@ -309,7 +309,7 @@ class Utils {
         })
         .on('error', (err) => { reject(err) })
         .send(`\r\n\r\n${command}\r\n\r\n`)
-        .close()
+
       setTimeout(() => {
         nc.close()
       }, waitTime)
