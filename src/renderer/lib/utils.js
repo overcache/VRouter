@@ -300,8 +300,8 @@ class Utils {
             return true
           }
         })
-        logger.debug(`command: "${command}"'s output: ${result.substr(1, 10)}`)
-        return result
+        logger.debug(`command: "${command}"'s output: ${result[0]}`)
+        return result.join('\n')
       }
       const nc = new NetcatClient()
       let output = ''
