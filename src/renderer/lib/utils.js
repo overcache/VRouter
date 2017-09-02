@@ -288,6 +288,7 @@ class Utils {
 
   static serialExec (serialTcpPort, command, waitTime = 1000) {
     logger.debug(`about to run command: "${command}" via serialTcpPort.`)
+    logger.debug(`wait output for ${waitTime} ms`)
     const promise = new Promise((resolve, reject) => {
       const nc = new NetcatClient()
       let output = ''

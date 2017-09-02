@@ -30,7 +30,7 @@
     <div id="delete-vrouter-modal" class="ui tiny modal">
       <div class="ui top left attached label red">删除 VRouter</div>
       <div class="content">
-        <p>重建一个挺花时间的, 确定删除么 ?</p>
+        <p>确定删除么 ?</p>
       </div>
       <div class="ui button right floated" @click="toggleDeleteVRouterModal('hide')">取消</div>
       <div class="ui button red right floated" @click="toggleDeleteVRouterModal('hide');bus.$emit('deleteVRouter')">删除</div>
@@ -40,7 +40,7 @@
       <div class="ui top left attached label red">登录</div>
       <div class="content">
         <p>后台虚拟机 IP 为 10.19.28.37 , 用户名密码均为 root , 你还可以用 Web 或者 SSH 的方式登录. 但是, VRouter 和后台的虚拟机紧密关联, 各项功能都依赖于正确设置了虚拟机. 修改虚拟机可能会造成 VRouter 无法正常工作.</p>
-        <p>在 VirtualBox 界面下, 可以通过菜单栏 Machine - Detach GUI 将虚拟机转为后台运行</p>
+        <p>在 VirtualBox 界面, macOS 可以通过菜单栏 Machine - Detach GUI 将虚拟机转为后台运行, windows 版本的相应菜单为 控制 - 分离式界面</p>
       </div>
 
       <div class="ui button right floated" @click="toggleLoginVRouterModal('hide')">
