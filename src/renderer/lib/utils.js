@@ -303,6 +303,13 @@ class Utils {
         logger.debug(`command: "${command}"'s output: ${result[0]}`)
         return result.join('\n')
       }
+
+      const timoutID = setTimeout(() => {
+        logger.debug('netcat connection didn\'t close. resolve promise manually')
+        nc.end('\n')
+        resolve(trimOutput(output))
+      }, waitTime + 3000)
+
       const nc = new NetcatClient()
       let output = ''
       nc.addr('127.0.0.1').port(serialTcpPort)
@@ -310,6 +317,7 @@ class Utils {
         .connect()
         .on('close', () => {
           logger.debug('netcat close-event detected')
+          clearTimeout(timoutID)
           resolve(trimOutput(output))
         })
         .on('data', data => { output += data.toString('utf8') })
@@ -318,13 +326,8 @@ class Utils {
           reject(err)
         })
         .send(`\r\n\r\n${command}\r\n\r\n`)
-
-      setTimeout(() => {
-        logger.debug('netcat connection didn\'t close. resolve promise manually')
-        nc.end('\n')
-        resolve(trimOutput(output))
-      }, waitTime + 3000)
     })
+
     return promise
   }
 
