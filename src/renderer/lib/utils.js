@@ -290,23 +290,26 @@ class Utils {
     logger.debug(`about to run command: "${command}" via serialTcpPort.`)
     logger.debug(`wait output for ${waitTime} ms`)
     const promise = new Promise((resolve, reject) => {
+      const trimOutput = function (output) {
+        const result = output.trim().split('\r\n').filter(line => {
+          if (/^root@.+?:\/#$/ig.test(line.trim())) {
+            return false
+          } else if (line.trim() === command.trim()) {
+            return false
+          } else {
+            return true
+          }
+        })
+        logger.debug(`command: "${command}"'s output: ${result}`)
+        return result
+      }
       const nc = new NetcatClient()
       let output = ''
       nc.addr('127.0.0.1').port(serialTcpPort)
         .wait(waitTime)
         .connect()
         .on('close', () => {
-          const result = output.trim().split('\r\n').filter(line => {
-            if (/^root@.+?:\/#$/ig.test(line.trim())) {
-              return false
-            } else if (line.trim() === command.trim()) {
-              return false
-            } else {
-              return true
-            }
-          })
-          logger.debug(`command: "${command}"'s output: ${result}`)
-          resolve(result)
+          resolve(trimOutput(output))
         })
         .on('data', data => { output += data.toString('utf8') })
         .on('error', (err) => {
@@ -314,6 +317,11 @@ class Utils {
           reject(err)
         })
         .send(`\r\n\r\n${command}\r\n\r\n`)
+
+      setTimeout(() => {
+        logger.debug('netcat connection didn\'t close. resove promise resolve')
+        resolve(trimOutput(output))
+      }, waitTime + 300)
     })
     return promise
   }
