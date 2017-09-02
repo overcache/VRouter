@@ -296,6 +296,7 @@ class Utils {
         .connect()
         .on('data', data => { output += data.toString('utf8') })
         .on('close', () => {
+          logger.debug('run serialTcp connection close callback.')
           const result = output.trim().split('\r\n').filter(line => {
             if (/^root@.+?:\/#$/ig.test(line.trim())) {
               return false
@@ -308,11 +309,14 @@ class Utils {
           logger.debug(`command: "${command}"'s output: ${result}`)
           resolve(result)
         })
-        .on('error', (err) => { reject(err) })
+        .on('error', (err) => {
+          logger.error(`error when connect to serialTcpPort. ${err}`)
+          reject(err)
+        })
         .send(`\r\n\r\n${command}\r\n\r\n`)
 
       setTimeout(() => {
-        logger.debug('now close the connection of serialTcpPort')
+        logger.debug('about to close the connection of serialTcpPort')
         nc.close()
       }, waitTime)
     })

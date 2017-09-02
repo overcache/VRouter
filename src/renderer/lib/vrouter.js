@@ -83,10 +83,10 @@ async function create (info) {
  */
 function changePwd (info) {
   const cmd = `echo -e '${info.password}\\n${info.password}' | (passwd ${info.username})`
-  return Utils.serialExec(info.serialTcpPort, cmd, 3000)
+  return Utils.serialExec(info.serialTcpPort, cmd, info.waitForOutput)
 }
 
-function installPackage (serialTcpPort) {
+function installPackage (serialTcpPort, waitForOutput = 20000) {
   const subCmds = []
   subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
   subCmds.push('opkg update')
@@ -101,7 +101,7 @@ function installPackage (serialTcpPort) {
    */
 
   // return this.serialExec(subCmds.join(' && '))
-  return Utils.serialExec(serialTcpPort, cmd, 15000)
+  return Utils.serialExec(serialTcpPort, cmd, waitForOutput)
 }
 
 /*
@@ -113,7 +113,7 @@ function configLan (info) {
   subCmds.push('uci commit network')
   subCmds.push('/etc/init.d/network restart')
   const cmd = subCmds.join(' && ')
-  return Utils.serialExec(info.serialTcpPort, cmd, 5000)
+  return Utils.serialExec(info.serialTcpPort, cmd, info.waitForOutput)
 }
 
 /*
@@ -151,20 +151,21 @@ async function init (info) {
     startType: 'gui'
   })
 
-  info.process.emit('init', '配置虚拟机网络地址, 请稍候 15 秒')
+  info.process.emit('init', '配置虚拟机网络地址, 请稍候 10 秒')
   await configLan({
     lanIP: info.lanIP,
-    serialTcpPort: info.serialTcpPort
+    serialTcpPort: info.serialTcpPort,
+    waitForOutput: 5000
   })
-  await Utils.wait(15000)
+  await Utils.wait(5000)
 
   info.process.emit('init', '修改虚拟机密码')
   await changePwd({
     username: info.username,
     password: info.password,
-    serialTcpPort: info.serialTcpPort
+    serialTcpPort: info.serialTcpPort,
+    waitForOutput: 3000
   })
-  await Utils.wait(5000)
 }
 
 class VRouter extends Openwrt {
@@ -203,8 +204,7 @@ class VRouter extends Openwrt {
     })
 
     process.emit('init', '更新软件源并安装必要软件包, 请稍候 20-60 秒')
-    await installPackage(this.config.virtualbox.serialTcpPort)
-    await Utils.wait(20000)
+    await installPackage(this.config.virtualbox.serialTcpPort, 20000)
 
     const finished = await this._isInstallPackageFinish(4)
     if (!finished) {
@@ -253,13 +253,14 @@ class VRouter extends Openwrt {
     for (let i = 0; i < maxRetry; i++) {
       logger.debug(`check isInstallPackageFinish, time: ${i}`)
       try {
-        const log = await this.execute('cat /tmp/log/vrouter').catch()
+        const log = await this.execute('cat /tmp/log/vrouter')
         if (log.trim() === 'done') {
           return true
         }
       } catch (err) {
-        logger.error(err)
+        logger.error(`check isInstallPackageFinish failed, time: ${i}`)
       }
+      logger.debug(`wait for ${10000} ms to retry checking isInstallPackageFinish`)
       await Utils.wait(10000)
     }
     return false

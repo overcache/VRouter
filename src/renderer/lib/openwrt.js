@@ -26,12 +26,15 @@ class Openwrt {
       }).on('close', () => {
         logger.info('ssh connection was closed')
         this.conn = null
+        resolve()
       }).on('end', () => {
         logger.info('ssh connection has been ended')
         this.conn = null
+        resolve()
       }).on('error', (error) => {
         logger.error(`connecting to openwrt error: ${error.message}`)
         this.conn = null
+        reject(error)
       }).connect({
         host: this.ip,
         port: this.sshPort,

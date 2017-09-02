@@ -58,11 +58,11 @@ const myLogger = {
   }
 }
 
-let logger = {}
+let logger = myLogger
 if (process.env.NODE_ENV === 'development') {
   logger = myLogger
-} else {
-  logger = winston
 }
 
 export default logger
+// // for test
+// export default myLogger
