@@ -20,7 +20,7 @@ async function initInterface (info) {
   const bridgeServices = await VBox.getAllBridgeServices()
   logger.info(`bridgeServices: ${bridgeServices}`)
   const bridgeService = await Utils.getBridgeService(bridgeServices)
-  logger.info(`bridgeService: ${bridgeService}`)
+  logger.info(`actived Bridge Service: ${bridgeService}`)
   await VBox.initBridgeNetwork(info.vmName, bridgeService, info.bridgeINC)
 }
 
@@ -251,9 +251,14 @@ class VRouter extends Openwrt {
 
   async _isInstallPackageFinish (maxRetry = 4) {
     for (let i = 0; i < maxRetry; i++) {
-      const log = await this.execute('cat /tmp/log/vrouter').catch()
-      if (log.trim() === 'done') {
-        return true
+      logger.debug(`check isInstallPackageFinish, time: ${i}`)
+      try {
+        const log = await this.execute('cat /tmp/log/vrouter').catch()
+        if (log.trim() === 'done') {
+          return true
+        }
+      } catch (err) {
+        logger.error(err)
       }
       await Utils.wait(10000)
     }

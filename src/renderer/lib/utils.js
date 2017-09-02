@@ -311,6 +311,7 @@ class Utils {
         .send(`\r\n\r\n${command}\r\n\r\n`)
 
       setTimeout(() => {
+        logger.debug('now close the connection of serialTcpPort')
         nc.close()
       }, waitTime)
     })

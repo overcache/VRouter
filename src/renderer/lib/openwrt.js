@@ -54,21 +54,23 @@ class Openwrt {
   async execute (cmd, retry = false) {
     const self = this
     if (this.conn === null) {
-      logger.info('connect to openwrt by ssh')
+      logger.debug('about to connect to openwrt via ssh')
       await this.connect()
     }
     const specialCmds = [
       '/etc/init.d/firewall restart'
     ]
+    logger.debug(`about to exec cmd: ${cmd} via ssh`)
     return new Promise((resolve, reject) => {
       this.conn.exec(cmd, async (err, stream) => {
         if (err) {
-          logger.log(`connecting err: ${err}`)
+          logger.debug(`this.conn.exec() err: ${err}`)
           if (!retry) {
+            logger.debug(`retry exec cmd via ssh`)
             const output = await self.execute(cmd, true)
             return resolve(output.toString().trim())
           } else {
-            logger.error(`execute cmd: ${cmd} error. ${err}`)
+            logger.error(`retry execute cmd: ${cmd} error. ${err}`)
             reject(err)
           }
         }
