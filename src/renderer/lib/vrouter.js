@@ -177,7 +177,7 @@ class VRouter extends Openwrt {
   }
   async powerOff () {
     await this.disconnect()
-    return Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff', 100)
+    return Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff', 1000)
   }
   async build (process) {
     await this.copyTemplatesIfNotExist()
@@ -235,9 +235,9 @@ class VRouter extends Openwrt {
     process.emit('init', '拷贝管理脚本到虚拟机')
     await this.scpProxiesServices(this.config.profiles[0], this.config.proxiesInfo, `/etc/${this.config.cfgDirName}`, true)
 
-    process.emit('init', '等待虚拟机重新启动, 请稍候 30 秒')
+    process.emit('init', '正在重启虚拟机, 请稍候 40 秒')
     await this.powerOff()
-    await Utils.wait(8000)
+    await Utils.wait(10000)
     await VBox.toggleSerialPort(this.name, this.config.virtualbox.serialTcpPort, 'off')
     await startVrouter({
       vmName: this.name,
