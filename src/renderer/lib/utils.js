@@ -319,7 +319,7 @@ class Utils {
         .send(`\r\n\r\n${command}\r\n\r\n`)
 
       setTimeout(() => {
-        logger.debug('netcat connection didn\'t close. resove promise resolve')
+        logger.debug('netcat connection didn\'t close. resolve promise manually')
         resolve(trimOutput(output))
       }, waitTime + 300)
     })
