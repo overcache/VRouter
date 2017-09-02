@@ -293,29 +293,27 @@ class Utils {
       const nc = new NetcatClient()
       let output = ''
       nc.addr('127.0.0.1').port(serialTcpPort)
+        .wait(waitTime)
         .connect()
+        .on('close', () => {
+          const result = output.trim().split('\r\n').filter(line => {
+            if (/^root@.+?:\/#$/ig.test(line.trim())) {
+              return false
+            } else if (line.trim() === command.trim()) {
+              return false
+            } else {
+              return true
+            }
+          })
+          logger.debug(`command: "${command}"'s output: ${result}`)
+          resolve(result)
+        })
         .on('data', data => { output += data.toString('utf8') })
         .on('error', (err) => {
           logger.error(`error when connect to serialTcpPort. ${err}`)
           reject(err)
         })
         .send(`\r\n\r\n${command}\r\n\r\n`)
-
-      setTimeout(() => {
-        logger.debug('about to close the connection of serialTcpPort')
-        nc.close()
-        const result = output.trim().split('\r\n').filter(line => {
-          if (/^root@.+?:\/#$/ig.test(line.trim())) {
-            return false
-          } else if (line.trim() === command.trim()) {
-            return false
-          } else {
-            return true
-          }
-        })
-        logger.debug(`command: "${command}"'s output: ${result}`)
-        resolve(result)
-      }, waitTime)
     })
     return promise
   }
