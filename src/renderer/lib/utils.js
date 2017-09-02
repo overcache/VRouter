@@ -321,8 +321,9 @@ class Utils {
 
       setTimeout(() => {
         logger.debug('netcat connection didn\'t close. resolve promise manually')
+        nc.end('\n')
         resolve(trimOutput(output))
-      }, waitTime + 300)
+      }, waitTime + 3000)
     })
     return promise
   }
