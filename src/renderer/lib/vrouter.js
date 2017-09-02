@@ -225,11 +225,8 @@ class VRouter extends Openwrt {
     await this.manageService('cron', 'enable')
 
     process.emit('init', '离线安装代理软件包')
+    /* global __static */
     await this.installProxies({
-      // shadowsocks: path.join(__dirname, '..', 'third_party', 'shadowsocks.tar.gz'),
-      // shadowsocksr: path.join(__dirname, '..', 'third_party', 'shadowsocksr.tar.gz'),
-      // kcptun: path.join(__dirname, '..', 'third_party', 'kcptun.tar.gz')
-      /* global __static */
       shadowsocks: path.join(__static, 'bin/shadowsocks.tar.gz'),
       shadowsocksr: path.join(__static, 'bin/shadowsocksr.tar.gz'),
       kcptun: path.join(__static, 'bin/kcptun.tar.gz')

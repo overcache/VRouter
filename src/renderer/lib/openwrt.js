@@ -2,6 +2,8 @@ import Generator from './generator.js'
 import logger from './logger'
 const { Client } = require('ssh2')
 const path = require('path')
+const os = require('os')
+const fs = require('fs-extra')
 
 class Openwrt {
   constructor (config) {
@@ -206,7 +208,10 @@ class Openwrt {
 
   // shadowsocks
   async installSs (targzFPath) {
-    const src = targzFPath
+    // need move out of asar file
+    const src = path.join(os.tmpdir(), path.basename(targzFPath))
+    await fs.copy(targzFPath, src)
+    // const src = targzFPath
     const dst = '/tmp/shadowsocks/shadowsocks.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
@@ -226,7 +231,9 @@ class Openwrt {
 
   // shadowsocksr
   async installSsr (targzFPath) {
-    const src = targzFPath
+    // const src = targzFPath
+    const src = path.join(os.tmpdir(), path.basename(targzFPath))
+    await fs.copy(targzFPath, src)
     const dst = '/tmp/shadowsocksr/shadowsocksr.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
@@ -243,7 +250,9 @@ class Openwrt {
 
   // kcptun
   async installKt (targzFPath) {
-    const src = targzFPath
+    const src = path.join(os.tmpdir(), path.basename(targzFPath))
+    await fs.copy(targzFPath, src)
+    // const src = targzFPath
     const dst = '/tmp/kcptun/kcptun.tar.gz'
     const dstDir = path.dirname(dst)
     await this.scp(src, dst)
