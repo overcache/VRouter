@@ -148,7 +148,7 @@ async function init (info) {
   info.process.emit('init', '等待虚拟机启动, 请稍候 30 秒')
   await startVrouter({
     vmName: info.vmName,
-    startType: 'gui'
+    startType: 'headless'
   })
 
   info.process.emit('init', '配置虚拟机网络地址, 请稍候 10 秒')
