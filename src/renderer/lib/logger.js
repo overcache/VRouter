@@ -3,34 +3,30 @@ const winston = require('winston')
 const fs = require('fs-extra')
 const path = require('path')
 const os = require('os')
+const moment = require('moment')
 //
 const appDir = process.env.APPDATA || (os.platform() === 'darwin' ? path.join(process.env.HOME, 'Library', 'Application Support') : '/var/local')
 const logFilePath = path.join(appDir, 'vrouter', 'vrouter.log')
 fs.ensureFileSync(logFilePath)
 
 const transports = []
+winston.level = 'debug'
+transports.push(new (winston.transports.File)({
+  filename: logFilePath,
+  json: false,
+  level: 'debug',
+  maxsize: 1000000,
+  maxFiles: 1,
+  timestamp: function () {
+    return moment().format()
+  }
+}))
 
 if (process.env.NODE_ENV === 'development') {
-  winston.level = 'debug'
   transports.push(new (winston.transports.Console)({
     level: 'debug',
     timestamp: function () {
-      return +new Date()
-    }
-  }))
-  transports.push(new (winston.transports.File)({
-    filename: logFilePath,
-    json: false,
-    level: 'debug'
-  }))
-} else {
-  winston.level = 'info'
-  transports.push(new (winston.transports.File)({
-    filename: logFilePath,
-    json: false,
-    level: 'info',
-    timestamp: function () {
-      return +new Date()
+      return moment().format()
     }
   }))
 }
@@ -60,11 +56,9 @@ const myLogger = {
   }
 }
 
-let logger = myLogger
+let logger = winston
 if (process.env.NODE_ENV === 'development') {
   logger = myLogger
 }
 
 export default logger
-// // for test
-// export default myLogger
