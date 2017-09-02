@@ -1,5 +1,5 @@
 // import Utils from './utils'
-import winston from './logger'
+import logger from './logger'
 const { exec } = require('child_process')
 const os = require('os')
 const fs = require('fs-extra')
@@ -230,7 +230,7 @@ class VBox {
     })
     if (retInf) return retInf['Name']
 
-    winston.info(`no hostonlyifs with ${ip} available. create a new one then configure it`)
+    logger.info(`no hostonlyifs with ${ip} available. create a new one then configure it`)
     const newInf = await VBox.createHostonlyInf()
     await VBox.ipconfigHostonlyInf(newInf, ip, mask)
     return newInf

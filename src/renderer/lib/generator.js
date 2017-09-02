@@ -1,5 +1,5 @@
 import Utils from './utils'
-import winston from './logger'
+import logger from './logger'
 
 const fs = require('fs-extra')
 const path = require('path')
@@ -359,8 +359,8 @@ class Generator {
     const redirPort = proxiesInfo[type].localPort
     const udpRedirPort = proxiesInfo.relayUDP.localPort
 
-    winston.debug(`tcp redirPort: ${redirPort}`)
-    winston.debug(`udp redirPort: ${udpRedirPort}`)
+    logger.debug(`tcp redirPort: ${redirPort}`)
+    logger.debug(`udp redirPort: ${udpRedirPort}`)
 
     const contents = ['# com.icymind.vrouter']
     contents.push(`# workMode: ${profile.mode}`)

@@ -1,12 +1,7 @@
 import Generator from './generator.js'
-import winston from './logger'
+import logger from './logger'
 const { Client } = require('ssh2')
-// const { Generator } = require('./generator.js')
 const path = require('path')
-// const winston = require('winston')
-// const os = require('os')
-// webpack var: __static
-/* global __static */
 
 class Openwrt {
   constructor (config) {
@@ -29,13 +24,13 @@ class Openwrt {
       this.conn.on('ready', () => {
         resolve()
       }).on('close', () => {
-        winston.info('ssh connection was closed')
+        logger.info('ssh connection was closed')
         this.conn = null
       }).on('end', () => {
-        winston.info('ssh connection has been ended')
+        logger.info('ssh connection has been ended')
         this.conn = null
       }).on('error', (error) => {
-        winston.error(`connecting to openwrt error: ${error.message}`)
+        logger.error(`connecting to openwrt error: ${error.message}`)
         this.conn = null
       }).connect({
         host: this.ip,
@@ -59,7 +54,7 @@ class Openwrt {
   async execute (cmd, retry = false) {
     const self = this
     if (this.conn === null) {
-      winston.info('connect to openwrt by ssh')
+      logger.info('connect to openwrt by ssh')
       await this.connect()
     }
     const specialCmds = [
@@ -68,12 +63,12 @@ class Openwrt {
     return new Promise((resolve, reject) => {
       this.conn.exec(cmd, async (err, stream) => {
         if (err) {
-          winston.log(`connecting err: ${err}`)
+          logger.log(`connecting err: ${err}`)
           if (!retry) {
             const output = await self.execute(cmd, true)
             return resolve(output.toString().trim())
           } else {
-            winston.error(`execute cmd: ${cmd} error. ${err}`)
+            logger.error(`execute cmd: ${cmd} error. ${err}`)
             reject(err)
           }
         }
@@ -270,9 +265,9 @@ class Openwrt {
   }
 
   async scpProxiesCfgs (profile, proxiesInfo, remoteCfgDirPath) {
-    winston.debug(`active profile: ${profile.name}`)
+    logger.debug(`active profile: ${profile.name}`)
     const cfgFiles = await Generator.genProxiesCfgs(profile, proxiesInfo)
-    winston.debug(`Generate cfg files: ${cfgFiles}`)
+    logger.debug(`Generate cfg files: ${cfgFiles}`)
     for (let i = 0; i < cfgFiles.length; i++) {
       const src = cfgFiles[i]
       const cfgName = path.basename(src)
@@ -282,14 +277,14 @@ class Openwrt {
   }
   async scpProxiesServices (profile, proxiesInfo, remoteCfgDirPath, scpAllService) {
     const cfgFiles = await Generator.genServicesFiles(profile, proxiesInfo, remoteCfgDirPath, scpAllService)
-    winston.debug(`Generate services files: ${cfgFiles}`)
+    logger.debug(`Generate services files: ${cfgFiles}`)
     for (let i = 0; i < cfgFiles.length; i++) {
       const src = cfgFiles[i]
       const cfgName = path.basename(src)
       const dst = `/etc/init.d/${cfgName}`
       await this.scp(src, dst)
       await this.execute(`chmod +x ${dst}`)
-      winston.debug(`scp service file to: ${dst}`)
+      logger.debug(`scp service file to: ${dst}`)
     }
   }
   async toggleSpecialService (proxy, proxies, proxiesInfo, tunnelDnsAction) {
@@ -322,7 +317,7 @@ class Openwrt {
   async toggleProxyService (proxy, proxies, proxiesInfo, action) {
     let serviceName = proxiesInfo[proxy].serviceName
     const servicePath = `/etc/init.d/${serviceName}`
-    winston.info(`${servicePath} ${action}`)
+    logger.info(`${servicePath} ${action}`)
 
     // ${servicePath} enable 执行的结果是1, 而不是常规的0
     const startCmd = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} start`
@@ -366,13 +361,13 @@ class Openwrt {
   }
   async setupProxies (profile, proxiesInfo, remoteCfgDirPath) {
     await this.scpProxiesCfgs(profile, proxiesInfo, remoteCfgDirPath)
-    winston.debug('拷贝代理配置文件到虚拟机, 完成')
+    logger.debug('拷贝代理配置文件到虚拟机, 完成')
     await this.scpProxiesServices(profile, proxiesInfo, remoteCfgDirPath)
-    winston.debug('拷贝代理管理脚本到虚拟机, 完成')
+    logger.debug('拷贝代理管理脚本到虚拟机, 完成')
     await this.startProxiesServices(profile, proxiesInfo)
-    winston.debug('启动关闭相应代理, 完成')
+    logger.debug('启动关闭相应代理, 完成')
     await this.configProxiesWatchdog(profile, proxiesInfo, remoteCfgDirPath)
-    winston.debug('拷贝代理监护脚本到虚拟机, 完成')
+    logger.debug('拷贝代理监护脚本到虚拟机, 完成')
   }
   async scpIPsetFile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
     // const dirPath = path.join(__dirname, '..', 'config')
@@ -406,11 +401,11 @@ class Openwrt {
   }
   async applyProfile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath, dnsmasqCfgDir) {
     await this.setupProxies(profile, proxiesInfo, remoteCfgDirPath)
-    winston.debug('设置代理, 完成')
+    logger.debug('设置代理, 完成')
     await this.setupFirewall(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
-    winston.debug('设置防火墙, 完成')
+    logger.debug('设置防火墙, 完成')
     await this.setupDnsmasq(profile, proxiesInfo, firewallInfo, dnsmasqCfgDir)
-    winston.debug('设置dnsmasq, 完成')
+    logger.debug('设置dnsmasq, 完成')
   }
 }
 

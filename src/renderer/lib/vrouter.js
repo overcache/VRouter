@@ -1,7 +1,7 @@
 import Openwrt from './openwrt.js'
 import Utils from './utils.js'
 import VBox from './vbox.js'
-import winston from './logger'
+import logger from './logger'
 // const { VBox } = require('./vbox.js')
 // const { Openwrt } = require('./openwrt.js')
 // const { Utils } = require('./utils.js')
@@ -14,13 +14,13 @@ const os = require('os')
  */
 async function initInterface (info) {
   const hostonlyInf = await VBox.getAvailableHostonlyInf(info.hostonlyInfIP, '255.255.255.0')
-  winston.info(`hostonlyInf: ${hostonlyInf}`)
+  logger.info(`hostonlyInf: ${hostonlyInf}`)
   await VBox.initHostonlyNetwork(info.vmName, hostonlyInf, info.hostonlyINC)
   // const activeAdapter = await Utils.getActiveAdapter()
   const bridgeServices = await VBox.getAllBridgeServices()
-  winston.info(`bridgeServices: ${bridgeServices}`)
+  logger.info(`bridgeServices: ${bridgeServices}`)
   const bridgeService = await Utils.getBridgeService(bridgeServices)
-  winston.info(`bridgeService: ${bridgeService}`)
+  logger.info(`bridgeService: ${bridgeService}`)
   await VBox.initBridgeNetwork(info.vmName, bridgeService, info.bridgeINC)
 }
 
