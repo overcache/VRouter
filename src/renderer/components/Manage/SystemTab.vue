@@ -57,13 +57,12 @@ export default {
               value: this.vrouterInfo.brLanIP
             },
             {
-              label: 'Bridged Service',
-              value: this.vrouterInfo.bridgeAdapter
+              label: 'WAN',
+              value: this.vrouterInfo.lanIP
             },
             {
-              label: 'WAN',
-              value: this.vrouterInfo.lanIP,
-              hide: true
+              label: 'Bridged Network',
+              value: this.vrouterInfo.bridgeAdapter
             },
             {
               label: 'Mac Address',
