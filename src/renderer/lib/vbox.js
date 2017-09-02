@@ -218,6 +218,7 @@ class VBox {
 
     let retInf = null
     ifsInfo.trim().split(/(\r)?\n(\r)?\n/).forEach(infInfo => {
+      if (!infInfo) return
       let infObj = {}
       infInfo.trim().split(/\n/).forEach(keyAndValue => {
         let [key, value] = keyAndValue.trim().split(':').map(item => item.trim())
