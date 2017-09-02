@@ -83,7 +83,7 @@ async function create (info) {
  */
 async function changePwd (info) {
   const cmd = `echo -e '${info.password}\\n${info.password}' | (passwd ${info.username})`
-  await Utils.serialExec(info.serialTcpPort, cmd)
+  await Utils.serialExec(info.serialTcpPort, cmd, 1000)
 }
 
 function installPackage (serialTcpPort) {
@@ -101,7 +101,7 @@ function installPackage (serialTcpPort) {
    */
 
   // return this.serialExec(subCmds.join(' && '))
-  return Utils.serialExec(serialTcpPort, cmd)
+  return Utils.serialExec(serialTcpPort, cmd, 500)
 }
 
 /*
@@ -113,7 +113,7 @@ function configLan (info) {
   subCmds.push('uci commit network')
   subCmds.push('/etc/init.d/network restart')
   const cmd = subCmds.join(' && ')
-  return Utils.serialExec(info.serialTcpPort, cmd)
+  return Utils.serialExec(info.serialTcpPort, cmd, 500)
 }
 
 /*
@@ -133,11 +133,10 @@ async function startVrouter (info) {
  * @param {object} info: {vmName, hostonlyINC, hostonlyInfIP, bridgeINC, lanIP, username, password, serailPort, serialTcpPort, process}
  */
 async function init (info) {
-  if (process.env.NODE_ENV !== 'development') {
-    console.log(process.env.NODE_ENV)
-    await VBox.lockGUIConfig(info.vmName, true)
-    await VBox.hide(info.vmName, true)
-  }
+  // if (process.env.NODE_ENV !== 'development') {
+  //   await VBox.lockGUIConfig(info.vmName, true)
+  //   await VBox.hide(info.vmName, true)
+  // }
   await VBox.toggleSerialPort(info.vmName, info.serialTcpPort, 'on', info.serialPort)
   await initInterface({
     vmName: info.vmName,
@@ -177,7 +176,7 @@ class VRouter extends Openwrt {
   }
   async powerOff () {
     await this.disconnect()
-    await Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff')
+    await Utils.serialExec(this.config.virtualbox.serialTcpPort, 'poweroff', 100)
   }
   async build (process) {
     await this.copyTemplatesIfNotExist()
@@ -203,17 +202,6 @@ class VRouter extends Openwrt {
       process: process
     })
 
-    process.emit('init', '配置 Dnsmasq')
-    await this.configDnsmasq()
-
-    process.emit('init', '修改虚拟机时区')
-    await this.changeTZ(this.name)
-
-    process.emit('init', '打开 tcp fast open')
-    await this.turnOnFastOpen()
-
-    await this.manageService('cron', 'enable')
-
     process.emit('init', '更新软件源并安装必要软件包, 请稍候 20-60 秒')
     await installPackage(this.config.virtualbox.serialTcpPort)
     await Utils.wait(20000)
@@ -224,6 +212,17 @@ class VRouter extends Openwrt {
       throw Error('未能安装必要软件包')
     }
     process.emit('init', '必要软件包安装完成')
+
+    process.emit('init', '配置 Dnsmasq')
+    await this.configDnsmasq()
+
+    process.emit('init', '修改虚拟机时区')
+    await this.changeTZ(this.name)
+
+    process.emit('init', '打开 tcp fast open')
+    await this.turnOnFastOpen()
+
+    await this.manageService('cron', 'enable')
 
     process.emit('init', '离线安装代理软件包')
     await this.installProxies({
@@ -242,6 +241,7 @@ class VRouter extends Openwrt {
     process.emit('init', '等待虚拟机重新启动, 请稍候 30 秒')
     await this.powerOff()
     await Utils.wait(8000)
+    await VBox.toggleSerialPort(this.name, this.config.virtualbox.serialTcpPort, 'off')
     await startVrouter({
       vmName: this.name,
       startType: 'headless'

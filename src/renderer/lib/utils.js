@@ -1,5 +1,6 @@
 import Mac from './mac.js'
 import Win from './win.js'
+import logger from './logger.js'
 // const { Mac } = require('./mac.js')
 const { URL } = require('url')
 const http = require('http')
@@ -285,12 +286,35 @@ class Utils {
     }
   }
 
-  static async serialExec (serialTcpPort, command) {
-    const nc = new NetcatClient()
-    nc.addr('127.0.0.1').port(serialTcpPort)
-      .connect()
-      .send(`\r\n\r\n${command}\r\n\r\n`)
-      .close()
+  static async serialExec (serialTcpPort, command, waitTime = 500) {
+    logger.debug(`about to run command: "${command}" via serialTcpPort.`)
+    const promise = new Promise((resolve, reject) => {
+      const nc = new NetcatClient()
+      let output = ''
+      nc.addr('127.0.0.1').port(serialTcpPort)
+        .connect()
+        .on('data', data => { output += data.toString('utf8') })
+        .on('close', () => {
+          const result = output.trim().split('\r\n').filter(line => {
+            if (/^root@.+?:\/#$/ig.test(line.trim())) {
+              return false
+            } else if (line.trim() === command.trim()) {
+              return false
+            } else {
+              return true
+            }
+          })
+          logger.debug(`command: "${command}"'s output: ${result}`)
+          resolve(result)
+        })
+        .on('error', (err) => { reject(err) })
+        .send(`\r\n\r\n${command}\r\n\r\n`)
+        .close()
+      setTimeout(() => {
+        nc.close()
+      }, waitTime)
+    })
+    return promise
   }
 
   static changeRouteTo (ip) {

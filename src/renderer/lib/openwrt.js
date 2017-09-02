@@ -68,8 +68,7 @@ class Openwrt {
     return new Promise((resolve, reject) => {
       this.conn.exec(cmd, async (err, stream) => {
         if (err) {
-          console.log(err)
-          console.log(this.conn)
+          winston.log(`connecting err: ${err}`)
           if (!retry) {
             const output = await self.execute(cmd, true)
             return resolve(output.toString().trim())
