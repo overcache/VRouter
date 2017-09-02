@@ -295,7 +295,29 @@ class Utils {
       nc.addr('127.0.0.1').port(serialTcpPort)
         .connect()
         .on('data', data => { output += data.toString('utf8') })
-        .on('close', () => {
+        // .on('close', () => {
+        //   logger.debug('detected serialTcpPort connection close event. run callback.')
+        //   const result = output.trim().split('\r\n').filter(line => {
+        //     if (/^root@.+?:\/#$/ig.test(line.trim())) {
+        //       return false
+        //     } else if (line.trim() === command.trim()) {
+        //       return false
+        //     } else {
+        //       return true
+        //     }
+        //   })
+        //   logger.debug(`command: "${command}"'s output: ${result}`)
+        //   resolve(result)
+        // })
+        .on('error', (err) => {
+          logger.error(`error when connect to serialTcpPort. ${err}`)
+          reject(err)
+        })
+        .send(`\r\n\r\n${command}\r\n\r\n`)
+
+      setTimeout(() => {
+        logger.debug('about to close the connection of serialTcpPort')
+        nc.close(() => {
           logger.debug('run serialTcp connection close callback.')
           const result = output.trim().split('\r\n').filter(line => {
             if (/^root@.+?:\/#$/ig.test(line.trim())) {
@@ -309,15 +331,6 @@ class Utils {
           logger.debug(`command: "${command}"'s output: ${result}`)
           resolve(result)
         })
-        .on('error', (err) => {
-          logger.error(`error when connect to serialTcpPort. ${err}`)
-          reject(err)
-        })
-        .send(`\r\n\r\n${command}\r\n\r\n`)
-
-      setTimeout(() => {
-        logger.debug('about to close the connection of serialTcpPort')
-        nc.close()
       }, waitTime)
     })
     return promise
