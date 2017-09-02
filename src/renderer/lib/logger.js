@@ -20,12 +20,14 @@ if (process.env.NODE_ENV === 'development') {
   }))
   transports.push(new (winston.transports.File)({
     filename: logFilePath,
+    json: false,
     level: 'debug'
   }))
 } else {
   winston.level = 'info'
   transports.push(new (winston.transports.File)({
     filename: logFilePath,
+    json: false,
     level: 'info',
     timestamp: function () {
       return +new Date()
