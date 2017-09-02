@@ -384,8 +384,7 @@ class Openwrt {
     logger.debug('拷贝代理监护脚本到虚拟机, 完成')
   }
   async scpIPsetFile (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
-    // const dirPath = path.join(__dirname, '..', 'config')
-    const dirPath = path.join(__static, 'config-templates')
+    const dirPath = path.join(__static, 'config-templates') // eslint-disable-line
 
     const src = await Generator.genIpsetFile(profile, proxiesInfo, firewallInfo, dirPath)
     const dst = `${remoteCfgDirPath}/${firewallInfo.ipsetFname}`
@@ -405,8 +404,7 @@ class Openwrt {
     await this.configIptables(profile, proxiesInfo, firewallInfo, remoteCfgDirPath)
   }
   async setupDnsmasq (profile, proxiesInfo, firewallInfo, remoteCfgDirPath) {
-    // const dirPath = path.join(__dirname, '..', 'config')
-    const dirPath = path.join(__static, 'config-templates')
+    const dirPath = path.join(__static, 'config-templates') // eslint-disable-line
     const src = await Generator.genDnsmasqCfgFile(profile, proxiesInfo, firewallInfo, dirPath)
     const dst = `${remoteCfgDirPath}/${firewallInfo.dnsmasqCustomCfgFname}`
     await this.scp(src, dst)
