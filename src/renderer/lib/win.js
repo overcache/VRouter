@@ -155,22 +155,22 @@ class Win {
     const outputArray = rawOutput.split('\n')
     for (let i = 0; i < outputArray.length; i++) {
       if (serverPattern.test(outputArray[i].trim())) {
-        dns = outputArray[i].trim().split(':')[1]
+        dns = outputArray[i].split(':')[1].trim()
         break
       }
     }
     return dns
   }
 
-  static async changeRouteTo (ip) {
-    await changeGateway(ip)
-    await changeDns(ip)
+  static async trafficToVirtualRouter (ip) {
+    await togglePhysicalAdapterConnection('off')
   }
 
-  static async resetRoute () {
+  static async trafficToPhysicalRouter () {
     await togglePhysicalAdapterConnection('on')
     const routerIP = await getRouterIP()
-    await Win.changeRouteTo(routerIP)
+    await changeGateway(routerIP)
+    await changeDns(routerIP)
   }
 }
 

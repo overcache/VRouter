@@ -331,12 +331,18 @@ class Utils {
     return promise
   }
 
-  static changeRouteTo (ip) {
+  static trafficToPhysicalRouter () {
     switch (platform) {
       case 'darwin':
-        return Mac.changeRouteTo(ip)
+        return Mac.trafficToPhysicalRouter()
+    }
+  }
+  static trafficToVirtualRouter (ip) {
+    switch (platform) {
+      case 'darwin':
+        return Mac.trafficToVirtualRouter(ip)
       case 'win32':
-        return Win.changeRouteTo(ip)
+        return Win.trafficToVirtualRouter(ip)
     }
   }
   static getCurrentDns () {
@@ -353,12 +359,6 @@ class Utils {
         return Mac.getCurrentGateway()
       case 'win32':
         return Win.getCurrentGateway()
-    }
-  }
-  static resetRoute () {
-    switch (platform) {
-      case 'darwin':
-        return Mac.resetRoute()
     }
   }
   static getProxiesText (proxies) {

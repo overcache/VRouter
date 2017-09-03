@@ -69,7 +69,7 @@ import Vue from 'vue'
 import Utils from '@/lib/utils.js'
 import VRouter from '@/lib/vrouter.js'
 import VBox from '@/lib/vbox.js'
-import winston from '@/lib/logger.js'
+import logger from '@/lib/logger.js'
 import StatusTab from './Manage/StatusTab.vue'
 import ProfilesTab from './Manage/ProfilesTab.vue'
 import SystemTab from './Manage/SystemTab'
@@ -195,16 +195,22 @@ export default {
       }
     },
     routing: function () {
-      return (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
+      logger.debug('check current routing.')
+      logger.debug(`currentGWIP: ${this.systemInfo.currentGWIP}`)
+      logger.debug(`currentDnsIP: ${this.systemInfo.currentDnsIP}`)
+      logger.debug(`vrouter.ip: ${this.vrouter.ip}`)
+      const current = (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
+      logger.debug(`routing: ${current}`)
+      return current
     }
   },
   methods: {
     toggleRouting: async function () {
       this.activeLoader = true
       if (await this.routing) {
-        await Utils.resetRoute()
+        await Utils.trafficToPhysicalRouter()
       } else {
-        await Utils.changeRouteTo(this.vrouter.ip)
+        await Utils.trafficToVirtualRouter(this.vrouter.ip)
       }
       await this.getSystemInfo()
       this.activeLoader = false
@@ -272,7 +278,7 @@ export default {
       await this.vrouter.saveCfg2File()
       await this.getProxiesInfo()
       this.activeLoader = false
-      winston.info(`apply profile: ${this.activedProfile.name}`)
+      logger.info(`apply profile: ${this.activedProfile.name}`)
     },
     deleteProfile: async function (index) {
       this.profiles.splice(index, 1)
@@ -290,7 +296,7 @@ export default {
       } else {
         this.profiles.push(profile)
       }
-      winston.info(`save profile: ${profile.name} to disk`)
+      logger.info(`save profile: ${profile.name} to disk`)
       await this.vrouter.saveCfg2File()
 
       if (profile.active) {
@@ -298,7 +304,7 @@ export default {
         this.activeLoader = true
         await this.vrouter.applyActivedProfile()
         this.activeLoader = false
-        winston.info(`apply editting profile: ${this.activedProfile.name}`)
+        logger.info(`apply editting profile: ${this.activedProfile.name}`)
         this.loaderText = 'Loading'
       }
     },

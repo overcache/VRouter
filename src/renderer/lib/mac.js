@@ -82,13 +82,14 @@ class Mac {
     return execute(cmd).then(out => out.trim())
   }
 
-  static async changeRouteTo (ip) {
+  static async trafficToPhysicalRouter () {
+    const routerIP = await getRouterIP()
+    await changeGateway(routerIP)
+    await changeDns(routerIP)
+  }
+  static async trafficToVirtualRouter (ip) {
     await changeGateway(ip)
     await changeDns(ip)
-  }
-  static async resetRoute () {
-    const routerIP = await getRouterIP()
-    await Mac.changeRouteTo(routerIP)
   }
   static async installNwWatchdog () {
     await this.generateNetworkSh()
