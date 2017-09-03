@@ -38,7 +38,7 @@ async function getActiveAdapterIndexAndName () {
 }
 
 async function getActiveAdapterIndex () {
-  const indexAndName = await Win.getActiveAdapterIndexAndName()
+  const indexAndName = await getActiveAdapterIndexAndName()
   return indexAndName.index
 }
 

@@ -304,6 +304,7 @@ export default {
     },
     refreshInfos: async function (silent = true) {
       if (!silent) this.activeLoader = true
+      await this.vrouter.updateBridgedAdapter()
       this.getSystemInfo()
       await this.getProxiesInfo()
       await this.getVrouterInfo()

@@ -272,6 +272,18 @@ class VRouter extends Openwrt {
     })
   }
 
+  async updateBridgedAdapter () {
+    const bridgeServices = await VBox.getAllBridgeServices()
+    logger.info(`bridgeServices: ${bridgeServices}`)
+    const bridgeService = await Utils.getBridgeService(bridgeServices)
+    logger.info(`actived Bridge Service: ${bridgeService}`)
+    const assignedBridgeService = await VBox.getAssignedBridgeService(this.name, this.config.virtualbox.bridgeINC)
+    if (assignedBridgeService !== bridgeService) {
+      logger.info(`PrimaryInterface change from ${assignedBridgeService} to ${bridgeService}`)
+      await VBox.amendBridgeNetwork(this.name, bridgeService, this.config.virtualbox.bridgeINC)
+    }
+  }
+
   saveCfg2File () {
     const cfgPath = path.join(this.cfgDirPath, 'config.json')
     return fs.writeJson(cfgPath, this.config, {spaces: 2})
