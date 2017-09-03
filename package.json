@@ -33,7 +33,6 @@
     "sudo-prompt": "^7.1.1",
     "vee-validate": "^2.0.0-rc.14",
     "vue": "^2.4.2",
-    "vue-loader": "^13.0.4",
     "winston": "^2.3.1"
   },
   "devDependencies": {
@@ -86,6 +85,7 @@
     "style-loader": "^0.18.2",
     "url-loader": "^0.5.9",
     "vue-html-loader": "^1.2.4",
+    "vue-loader": "^13.0.4",
     "vue-style-loader": "^3.0.1",
     "vue-template-compiler": "^2.4.2",
     "webpack": "^3.5.2",
