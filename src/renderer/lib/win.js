@@ -103,9 +103,9 @@ async function getRouterIP () {
   // DHCPServer
   // 192.168.10.1
   const headerIncludedOutput = await execute(cmd)
-  const DNSServer = headerIncludedOutput.split('\n')[1].trim()
-  logger.debug(`Router IP: ${DNSServer}`)
-  return DNSServer
+  const DHCPServer = headerIncludedOutput.split('\n')[1].trim()
+  logger.debug(`Router IP: ${DHCPServer}`)
+  return DHCPServer
 }
 
 class Win {
@@ -168,6 +168,7 @@ class Win {
   }
 
   static async resetRoute () {
+    await togglePhysicalAdapterConnection('on')
     const routerIP = await getRouterIP()
     await Win.changeRouteTo(routerIP)
   }
