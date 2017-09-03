@@ -195,12 +195,7 @@ export default {
       }
     },
     routing: function () {
-      logger.debug('check current routing.')
-      logger.debug(`currentGWIP: ${this.systemInfo.currentGWIP}`)
-      logger.debug(`currentDnsIP: ${this.systemInfo.currentDnsIP}`)
-      logger.debug(`vrouter.ip: ${this.vrouter.ip}`)
       const current = (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
-      logger.debug(`routing: ${current}`)
       return current
     }
   },

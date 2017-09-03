@@ -93,7 +93,10 @@ async function changeDns (ip) {
 }
 
 async function changeGateway (ip) {
+  const index = await getActiveAdapterIndex()
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call SetGateways ("${ip}")`
   logger.info(`about to changeGateway to ${ip}`)
+  return execute(cmd)
 }
 
 async function getRouterIP () {
@@ -128,10 +131,16 @@ class Win {
     const rawOutput = await execute(cmd)
     let gateway = ''
     const firstHopPattern = /^1\s+.*$/i
+    const ipPattern = /^[\d.]*$/i
     rawOutput.split('\n').forEach(line => {
       if (firstHopPattern.test(line.trim())) {
         const arr = line.trim().split(/(\s|\t)/)
-        gateway = arr[arr.length - 1]
+        const ret = arr[arr.length - 1].trim()
+        if (ipPattern.test(ret)) {
+          gateway = ret
+        } else {
+          gateway = 'No Default Gateway'
+        }
       }
     })
 
@@ -146,6 +155,17 @@ class Win {
     //
     // 名称:    vrouter.lan
     // Address:  10.19.28.37
+
+    // or
+    // DNS request timed out.
+    // timeout was 2 seconds.
+    // 服务器:  UnKnown
+    // Address:  fe80::a00:27ff:fea0:861
+    //
+    // 非权威应答:
+    // 名称:    qq.com
+    // Addresses:  61.135.157.156
+    //           125.39.240.113
 
     const cmd = `nslookup 10.19.28.37`
 
@@ -168,9 +188,9 @@ class Win {
 
   static async trafficToPhysicalRouter () {
     await togglePhysicalAdapterConnection('on')
-    const routerIP = await getRouterIP()
-    await changeGateway(routerIP)
-    await changeDns(routerIP)
+    // const routerIP = await getRouterIP()
+    // await changeGateway(routerIP)
+    // await changeDns(routerIP)
   }
 }
 
