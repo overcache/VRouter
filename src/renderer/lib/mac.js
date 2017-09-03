@@ -26,6 +26,29 @@ function sudoExec (cmd, options = {name: 'VRouter'}) {
   })
 }
 
+async function changeGateway (ip) {
+  const cmd = `/sbin/route change default ${ip}`
+  await sudoExec(cmd)
+}
+
+async function changeDns (ip) {
+  const activeAdapter = await Mac.getActiveAdapter()
+  const networkServiceName = await Mac.getOSXNetworkService(activeAdapter)
+  const cmd = `/usr/sbin/networksetup -setdnsservers "${networkServiceName}" "${ip}"`
+  await sudoExec(cmd)
+}
+async function getRouterIP () {
+  let cmd = String.raw`cat <<EOF | scutil
+  open
+  get State:/Network/Global/IPv4
+  d.show
+  EOF`
+  const output = await execute(cmd)
+
+  const pattern = /Router : (.*)$/mg
+  return pattern.exec(output)[1]
+}
+
 class Mac {
   static async getActiveAdapter () {
     let cmd = String.raw`cat <<EOF | scutil
@@ -36,17 +59,6 @@ class Mac {
     const output = await execute(cmd)
 
     const pattern = /PrimaryInterface : (.*)$/mg
-    return pattern.exec(output)[1]
-  }
-  static async getRouterIP () {
-    let cmd = String.raw`cat <<EOF | scutil
-    open
-    get State:/Network/Global/IPv4
-    d.show
-    EOF`
-    const output = await execute(cmd)
-
-    const pattern = /Router : (.*)$/mg
     return pattern.exec(output)[1]
   }
 
@@ -71,25 +83,13 @@ class Mac {
   }
 
   static async changeRouteTo (ip) {
-    await Mac.changeGateway(ip)
-    await Mac.changeDns(ip)
+    await changeGateway(ip)
+    await changeDns(ip)
   }
   static async resetRoute () {
-    const routerIP = await Mac.getRouterIP()
-    await Mac.changeGateway(routerIP)
-    await Mac.changeDns(routerIP)
+    const routerIP = await getRouterIP()
+    await Mac.changeRouteTo(routerIP)
   }
-  static async changeGateway (ip) {
-    const cmd = `/sbin/route change default ${ip}`
-    await sudoExec(cmd)
-  }
-  static async changeDns (ip) {
-    const activeAdapter = await Mac.getActiveAdapter()
-    const networkServiceName = await Mac.getOSXNetworkService(activeAdapter)
-    const cmd = `/usr/sbin/networksetup -setdnsservers "${networkServiceName}" "${ip}"`
-    await sudoExec(cmd)
-  }
-
   static async installNwWatchdog () {
     await this.generateNetworkSh()
     await this.localExec(`chmod +x "${path.join(this.config.host.configDir, this.config.host.networkSh)}"`)

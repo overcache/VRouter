@@ -335,6 +335,8 @@ class Utils {
     switch (platform) {
       case 'darwin':
         return Mac.changeRouteTo(ip)
+      case 'win32':
+        return Win.changeRouteTo(ip)
     }
   }
   static getCurrentDns () {

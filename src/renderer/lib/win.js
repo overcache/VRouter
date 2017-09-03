@@ -1,5 +1,6 @@
 // import VBox from './vbox.js'
 // const path = require('path')
+import logger from './logger'
 const { exec } = require('child_process')
 
 function execute (command) {
@@ -42,6 +43,18 @@ async function getActiveAdapterIndex () {
   return indexAndName.index
 }
 
+async function changeDns (ip) {
+  logger.info(`about to changeDns to ${ip}`)
+}
+
+async function changeGateway (ip) {
+  logger.info(`about to changeGateway to ${ip}`)
+}
+
+async function getRouterIP () {
+  logger.debug('todo:" getRouterIP"')
+}
+
 class Win {
   static async getActiveAdapter () {
     const indexAndName = await getActiveAdapterIndexAndName()
@@ -72,6 +85,16 @@ class Win {
     // 删除以下字符: {, }, ", 空格
     const dnses = headerIncludedOutput.split('\n')[1].replace(/({|}|"|\s)/ig, '').split(',')
     return dnses[0]
+  }
+
+  static async changeRouteTo (ip) {
+    await changeGateway(ip)
+    await changeDns(ip)
+  }
+
+  static async resetRoute () {
+    const routerIP = await getRouterIP()
+    await Win.changeRouteTo(routerIP)
   }
 }
 
