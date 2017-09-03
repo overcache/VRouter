@@ -92,9 +92,9 @@ async function changeDns (ip, index) { // eslint-disable-line
   return execute(cmd)
 }
 
-async function changeGateway (ip) { // eslint-disable-line
-  const index = await getActiveAdapterIndex()
-  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call SetGateways ("${ip}")`
+async function changeGateway (ip, index) { // eslint-disable-line
+  const infIndex = index || await getActiveAdapterIndex()
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetGateways ("${ip}")`
   logger.info(`about to changeGateway to ${ip}`)
   return execute(cmd)
 }
@@ -112,12 +112,15 @@ async function getRouterIP () { // eslint-disable-line
 }
 
 async function configWindowsHostOnlyInf (infName, ip, mask, gateway) {
-  const subCmd = `WMIC nic where "Name = '${infName}' get InterfaceIndex"`
+  const subCmd = `WMIC nic where "Name = '${infName}'" get InterfaceIndex`
   const indexOuput = await execute(subCmd)
   const index = indexOuput.split('\n')[1].trim()
-  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}"),("${gateway}")`
-  await execute(cmd)
+  await changeGateway(gateway, index)
   await changeDns(gateway, index)
+  // logger.debug(`about to config hostonlyInf: ${infName}`)
+  // const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}")`
+  // logger.debug(cmd)
+  // await execute(cmd)
 }
 
 class Win {

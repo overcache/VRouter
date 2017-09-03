@@ -340,12 +340,12 @@ class Utils {
         return Win.trafficToPhysicalRouter()
     }
   }
-  static trafficToVirtualRouter (ip) {
+  static trafficToVirtualRouter (infName, ip, mask, gateway) {
     switch (platform) {
       case 'darwin':
         return Mac.trafficToVirtualRouter(ip)
       case 'win32':
-        return Win.trafficToVirtualRouter(ip)
+        return Win.trafficToVirtualRouter(infName, ip, mask, gateway)
     }
   }
   static getCurrentDns () {

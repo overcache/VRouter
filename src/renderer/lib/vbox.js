@@ -209,6 +209,12 @@ class VBox {
     return pattern.exec(vmInfo)[1].replace(/["']/ig, '')
   }
 
+  static async getAssignedHostonlyInf (name, nic = '1') {
+    const vmInfo = await VBox.getVmInfo(name)
+    const pattern = new RegExp(String.raw`^hostonlyadapter${nic}=(.*)$`, 'mg')
+    return pattern.exec(vmInfo)[1].replace(/["']/ig, '')
+  }
+
   /*
    * 获取ip值等于参数值的hostonly设备, 如果没有对应的设备, 则新建一个.
    * @param {string} network 网段, 如 '10.19.28.37/24'

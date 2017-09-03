@@ -206,7 +206,10 @@ export default {
         logger.debug('about to trafficToPhysicalRouter')
         await Utils.trafficToPhysicalRouter()
       } else {
-        await Utils.trafficToVirtualRouter(this.vrouter.ip)
+        const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
+        const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
+        logger.debug(`getAssignedHostonlyInf: ${hostonlyif}`)
+        await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, '255.255.255.0', this.vrouter.ip)
       }
       await this.getSystemInfo()
       this.activeLoader = false
