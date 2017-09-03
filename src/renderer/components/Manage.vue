@@ -338,9 +338,9 @@ export default {
     $('.tabular.menu .item').tab()
 
     setInterval(async () => {
-      // 每三分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
-      this.refreshInfos()
-    }, 180000)
+      // 每15分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
+      await this.refreshInfos()
+    }, 900000)
 
     $(document).on('click', 'a[href^="http"]', function (event) {
       event.preventDefault()
