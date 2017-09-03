@@ -120,19 +120,22 @@ class Win {
     // 通过最多 1 个跃点跟踪
     // 到 public1.114dns.com [114.114.114.114] 的路由:
     //
-    //   1    <1 毫秒   <1 毫秒   <1 毫秒 vrouter.lan [10.19.28.37]
+    //   1    <1 毫秒   <1 毫秒   <1 毫秒  10.19.28.37
     //
     // 跟踪完成。
-    const infIndex = await getActiveAdapterIndex()
-    const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DefaultIPGateway`
+    const cmd = `tracert -d -h 1 -4 -w 100 114.114.114.114`
 
-    const headerIncludedOutput = await execute(cmd)
-    // DefaultIPGateway
-    // {"192.168.10.1", "xxxx"}
+    const rawOutput = await execute(cmd)
+    let gateway = ''
+    const firstHopPattern = /^1\s+.*$/i
+    rawOutput.split('\n').forEach(line => {
+      if (firstHopPattern.test(line.trim())) {
+        const arr = line.trim().split(/(\s|\t)/)
+        gateway = arr[arr.length - 1]
+      }
+    })
 
-    // 删除以下字符: {, }, ", 空格
-    const gateways = headerIncludedOutput.split('\n')[1].replace(/({|}|"|\s)/ig, '').split(',')
-    return gateways[0]
+    return gateway
   }
 
   static async getCurrentDns () {
@@ -144,16 +147,19 @@ class Win {
     // 名称:    vrouter.lan
     // Address:  10.19.28.37
 
-    const infIndex = await getActiveAdapterIndex()
-    const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DNSServerSearchOrder`
+    const cmd = `nslookup 10.19.28.37`
 
-    const headerIncludedOutput = await execute(cmd)
-    // DefaultIPGateway
-    // {"192.168.10.1", "xxxx"}
-
-    // 删除以下字符: {, }, ", 空格
-    const dnses = headerIncludedOutput.split('\n')[1].replace(/({|}|"|\s)/ig, '').split(',')
-    return dnses[0]
+    const rawOutput = await execute(cmd)
+    let dns = ''
+    const serverPattern = /^Address:.*$/i
+    const outputArray = rawOutput.split('\n')
+    for (let i = 0; i < outputArray.length; i++) {
+      if (serverPattern.test(outputArray[i].trim())) {
+        dns = outputArray[i].trim().split(':')[1]
+        break
+      }
+    }
+    return dns
   }
 
   static async changeRouteTo (ip) {
