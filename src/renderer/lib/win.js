@@ -155,7 +155,7 @@ class Win {
     const outputArray = rawOutput.split('\n')
     for (let i = 0; i < outputArray.length; i++) {
       if (serverPattern.test(outputArray[i].trim())) {
-        dns = outputArray[i].split(':')[1].trim()
+        dns = outputArray[i].trim().split(/address:/ig)[1].trim()
         break
       }
     }
