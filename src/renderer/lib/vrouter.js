@@ -110,6 +110,7 @@ function installPackage (serialTcpPort, waitForOutput = 20000) {
 function configLan (info) {
   const subCmds = []
   subCmds.push(`uci set network.lan.ipaddr='${info.lanIP}'`)
+  subCmds.push(`uci set network.lan.ipv6='0'`)
   subCmds.push('uci commit network')
   subCmds.push('/etc/init.d/network restart')
   const cmd = subCmds.join(' && ')
