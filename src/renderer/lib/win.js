@@ -50,10 +50,11 @@ async function togglePhysicalAdapterConnection (action = 'off') {
   const fakeIP = '168.254.254.254'
   const fakeMast = '255.0.0.0'
   const index = await getActiveAdapterIndex()
-  const onCmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableDHCP`
-  const offCmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${fakeIP}"),("${fakeMast}")`
-  const cmd = action === 'on' ? onCmd : offCmd
-  return sudoExec(cmd)
+  if (action === 'on') {
+    return enableDHCP(index)
+  } else {
+    return enableStatic(index, fakeIP, fakeMast)
+  }
 }
 
 async function getActiveAdapterIndexAndName () {
@@ -111,16 +112,34 @@ async function getRouterIP () { // eslint-disable-line
   return DHCPServer
 }
 
-async function configWindowsHostOnlyInf (infName, ip, mask, gateway) {
-  const subCmd = `WMIC nic where "Name = '${infName}'" get InterfaceIndex`
-  const indexOuput = await execute(subCmd)
-  const index = indexOuput.split('\n')[1].trim()
+async function configWindowsHostOnlyInf (index, gateway) {
+  // const index = await infNameToIndex(infName)
   await changeGateway(gateway, index)
   await changeDns(gateway, index)
   // logger.debug(`about to config hostonlyInf: ${infName}`)
   // const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}")`
   // logger.debug(cmd)
   // await execute(cmd)
+}
+
+async function infNameToIndex (infName) {
+  const subCmd = `WMIC nic where "Name = '${infName}'" get InterfaceIndex`
+  const indexOuput = await execute(subCmd)
+  const index = indexOuput.split('\n')[1].trim()
+  return index
+}
+
+async function enableDHCP (index) {
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableDHCP`
+  return execute(cmd)
+}
+async function enableStatic (index, ip, mask) {
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}")`
+  return execute(cmd)
+}
+async function emptyDNS (index) {
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call SetDNSServerSearchOrder`
+  return execute(cmd)
 }
 
 class Win {
@@ -194,16 +213,19 @@ class Win {
     return dns
   }
 
-  static async trafficToVirtualRouter (infName, ip, mask, gateway) {
-    await configWindowsHostOnlyInf(infName, ip, mask, gateway)
+  static async trafficToVirtualRouter (infName, gateway) {
+    const index = await infNameToIndex(infName)
+    await configWindowsHostOnlyInf(index, gateway)
     await togglePhysicalAdapterConnection('off')
   }
 
-  static async trafficToPhysicalRouter () {
+  static async trafficToPhysicalRouter (infName, ip, mask) {
+    const index = await infNameToIndex(infName)
+    await enableDHCP(index)
+    await enableStatic(index, ip, mask)
+    await emptyDNS(index)
+    await configWindowsHostOnlyInf(index, 'null')
     await togglePhysicalAdapterConnection('on')
-    // const routerIP = await getRouterIP()
-    // await changeGateway(routerIP)
-    // await changeDns(routerIP)
   }
 }
 

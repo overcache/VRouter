@@ -202,14 +202,15 @@ export default {
   methods: {
     toggleRouting: async function () {
       this.activeLoader = true
+      const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
+      const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
       if (await this.routing) {
+        await this.vrouter.disconnect()
         logger.debug('about to trafficToPhysicalRouter')
-        await Utils.trafficToPhysicalRouter()
+        await Utils.trafficToPhysicalRouter(hostonlyif, hostonlyInfIP, '255.255.255.0')
       } else {
-        const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
-        const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
         logger.debug(`getAssignedHostonlyInf: ${hostonlyif}`)
-        await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, '255.255.255.0', this.vrouter.ip)
+        await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, this.vrouter.ip)
       }
       await this.getSystemInfo()
       this.activeLoader = false

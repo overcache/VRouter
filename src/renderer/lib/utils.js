@@ -332,20 +332,20 @@ class Utils {
     return promise
   }
 
-  static trafficToPhysicalRouter () {
+  static trafficToPhysicalRouter (hostonlyInf, ip, mask) {
     switch (platform) {
       case 'darwin':
         return Mac.trafficToPhysicalRouter()
       case 'win32':
-        return Win.trafficToPhysicalRouter()
+        return Win.trafficToPhysicalRouter(hostonlyInf, ip, mask)
     }
   }
-  static trafficToVirtualRouter (infName, ip, mask, gateway) {
+  static trafficToVirtualRouter (infName, ip, gateway) {
     switch (platform) {
       case 'darwin':
         return Mac.trafficToVirtualRouter(ip)
       case 'win32':
-        return Win.trafficToVirtualRouter(infName, ip, mask, gateway)
+        return Win.trafficToVirtualRouter(infName, gateway)
     }
   }
   static getCurrentDns () {
