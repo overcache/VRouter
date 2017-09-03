@@ -29,7 +29,7 @@ function sudoExec (cmd, options = {name: 'VRouter'}) {
   })
 }
 
-async function disableIPV6 () {
+async function disableIPV6 () { // eslint-disable-line
   const index = await getActiveAdapterIndex()
   const subCmd = `WMIC nicconfig where "InterfaceIndex = ${index}" get description`
 
@@ -84,22 +84,22 @@ async function getActiveAdapterIndex () {
   return indexAndName.index
 }
 
-async function changeDns (ip) {
-  await disableIPV6()
-  const infIndex = await getActiveAdapterIndex()
+async function changeDns (ip, index) { // eslint-disable-line
+  // await disableIPV6()
+  const infIndex = index || await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetDNSServerSearchOrder ("${ip}")`
   logger.info(`about to changeDns to ${ip}`)
   return execute(cmd)
 }
 
-async function changeGateway (ip) {
+async function changeGateway (ip) { // eslint-disable-line
   const index = await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call SetGateways ("${ip}")`
   logger.info(`about to changeGateway to ${ip}`)
   return execute(cmd)
 }
 
-async function getRouterIP () {
+async function getRouterIP () { // eslint-disable-line
   const infIndex = await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DHCPServer`
 
@@ -109,6 +109,15 @@ async function getRouterIP () {
   const DHCPServer = headerIncludedOutput.split('\n')[1].trim()
   logger.debug(`Router IP: ${DHCPServer}`)
   return DHCPServer
+}
+
+async function configWindowsHostOnlyInf (infName, ip, mask, gateway) {
+  const subCmd = `WMIC nic where "Name = '${infName}' get InterfaceIndex"`
+  const indexOuput = await execute(subCmd)
+  const index = indexOuput.split('\n')[1].trim()
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}"),("${gateway}")`
+  await execute(cmd)
+  await changeDns(gateway, index)
 }
 
 class Win {
@@ -182,7 +191,8 @@ class Win {
     return dns
   }
 
-  static async trafficToVirtualRouter (ip) {
+  static async trafficToVirtualRouter (infName, ip, mask, gateway) {
+    await configWindowsHostOnlyInf(infName, ip, mask, gateway)
     await togglePhysicalAdapterConnection('off')
   }
 

@@ -172,7 +172,7 @@ export default {
         return
       }
       this.steps.push('check virtual machine')
-      if (!(await VBox.isVmRunning(this.vmName))) {
+      if (!(await VBox.isVmRunning(this.vmName, this.vrouter.config.openwrt.ip))) {
         winston.info('vrouter vm not running')
         return this.startVm()
       }

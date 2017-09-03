@@ -14,6 +14,7 @@ const zlib = require('zlib')
 const NetcatClient = require('netcat').client
 const { exec } = require('child_process')
 const sudo = require('sudo-prompt')
+const ping = require('ping')
 
 const platform = os.platform()
 
@@ -395,6 +396,19 @@ class Utils {
       return parseSsURI(uri, templateProfile)
     }
     return null
+  }
+
+  static async isHostAlive (ip) {
+    // vboxmanage list runningvms 在windows下非常不可靠
+    return new Promise((resolve, reject) => {
+      ping.promise.probe(ip, {
+        timeout: 10,
+        min_reply: 1
+      })
+        .then(res => {
+          resolve(res.isAlive)
+        })
+    })
   }
 }
 

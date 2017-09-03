@@ -1,4 +1,4 @@
-// import Utils from './utils'
+import Utils from './utils'
 import logger from './logger'
 const { exec } = require('child_process')
 const os = require('os')
@@ -95,9 +95,9 @@ class VBox {
     const cmd = `${bin} controlvm ${name} poweroff`
     return execute(cmd)
   }
-  static async delete (name) {
+  static async delete (name, ip) {
     const isExisted = await VBox.isVmExisted(name)
-    const isRunning = isExisted ? await VBox.isVmRunning(name) : false
+    const isRunning = isExisted ? await VBox.isVmRunning(name, ip) : false
     if (isExisted && isRunning) {
       await VBox.powerOff(name)
       await wait(5000)
@@ -131,9 +131,11 @@ class VBox {
     const statePattern = /^VMState="(.*)"$/mg
     return statePattern.exec(vmInfo)[1]
   }
-  static async isVmRunning (name) {
+  static async isVmRunning (name, ip) {
     const state = await VBox.getVmState(name)
-    return state === 'running'
+    const isRunning = state === 'running'
+    const isAlive = ip ? await Utils.isHostAlive(ip) : false
+    return isRunning || isAlive
   }
   static toggleSerialPort (name, tcpServerPort, action = 'on', portNum = '1') {
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${portNum} tcpserver "${tcpServerPort}"` : 'off'

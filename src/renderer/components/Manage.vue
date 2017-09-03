@@ -326,7 +326,7 @@ export default {
     deleteVRouter: async function () {
       this.activeLoader = true
       await Utils.resetRoute()
-      await VBox.delete(this.vrouter.name)
+      await VBox.delete(this.vrouter.name, this.vrouter.config.openwrt.ip)
       this.activeLoader = false
       app.quit()
     },
