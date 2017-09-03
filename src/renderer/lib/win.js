@@ -45,6 +45,17 @@ async function disableIPV6 () {
   return sudoExec(cmd)
 }
 
+async function togglePhysicalAdapterConnection (action = 'off') {
+  // Pratice: no need to config dns
+  const fakeIP = '168.254.254.254'
+  const fakeMast = '255.0.0.0'
+  const index = await getActiveAdapterIndex()
+  const onCmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableDHCP`
+  const offCmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${fakeIP}"),("${fakeMast}")`
+  const cmd = action === 'on' ? onCmd : offCmd
+  return sudoExec(cmd)
+}
+
 async function getActiveAdapterIndexAndName () {
   const cmd = 'WMIC nic where "PhysicalAdapter = TRUE and NetConnectionStatus = 2" get InterfaceIndex,Name'
 
@@ -104,6 +115,14 @@ class Win {
   }
 
   static async getCurrentGateway () {
+    // tracert -h 1 -4 -w 100 114.114.114.114
+
+    // 通过最多 1 个跃点跟踪
+    // 到 public1.114dns.com [114.114.114.114] 的路由:
+    //
+    //   1    <1 毫秒   <1 毫秒   <1 毫秒 vrouter.lan [10.19.28.37]
+    //
+    // 跟踪完成。
     const infIndex = await getActiveAdapterIndex()
     const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DefaultIPGateway`
 
@@ -117,6 +136,14 @@ class Win {
   }
 
   static async getCurrentDns () {
+    // nslookup.exe 10.19.28.37
+
+    // 服务器:  vrouter.lan
+    // Address:  10.19.28.37
+    //
+    // 名称:    vrouter.lan
+    // Address:  10.19.28.37
+
     const infIndex = await getActiveAdapterIndex()
     const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DNSServerSearchOrder`
 
