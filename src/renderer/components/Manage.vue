@@ -208,6 +208,7 @@ export default {
     toggleRouting: async function () {
       this.activeLoader = true
       if (await this.routing) {
+        logger.debug('about to trafficToPhysicalRouter')
         await Utils.trafficToPhysicalRouter()
       } else {
         await Utils.trafficToVirtualRouter(this.vrouter.ip)

@@ -335,6 +335,8 @@ class Utils {
     switch (platform) {
       case 'darwin':
         return Mac.trafficToPhysicalRouter()
+      case 'win32':
+        return Win.trafficToPhysicalRouter()
     }
   }
   static trafficToVirtualRouter (ip) {
