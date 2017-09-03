@@ -2,6 +2,7 @@
 // const path = require('path')
 import logger from './logger'
 const { exec } = require('child_process')
+const sudo = require('sudo-prompt')
 
 function execute (command) {
   return new Promise((resolve, reject) => {
@@ -13,6 +14,35 @@ function execute (command) {
       }
     })
   })
+}
+
+// options not supported in windows
+function sudoExec (cmd, options = {name: 'VRouter'}) {
+  return new Promise((resolve, reject) => {
+    sudo.exec(cmd, options, (err, stdout, stderr) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(stdout || stderr)
+      }
+    })
+  })
+}
+
+async function disableIPV6 () {
+  const index = await getActiveAdapterIndex()
+  const subCmd = `WMIC nicconfig where "InterfaceIndex = ${index}" get description`
+
+  // Description
+  // Intel(R) Centrino(R) Wireless-N 1000
+  const headerIncludedOutput = await execute(subCmd)
+  const description = headerIncludedOutput.split('\n')[1].trim()
+
+  const cmd = `powershell -Command {Disable-NetAdapterBinding -InterfaceDescription "${description}" -ComponentID ms_tcpip6}`
+  // const cmd = `Disable-NetAdapterBinding -InterfaceDescription "${description}" -ComponentID ms_tcpip6`
+  console.log('Disable-NetAdapterBinding works in powershell only. I need to find out how to run powershell as administrator')
+  logger.debug(`about to disable IPV6 of Adapter: ${description}`)
+  return sudoExec(cmd)
 }
 
 async function getActiveAdapterIndexAndName () {
@@ -44,7 +74,11 @@ async function getActiveAdapterIndex () {
 }
 
 async function changeDns (ip) {
+  await disableIPV6()
+  const infIndex = await getActiveAdapterIndex()
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetDNSServerSearchOrder ("${ip}")`
   logger.info(`about to changeDns to ${ip}`)
+  return execute(cmd)
 }
 
 async function changeGateway (ip) {
@@ -52,7 +86,15 @@ async function changeGateway (ip) {
 }
 
 async function getRouterIP () {
-  logger.debug('todo:" getRouterIP"')
+  const infIndex = await getActiveAdapterIndex()
+  const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DHCPServer`
+
+  // DHCPServer
+  // 192.168.10.1
+  const headerIncludedOutput = await execute(cmd)
+  const DNSServer = headerIncludedOutput.split('\n')[1].trim()
+  logger.debug(`Router IP: ${DNSServer}`)
+  return DNSServer
 }
 
 class Win {

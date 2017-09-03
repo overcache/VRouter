@@ -65,7 +65,6 @@ class Openwrt {
     const specialCmds = [
       '/etc/init.d/firewall restart'
     ]
-    logger.debug(`about to exec cmd: ${cmd} via ssh`)
     return new Promise((resolve, reject) => {
       this.conn.exec(cmd, async (err, stream) => {
         if (err) {

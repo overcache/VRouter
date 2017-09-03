@@ -276,6 +276,7 @@ class VRouter extends Openwrt {
     const bridgeServices = await VBox.getAllBridgeServices()
     logger.info(`bridgeServices: ${bridgeServices}`)
     const bridgeService = await Utils.getBridgeService(bridgeServices)
+    if (!bridgeService) return
     logger.info(`actived Bridge Service: ${bridgeService}`)
     const assignedBridgeService = await VBox.getAssignedBridgeService(this.name, this.config.virtualbox.bridgeINC)
     if (assignedBridgeService !== bridgeService) {
