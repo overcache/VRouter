@@ -202,7 +202,7 @@ export default {
   methods: {
     toggleRouting: async function () {
       this.activeLoader = true
-      logger.debug(`about to getAssignedHostonlyInf of ${this.name}. very slow on windows platform`)
+      logger.debug(`about to getAssignedHostonlyInf of ${this.vrouter.name}. very slow on windows platform`)
       const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
       logger.debug(`getAssignedHostonlyInf: ${hostonlyif}`)
       const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
