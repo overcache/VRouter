@@ -73,14 +73,6 @@ async function getActiveAdapterIndex () {
   return indexAndName.index
 }
 
-async function changeDns (index, ip) { // eslint-disable-line
-  // await disableIPV6()
-  const infIndex = index || await getActiveAdapterIndex()
-  const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetDNSServerSearchOrder ("${ip}")`
-  logger.info(`about to changeDns to ${ip}`)
-  return sudoExec(cmd)
-}
-
 async function changeGateway (index, ip) { // eslint-disable-line
   const infIndex = index || await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetGateways ("${ip}")`
