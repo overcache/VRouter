@@ -400,7 +400,7 @@ class Utils {
 
   static async isHostAlive (ip) {
     // vboxmanage list runningvms 在windows下非常不可靠
-    return new Promise((resolve, reject) => {
+    const p1 = new Promise((resolve, reject) => {
       ping.promise.probe(ip, {
         timeout: 1,
         min_reply: 1
@@ -409,6 +409,14 @@ class Utils {
           resolve(res.alive)
         })
     })
+
+    const p2 = new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve(false)
+      }, 500)
+    })
+
+    return Promise.race([p1, p2])
   }
 }
 
