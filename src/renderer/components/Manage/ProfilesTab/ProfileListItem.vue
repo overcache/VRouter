@@ -27,8 +27,10 @@
       <li>{{ proxies }}
       <li>
         <span>{{ mode }}</span>
-        <span>{ 转发 DNS 查询 <i class="ui icon teal toggle " :class="enableTunnelDns ? 'on teal': 'off'"></i>}</span>
-        <span>{ 转发 UDP 流量 <i class="ui icon toggle"      :class="enableRelayUDP ? 'on teal' : 'off'"></i>}</span>
+      </li>
+      <li>
+        <span>{ 转发 DNS 查询 <i class="ui icon toggle " :class="enableTunnelDns ? 'on teal': 'off'"></i>}</span>
+        <span>{ 转发 UDP 流量 <i class="ui icon toggle"  :class="enableRelayUDP ? 'on teal' : 'off'"></i>}</span>
       </li>
     </div>
   </div>
