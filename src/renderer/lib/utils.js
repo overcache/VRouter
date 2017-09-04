@@ -402,7 +402,7 @@ class Utils {
     // vboxmanage list runningvms 在windows下非常不可靠
     return new Promise((resolve, reject) => {
       ping.promise.probe(ip, {
-        timeout: 10,
+        timeout: 1,
         min_reply: 1
       })
         .then(res => {
