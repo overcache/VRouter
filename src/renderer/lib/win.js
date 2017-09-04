@@ -45,18 +45,6 @@ async function disableIPV6 () { // eslint-disable-line
   return sudoExec(cmd)
 }
 
-async function togglePhysicalAdapterConnection (index, action = 'off') {
-  // Pratice: no need to config dns
-  const fakeIP = '168.254.254.254'
-  const fakeMast = '255.0.0.0'
-  const infIndex = index || await getActiveAdapterIndex()
-  if (action === 'on') {
-    return enableDHCP(infIndex)
-  } else {
-    return enableStatic(infIndex, fakeIP, fakeMast)
-  }
-}
-
 async function getActiveAdapterIndexAndName () {
   const cmd = 'WMIC nic where "PhysicalAdapter = TRUE and NetConnectionStatus = 2" get InterfaceIndex,Name'
 
@@ -112,29 +100,11 @@ async function getRouterIP () { // eslint-disable-line
   return DHCPServer
 }
 
-async function configWindowsHostOnlyInf (index, gateway) {
-  await changeGateway(index, gateway)
-  await changeDns(index, gateway)
-}
-
 async function infNameToIndex (infName) {
   const subCmd = `WMIC nic where "Name = '${infName}'" get InterfaceIndex`
   const indexOuput = await execute(subCmd)
   const index = indexOuput.split('\n')[1].trim()
   return index
-}
-
-async function enableDHCP (index) {
-  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableDHCP`
-  return sudoExec(cmd)
-}
-async function enableStatic (index, ip, mask) {
-  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}")`
-  return sudoExec(cmd)
-}
-async function emptyDNS (index) {
-  const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call SetDNSServerSearchOrder`
-  return sudoExec(cmd)
 }
 
 class Win {
@@ -209,50 +179,41 @@ class Win {
   }
 
   static async trafficToVirtualRouter (infName, gateway) {
-    const p1 = infNameToIndex(infName)
-      .then(index => {
-        logger.debug(`about to configWindowsHostOnlyInf, infName: ${infName}`)
-        return configWindowsHostOnlyInf(index, gateway)
-      })
+    const hostonlyInfIndex = await infNameToIndex(infName)
+    const activeAdapterIndex = await getActiveAdapterIndex()
+    const cmds = []
 
-    const p2 = getActiveAdapterIndex()
-      .then(index => {
-        logger.debug(`about to togglePhysicalAdapterConnection off, index: ${index}`)
-        return togglePhysicalAdapterConnection(index, 'off')
-      })
-    return Promise.all([p1, p2])
+    // change dns
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call SetDNSServerSearchOrder ("${gateway}")`)
+    // changeGateway
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call SetGateways ("${gateway}")`)
+
+    // set fake ip/mask
+    const fakeIP = '168.254.254.254'
+    const fakeMask = '255.0.0.0'
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${activeAdapterIndex}" call EnableStatic ("${fakeIP}"),("${fakeMask}")`)
+
+    return sudoExec(cmds.join(' & '))
   }
 
   static async trafficToPhysicalRouter (infName, ip, mask) {
-    const p1 = Promise.resolve()
-      .then(() => {
-        logger.debug(`about to get infName's InterfaceIndex`)
-        return infNameToIndex(infName)
-      })
-      .then(index => {
-        logger.debug(`about to enableDHCP of ${infName}`)
-        return enableDHCP(index)
-          .then(() => index)
-      })
-      .then(index => {
-        logger.debug(`about to configWindowsHostOnlyInf of ${infName}`)
-        return Promise.all([
-          enableStatic(index, ip, mask),
-          emptyDNS(index)
-        ])
-      })
+    const hostonlyInfIndex = await infNameToIndex(infName)
+    const activeAdapterIndex = await getActiveAdapterIndex()
+    const cmds = []
 
-    const p2 = Promise.resolve()
-      .then(() => {
-        logger.debug(`about to getActiveAdapterIndex`)
-        return getActiveAdapterIndex()
-      })
-      .then(index => {
-        logger.debug(`about to togglePhysicalAdapterConnection on. index: ${index}`)
-        return togglePhysicalAdapterConnection(index, 'on')
-      })
+    // enableDHCP to get rid of gateway
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call EnableDHCP`)
 
-    return Promise.all([p1, p2])
+    // config ip/mask
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call EnableStatic ("${ip}"),("${mask}")`)
+
+    // emptyDNS
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call SetDNSServerSearchOrder`)
+
+    // enable physicalIfs
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${activeAdapterIndex}" call EnableDHCP`)
+
+    return sudoExec(cmds.join(' & '))
   }
 }
 
