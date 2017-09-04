@@ -343,7 +343,7 @@ class Utils {
   static trafficToVirtualRouter (infName, ip, gateway) {
     switch (platform) {
       case 'darwin':
-        return Mac.trafficToVirtualRouter(ip)
+        return Mac.trafficToVirtualRouter(gateway)
       case 'win32':
         return Win.trafficToVirtualRouter(infName, gateway)
     }
