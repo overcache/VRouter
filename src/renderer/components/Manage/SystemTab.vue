@@ -53,16 +53,18 @@ export default {
           header: 'VRouter 信息',
           infoList: [
             {
-              label: 'BR-LAN',
-              value: this.vrouterInfo.brLanIP
-            },
-            {
               label: 'WAN',
               value: this.vrouterInfo.lanIP
             },
             {
+              label: 'BR-LAN',
+              value: this.vrouterInfo.brLanIP,
+              hide: true
+            },
+            {
               label: 'Bridged Network',
-              value: this.vrouterInfo.bridgeAdapter
+              value: this.vrouterInfo.bridgeAdapter,
+              hide: true
             },
             {
               label: 'Mac Address',

@@ -53,7 +53,7 @@
       </div>
     </div>
 
-    <div id="about-modal" class="ui tiny modal">
+    <div id="about-modal" class="ui modal">
       <div class="ui top left attached label teal">关于</div>
       <div class="content">
         <p><i class="ui fork icon green"></i> Version: {{ version }}</p>
