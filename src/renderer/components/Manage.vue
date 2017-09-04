@@ -288,6 +288,7 @@ export default {
     },
     deleteProfile: async function (index) {
       this.profiles.splice(index, 1)
+      logger.debug(`profiles[${index}] has been delete. about to save profile to disk`)
       await this.vrouter.saveCfg2File()
     },
     editorSave: async function (profile) {
@@ -309,6 +310,7 @@ export default {
         this.loaderText = 'Applying Profile'
         this.activeLoader = true
         await this.vrouter.applyActivedProfile()
+        await this.refreshInfos(true)
         this.activeLoader = false
         logger.info(`apply editting profile: ${this.activedProfile.name}`)
         this.loaderText = 'Loading'
