@@ -56,9 +56,4 @@ const myLogger = {
   }
 }
 
-let logger = winston
-if (process.env.NODE_ENV === 'development') {
-  logger = myLogger
-}
-
-export default logger
+export default myLogger
