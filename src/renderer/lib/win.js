@@ -90,14 +90,14 @@ async function changeDns (index, ip) { // eslint-disable-line
   const infIndex = index || await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetDNSServerSearchOrder ("${ip}")`
   logger.info(`about to changeDns to ${ip}`)
-  return execute(cmd)
+  return sudoExec(cmd)
 }
 
 async function changeGateway (index, ip) { // eslint-disable-line
   const infIndex = index || await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetGateways ("${ip}")`
   logger.info(`about to changeGateway to ${ip}`)
-  return execute(cmd)
+  return sudoExec(cmd)
 }
 
 async function getRouterIP () { // eslint-disable-line
@@ -126,15 +126,15 @@ async function infNameToIndex (infName) {
 
 async function enableDHCP (index) {
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableDHCP`
-  return execute(cmd)
+  return sudoExec(cmd)
 }
 async function enableStatic (index, ip, mask) {
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}")`
-  return execute(cmd)
+  return sudoExec(cmd)
 }
 async function emptyDNS (index) {
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call SetDNSServerSearchOrder`
-  return execute(cmd)
+  return sudoExec(cmd)
 }
 
 class Win {
