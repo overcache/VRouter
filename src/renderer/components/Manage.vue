@@ -310,7 +310,7 @@ export default {
         this.loaderText = 'Applying Profile'
         this.activeLoader = true
         await this.vrouter.applyActivedProfile()
-        await this.refreshInfos(true)
+        await this.getProxiesInfo()
         this.activeLoader = false
         logger.info(`apply editting profile: ${this.activedProfile.name}`)
         this.loaderText = 'Loading'
