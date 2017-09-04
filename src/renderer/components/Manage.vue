@@ -215,9 +215,8 @@ export default {
       } else {
         await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, this.vrouter.ip)
       }
+      await this.getSystemInfo()
       this.activeLoader = false
-      // 先关闭loader, 再后台更新infos
-      this.getSystemInfo()
     },
     getSystemInfo: async function () {
       this.systemInfo.currentGWIP = await Utils.getCurrentGateway()
