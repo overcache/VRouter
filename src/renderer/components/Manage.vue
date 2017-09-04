@@ -334,14 +334,22 @@ export default {
     },
     shutdownVRouter: async function () {
       this.activeLoader = true
-      await Utils.resetRoute()
+      const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
+      const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
+      await this.vrouter.disconnect()
+      logger.debug('about to trafficToPhysicalRouter')
+      await Utils.trafficToPhysicalRouter(hostonlyif, hostonlyInfIP, '255.255.255.0')
       await VBox.saveState(this.vrouter.name)
       this.activeLoader = false
       app.quit()
     },
     deleteVRouter: async function () {
       this.activeLoader = true
-      await Utils.resetRoute()
+      const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
+      const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
+      await this.vrouter.disconnect()
+      logger.debug('about to trafficToPhysicalRouter')
+      await Utils.trafficToPhysicalRouter(hostonlyif, hostonlyInfIP, '255.255.255.0')
       await VBox.delete(this.vrouter.name, this.vrouter.config.openwrt.ip)
       this.activeLoader = false
       app.quit()
