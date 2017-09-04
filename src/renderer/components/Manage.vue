@@ -167,6 +167,8 @@ export default {
         // 这些值需要手动维护
         enableTunnelDns: false,
         isTunnelDnsRunning: false,
+        enableRelayUDP: false,
+        isRelayUDPRunning: false,
         enableSs: false,
         isSsRunning: false,
         enableSsr: false,
@@ -234,6 +236,9 @@ export default {
     },
     getProxiesInfo: async function () {
       const proxiesInfo = this.vrouter.config.proxiesInfo
+
+      this.proxiesInfo.enableRelayUDP = this.activedProfile.enableRelayUDP
+      this.proxiesInfo.isRelayUDPRunning = await this.vrouter.isRelayUDPRunning(this.activedProfile.proxies, proxiesInfo)
 
       this.proxiesInfo.enableTunnelDns = this.activedProfile.enableTunnelDns
       this.proxiesInfo.isTunnelDnsRunning = await this.vrouter.isTunnelDnsRunning(this.activedProfile.proxies, proxiesInfo)

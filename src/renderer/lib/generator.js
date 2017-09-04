@@ -124,7 +124,7 @@ async function getTunnelDnsCfgFrom (profile, proxiesInfo) {
   }
   cfg.local_port = proxiesInfo.tunnelDns.localPort
   cfg.mode = 'udp_only'
-  cfg.tunnel_address = profile.dnsServer
+  cfg.tunnel_address = profile.dnsServer || '8.8.8.8:53'
   return cfg
 }
 async function getKtCfgFrom (profile, proxiesInfo) {

@@ -100,6 +100,11 @@ export default {
               icon: this.proxiesInfo.enableTunnelDns ? (this.proxiesInfo.isTunnelDnsRunning ? 'check teal' : 'minus red') : 'toggle off'
             },
             {
+              label: '转发 UDP 流量',
+              value: this.proxiesInfo.enableRelayUDP ? (this.proxiesInfo.isRelayUDPRunning ? '运行中' : '已停止') : '未启用',
+              icon: this.proxiesInfo.enableRelayUDP ? (this.proxiesInfo.isRelayUDPRunning ? 'check teal' : 'minus red') : 'toggle off'
+            },
+            {
               label: 'Shadowsocks 进程',
               value: this.proxiesInfo.enableSs ? (this.proxiesInfo.isSsRunning ? '运行中' : '已停止') : '未启用',
               icon: this.proxiesInfo.enableSs ? (this.proxiesInfo.isSsRunning ? 'check teal' : 'minus red') : 'toggle off'

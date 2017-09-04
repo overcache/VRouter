@@ -35,6 +35,7 @@
       <input type="text"
         v-model="dnsServer"
         :placeholder="enableTunnelDns.length !== 0 ? '8.8.8.8:53' : '127.0.0.1'"
+        vee-validate="'required'"
       >
       <div class="ui checkbox">
         <input type="checkbox" value="enableTunnelDns" v-model="enableTunnelDns">
@@ -60,9 +61,14 @@
 import SsForm from './ProxiesForm/SsForm'
 import SsrForm from './ProxiesForm/SsrForm'
 import KtForm from './ProxiesForm/KtForm'
+import Vue from 'vue'
+import VeeValidate from 'vee-validate'
+Vue.use(VeeValidate, { inject: false })
+
 export default {
   name: 'proxies-form',
   props: ['editingClone'],
+  inject: ['$validator'],
   components: {
     SsForm,
     SsrForm,

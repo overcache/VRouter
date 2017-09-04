@@ -247,6 +247,13 @@ class Openwrt {
     return output.trim() !== ''
   }
 
+  async isRelayUDPRunning (proxies, proxiesInfo) {
+    const type = /ssr/ig.test(proxies) ? 'shadowsocksr' : 'shadowsocks'
+    const cmd = `ps -w| grep "${proxiesInfo.relayUDP.binName[type]} -[c] .*${proxiesInfo.relayUDP.cfgName}"`
+    const output = await this.execute(cmd)
+    return output.trim() !== ''
+  }
+
   // kcptun
   async installKt (targzFPath) {
     const src = path.join(os.tmpdir(), path.basename(targzFPath))
