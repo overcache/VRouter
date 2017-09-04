@@ -259,6 +259,7 @@ export default {
     },
     newProfile: function () {
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
+      this.editingClone = Object.assign({}, templateProfile)
       this.editingClone.index = -1
       this.showProfileEditor = true
     },
