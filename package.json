@@ -1,6 +1,6 @@
 {
   "name": "VRouter",
-  "version": "0.4.0",
+  "version": "0.4.0-alpha",
   "description": "a virtual router providing transparent proxy.",
   "main": "./dist/electron/main.bundle.js",
   "scripts": {
@@ -110,7 +110,6 @@
       "icon": "static/icons/icon.icns"
     },
     "win": {
-      "target": "zip",
       "icon": "static/icons/icon.ico"
     },
     "linux": {
