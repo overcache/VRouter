@@ -1,6 +1,6 @@
 <template lang="html">
   <div>
-    <div id="more-buttons-dropdown" class="ui dropdown button left pointing labeled icon left floated">
+    <div id="more-buttons-dropdown" class="ui dropdown basic button left pointing labeled icon left floated">
       <i class="ellipsis horizontal icon"></i>
       更多
       <div class="menu">
