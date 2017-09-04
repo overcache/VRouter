@@ -30,15 +30,16 @@
 
     <div class="ui divider"></div>
 
-    <div class="field">
+    <div class="inline field">
+      <label for="">DNS 地址</label>
+      <input type="text"
+        v-model="dnsServer"
+        :placeholder="enableTunnelDns.length !== 0 ? '8.8.8.8:53' : '127.0.0.1'"
+      >
       <div class="ui checkbox">
         <input type="checkbox" value="enableTunnelDns" v-model="enableTunnelDns">
         <label>转发 DNS 查询</label>
       </div>
-    </div>
-    <div class="inline field" v-show="enableTunnelDns.length !== 0">
-      <label for="">DNS 地址</label>
-      <input type="text" v-model="dnsServer" :disabled="enableTunnelDns.length === 0">
     </div>
     <div class="field">
       <div class="ui checkbox">
