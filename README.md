@@ -1,4 +1,4 @@
-![img](./img/features.jpg)
+![img](./static/img/features.jpg)
 
 [![JavaScript Style Guide](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
@@ -32,26 +32,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
     - 可以是独立的IP, 如 `123.123.123.123`
     - 也可以是IP段, 如 `123.123.123.0/8` 将会匹配 `123.123.123.0~123.123.123.255` 之间的IP地址. `123.123.0.0/16`将匹配 `123.123.0.0 ~ 123.123.255.255`之间的IP地址
 
-### 恢复网关
-
-如果出 bug 造成无法上网或者无法解析域名, 而 VRouter 又无法恢复系统默认网关.可以手动恢复:
-
-```bash
-# 查找你的路由器地址, 假设命令输出1.2.3.4
-/usr/sbin/networksetup -getinfo Wi-Fi | grep Router
-
-# 恢复网关
-sudo /sbin/route change default 1.2.3.4
-
-# 恢复DNS
-sudo networksetup -setdnsservers Wi-Fi 1.2.3.4
-
-# 确认网关已恢复
-/usr/sbin/netstat -nr | grep default | awk '{print $2}'
-
-# 确认DNS已恢复
-/usr/sbin/networksetup -getdnsservers Wi-Fi
-```
+### 更多 [Tips](https://github.com/icymind/VRouter/wiki)
 
 ### FAQ
 

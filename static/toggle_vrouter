@@ -1,0 +1,70 @@
+#!/bin/bash
+
+vrouterName="vrouter"
+vrouterIP="10.19.28.37"
+
+scutil_query() {
+    key=$1
+
+    scutil<<EOT
+    open
+    get $key
+    d.show
+    close
+EOT
+}
+
+get_primary_service() {
+    local SERVICE_GUID=$(scutil_query State:/Network/Global/IPv4 | grep "PrimaryService" | awk '{print $3}')
+
+    local SERVICE_NAME=$(scutil_query Setup:/Network/Service/$SERVICE_GUID | grep "UserDefinedName" | awk -F': ' '{print $2}')
+
+    echo $SERVICE_NAME
+}
+
+get_primary_router() {
+    local ROUTER_IP=$(scutil_query State:/Network/Global/IPv4 | grep "Router" | awk '{print $3}')
+    echo $ROUTER_IP
+}
+
+
+# current router
+ROUTERIP=$(get_primary_router)
+echo "ROUTERIP: $ROUTERIP"
+INTERFACE=$(get_primary_service)
+echo "INTERFACE: $INTERFACE"
+
+gateway_to() {
+    # echo $1
+    # launchctl bootout gui/501/com.icymind.network.v"$current_vbox"
+    sudo /sbin/route change default $1
+    sudo /usr/sbin/networksetup -setdnsservers $INTERFACE $1
+}
+
+gateway_to_vrouter() {
+    # launchctl bootstrap gui/501 /Users/simon/Library/LaunchAgents/com.icymind.network.v"$current_vbox".plist
+    # $HOME/Dropbox/Script/vbox load
+    sudo /sbin/route change default "$vrouterIP"
+    sudo /usr/sbin/networksetup -setdnsservers $INTERFACE "$vrouterIP"
+}
+print_info() {
+    current_gw=$(/sbin/route -n get default | grep gateway | awk '{print $2}')
+    current_dns=$(networksetup -getdnsservers $INTERFACE)
+    echo "current_gateway: "$current_gw""
+    echo "current_dns: "$current_dns""
+}
+
+[[ "$#" -eq 0 ]] && print_info && exit 0
+case $1 in
+    on)
+        gateway_to_vrouter
+        print_info
+        ;;
+    off)
+        gateway_to $ROUTERIP
+        print_info
+        ;;
+    *)
+        print_info
+        ;;
+esac

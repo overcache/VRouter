@@ -1,0 +1,161 @@
+{
+    "version": "0.4",
+    "cfgDirName": "vrouter",
+    "host": {
+        "mac": {},
+        "linux": {},
+        "windows": {}
+    },
+    "virtualbox": {
+        "vmName": "vrouter",
+        "hostonlyINC": 1,
+        "hostonlyInfIP": "10.19.28.46",
+        "bridgeINC": 2,
+        "macAddress": "080027a8b841",
+        "socketFname": "vrouter.sock",
+        "serialPort": 1,
+        "imageUrl": "https://mirrors.tuna.tsinghua.edu.cn/openwrt/chaos_calmer/15.05.1/x86/64/openwrt-15.05.1-x86-64-combined-ext4.img.gz",
+        "imageSha256": "be29223ee0caf3c5bdc3139e349890d4494a54a266a9d8dd1eb3f66877dc0e1b"
+    },
+    "openwrt": {
+        "ip": "10.19.28.37",
+        "sshPort": 22,
+        "username": "root",
+        "password": "root"
+    },
+    "profiles": [
+        {
+            "active": true,
+            "name": "vps",
+            "mode": "whitelist",
+            "proxies": "ss",
+            "enableRelayUDP": true,
+            "enableTunnelDns": true,
+            "speedupServerSSH": false,
+            "dnsServer": "8.8.8.8:53",
+            "serverSSHPort": 22,
+            "selectedBL": {"gfwList":true, "extraBlackList":true},
+            "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
+            "shadowsocks": {
+                "server": "123.123.123.123",
+                "server_port": "8989",
+                "password": "demo-paswd",
+                "timeout": 300,
+                "method": "chacha20",
+                "fast_open": false
+            }
+        },
+        {
+            "active": false,
+            "name": "kcp 加速ss",
+            "mode": "whitelist",
+            "proxies": "ssKt",
+            "enableRelayUDP": false,
+            "enableTunnelDns": true,
+            "dnsServer": "8.8.8.8:53",
+            "speedupServerSSH": false,
+            "serverSSHPort": 22,
+            "selectedBL": {"gfwList":true, "extraBlackList":true},
+            "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
+            "shadowsocks": {
+                "server": "123.123.123.123",
+                "server_port": 8989,
+                "password": "demo-paswd",
+                "timeout": 300,
+                "method": "chacha20",
+                "fast_open": false
+            },
+            "kcptun": {
+                "server": "123.123.123.123",
+                "server_port": 5555,
+                "key": "demo-secret",
+                "crypt": "aes-128",
+                "mode": "fast2",
+                "others": "sndwnd=256;rcvwnd=2048;nocomp=true"
+            }
+        },
+        {
+            "active": false,
+            "name": "ssr",
+            "mode": "blacklist",
+            "proxies": "ssr",
+            "enableRelayUDP": false,
+            "enableTunnelDns": true,
+            "dnsServer": "8.8.8.8:53",
+            "speedupServerSSH": false,
+            "serverSSHPort": 22,
+            "selectedBL": {"gfwList":true, "extraBlackList":true},
+            "selectedWL": {"chinaIPs":true, "lanNetworks":true, "extraWhiteList":true},
+            "shadowsocksr": {
+                "server": "123.123.123.123",
+                "server_port": 9999,
+                "password": "demo-paswd",
+                "timeout": 300,
+                "method": "chacha20",
+                "protocol": "auth_aes128_md5",
+                "protocol_param": "32",
+                "obfs": "tls1.2_ticket_auth",
+                "obfs_param": "",
+                "others": "",
+                "fast_open": false
+            }
+        }
+    ],
+    "proxiesInfo": {
+        "shadowsocks": {
+            "binName": "ss-redir",
+            "cfgName": "shadowsocks.json",
+            "serviceName": "shadowsocks",
+            "localPort": 1010
+        },
+        "shadowsocksr": {
+            "binName": "ssr-redir",
+            "cfgName": "shadowsocksr.json",
+            "serviceName": "shadowsocksr",
+            "localPort": 1010
+        },
+        "kcptun": {
+            "binName": "kcptun",
+            "cfgName": "kcptun.json",
+            "serviceName": "kcptun",
+            "localPort": 1020
+        },
+        "tunnelDns": {
+            "binName": {
+                "shadowsocks": "ss-tunnel",
+                "shadowsocksr": "ssr-tunnel"
+            },
+            "cfgName": "tunnel-dns.json",
+            "serviceName": "tunnelDns",
+            "localPort": 1030
+        },
+        "relayUDP": {
+            "binName": {
+                "shadowsocks": "ss-redir-udp",
+                "shadowsocksr": "ssr-redir-udp"
+            },
+            "cfgName": "relay-udp.json",
+            "serviceName": "relayUDP",
+            "localPort": 1040
+        }
+    },
+    "firewallInfo": {
+        "ipset": {
+            "blackSetName": "BLACKLIST",
+            "whiteSetName": "WHITELIST",
+            "lanSetName": "LAN"
+        },
+        "lists": {
+            "gfwListFname": "gfw-domains.txt",
+            "gfwListUrl": "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt",
+            "chinaIPsFname": "china-ips.txt",
+            "chinaIPsUrl": "https://raw.githubusercontent.com/17mon/china_ip_list/master/china_ip_list.txt",
+            "lanNetworksFname": "lan-networks.txt",
+            "extraWhiteListFname": "extra-whitelist.txt",
+            "extraBlackListFname": "extra-blacklist.txt"
+        },
+        "dnsmasqCustomCfgFname": "custom.conf",
+        "firewallFname": "firewall.user",
+        "ipsetFname": "custom.ipset"
+    }
+}
