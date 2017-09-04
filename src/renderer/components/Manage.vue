@@ -202,18 +202,20 @@ export default {
   methods: {
     toggleRouting: async function () {
       this.activeLoader = true
+      logger.debug(`about to getAssignedHostonlyInf of ${this.name}. very slow on windows platform`)
       const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
+      logger.debug(`getAssignedHostonlyInf: ${hostonlyif}`)
       const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
       if (await this.routing) {
         await this.vrouter.disconnect()
         logger.debug('about to trafficToPhysicalRouter')
         await Utils.trafficToPhysicalRouter(hostonlyif, hostonlyInfIP, '255.255.255.0')
       } else {
-        logger.debug(`getAssignedHostonlyInf: ${hostonlyif}`)
         await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, this.vrouter.ip)
       }
-      await this.getSystemInfo()
       this.activeLoader = false
+      // 先关闭loader, 再后台更新infos
+      this.getSystemInfo()
     },
     getSystemInfo: async function () {
       this.systemInfo.currentGWIP = await Utils.getCurrentGateway()
@@ -310,10 +312,15 @@ export default {
     },
     refreshInfos: async function (silent = true) {
       if (!silent) this.activeLoader = true
-      await this.vrouter.updateBridgedAdapter()
-      this.getSystemInfo()
-      await this.getProxiesInfo()
-      await this.getVrouterInfo()
+      const p1 = this.vrouter.updateBridgedAdapter()
+        .then(() => {
+          return this.getSystemInfo()
+        })
+      const p2 = this.getProxiesInfo()
+        .then(() => {
+          return this.getVrouterInfo()
+        })
+      await Promise.race([p1, p2])
       if (!silent) this.activeLoader = false
     },
     openLogFile: function () {

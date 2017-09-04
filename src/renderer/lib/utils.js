@@ -406,7 +406,7 @@ class Utils {
         min_reply: 1
       })
         .then(res => {
-          resolve(res.isAlive)
+          resolve(res.alive)
         })
     })
   }

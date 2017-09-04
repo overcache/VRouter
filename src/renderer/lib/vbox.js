@@ -132,10 +132,14 @@ class VBox {
     return statePattern.exec(vmInfo)[1]
   }
   static async isVmRunning (name, ip) {
+    // windows下, getVmState 的结果不可靠. 即使虚拟机在运行, state仍然是powefoff.
+    // 因此加上ping的测试
     const state = await VBox.getVmState(name)
-    const isRunning = state === 'running'
-    const isAlive = ip ? await Utils.isHostAlive(ip) : false
-    return isRunning || isAlive
+    if (state === 'running') {
+      return true
+    }
+    const alive = ip ? Utils.isHostAlive(ip) : Promise.resolve(true)
+    return alive
   }
   static toggleSerialPort (name, tcpServerPort, action = 'on', portNum = '1') {
     const subCmd = action === 'on' ? `"0x3F8" "4" --uartmode${portNum} tcpserver "${tcpServerPort}"` : 'off'

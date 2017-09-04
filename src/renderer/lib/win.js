@@ -45,15 +45,15 @@ async function disableIPV6 () { // eslint-disable-line
   return sudoExec(cmd)
 }
 
-async function togglePhysicalAdapterConnection (action = 'off') {
+async function togglePhysicalAdapterConnection (index, action = 'off') {
   // Pratice: no need to config dns
   const fakeIP = '168.254.254.254'
   const fakeMast = '255.0.0.0'
-  const index = await getActiveAdapterIndex()
+  const infIndex = index || await getActiveAdapterIndex()
   if (action === 'on') {
-    return enableDHCP(index)
+    return enableDHCP(infIndex)
   } else {
-    return enableStatic(index, fakeIP, fakeMast)
+    return enableStatic(infIndex, fakeIP, fakeMast)
   }
 }
 
@@ -85,7 +85,7 @@ async function getActiveAdapterIndex () {
   return indexAndName.index
 }
 
-async function changeDns (ip, index) { // eslint-disable-line
+async function changeDns (index, ip) { // eslint-disable-line
   // await disableIPV6()
   const infIndex = index || await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetDNSServerSearchOrder ("${ip}")`
@@ -93,7 +93,7 @@ async function changeDns (ip, index) { // eslint-disable-line
   return execute(cmd)
 }
 
-async function changeGateway (ip, index) { // eslint-disable-line
+async function changeGateway (index, ip) { // eslint-disable-line
   const infIndex = index || await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" call SetGateways ("${ip}")`
   logger.info(`about to changeGateway to ${ip}`)
@@ -113,13 +113,8 @@ async function getRouterIP () { // eslint-disable-line
 }
 
 async function configWindowsHostOnlyInf (index, gateway) {
-  // const index = await infNameToIndex(infName)
-  await changeGateway(gateway, index)
-  await changeDns(gateway, index)
-  // logger.debug(`about to config hostonlyInf: ${infName}`)
-  // const cmd = `WMIC nicconfig where "InterfaceIndex = ${index}" call EnableStatic ("${ip}"),("${mask}")`
-  // logger.debug(cmd)
-  // await execute(cmd)
+  await changeGateway(index, gateway)
+  await changeDns(index, gateway)
 }
 
 async function infNameToIndex (infName) {
@@ -214,18 +209,50 @@ class Win {
   }
 
   static async trafficToVirtualRouter (infName, gateway) {
-    const index = await infNameToIndex(infName)
-    await configWindowsHostOnlyInf(index, gateway)
-    await togglePhysicalAdapterConnection('off')
+    const p1 = infNameToIndex(infName)
+      .then(index => {
+        logger.debug(`about to configWindowsHostOnlyInf, infName: ${infName}`)
+        return configWindowsHostOnlyInf(index, gateway)
+      })
+
+    const p2 = getActiveAdapterIndex()
+      .then(index => {
+        logger.debug(`about to togglePhysicalAdapterConnection off, index: ${index}`)
+        return togglePhysicalAdapterConnection(index, 'off')
+      })
+    return Promise.all([p1, p2])
   }
 
   static async trafficToPhysicalRouter (infName, ip, mask) {
-    const index = await infNameToIndex(infName)
-    await enableDHCP(index)
-    await enableStatic(index, ip, mask)
-    await emptyDNS(index)
-    await configWindowsHostOnlyInf(index, 'null')
-    await togglePhysicalAdapterConnection('on')
+    const p1 = Promise.resolve()
+      .then(() => {
+        logger.debug(`about to get infName's InterfaceIndex`)
+        return infNameToIndex(infName)
+      })
+      .then(index => {
+        logger.debug(`about to enableDHCP of ${infName}`)
+        return enableDHCP(index)
+          .then(() => index)
+      })
+      .then(index => {
+        logger.debug(`about to configWindowsHostOnlyInf of ${infName}`)
+        return Promise.all([
+          enableStatic(index, ip, mask),
+          emptyDNS(index)
+        ])
+      })
+
+    const p2 = Promise.resolve()
+      .then(() => {
+        logger.debug(`about to getActiveAdapterIndex`)
+        return getActiveAdapterIndex()
+      })
+      .then(index => {
+        logger.debug(`about to togglePhysicalAdapterConnection on. index: ${index}`)
+        return togglePhysicalAdapterConnection(index, 'on')
+      })
+
+    return Promise.all([p1, p2])
   }
 }
 
