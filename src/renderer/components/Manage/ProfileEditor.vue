@@ -9,7 +9,7 @@
         <div class="ui teal button">
           配置名称
         </div>
-        <input type="text" :value="editingClone.name">
+        <input type="text" v-model="editingClone.name">
       </div>
 
       <mode-form :editingClone="editingClone"></mode-form>
