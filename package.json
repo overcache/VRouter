@@ -5,6 +5,7 @@
   "main": "./dist/electron/main.bundle.js",
   "scripts": {
     "build": "node .electron-vue/build.js && electron-builder",
+    "build:win32": "node .electron-vue/build.js && electron-builder --win --ia32",
     "build:dir": "node .electron-vue/build.js && electron-builder --dir",
     "build:clean": "cross-env BUILD_TARGET=clean node .electron-vue/build.js",
     "build:web": "cross-env BUILD_TARGET=web node .electron-vue/build.js",
@@ -109,6 +110,7 @@
       "icon": "static/icons/icon.icns"
     },
     "win": {
+      "target": "zip",
       "icon": "static/icons/icon.ico"
     },
     "linux": {
