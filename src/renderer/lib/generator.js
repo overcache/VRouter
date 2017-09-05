@@ -388,12 +388,16 @@ class Generator {
         ip = await Utils.resolveDomain(ips[i])
       }
       contents.push(genFWRulesHelper(`-d ${ip} -j RETURN`))
+      // bypass udp to serverIP to-port
+      contents.push(`iptables -t mangle -A PREROUTING -p udp -d ${ip} -j RETURN`)
     }
 
     // bypass lan_networks. 如果不想绕过lan, 生成一个空的lan ipset集合即可
     contents.push('# bypass lan networks')
     const rule = `-m set --match-set ${firewallInfo.ipset.lanSetName} dst -j RETURN`
     contents.push(genFWRulesHelper(rule))
+    // bypass udp too
+    contents.push(`iptables -t mangle -A PREROUTING -p udp -m set --match-set ${firewallInfo.ipset.lanSetName} dst -j RETURN`)
 
     // whitelist mode: bypass whitelist and route others
     if (profile.mode === 'whitelist') {
@@ -404,7 +408,7 @@ class Generator {
 
       if (profile.enableRelayUDP) {
         contents.push('ip rule add fwmark 1 lookup 100')
-        contents.push('ip route add local default dev lo table 100')
+        contents.push('ip route add local default dev lo table 100 2>/dev/null')
         contents.push(`iptables -t mangle -A PREROUTING -p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j TPROXY --on-port ${udpRedirPort} --tproxy-mark 0x01/0x01`)
       }
 
