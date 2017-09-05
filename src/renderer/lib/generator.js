@@ -388,12 +388,16 @@ class Generator {
         ip = await Utils.resolveDomain(ips[i])
       }
       contents.push(genFWRulesHelper(`-d ${ip} -j RETURN`))
+      // bypass udp to serverIP to-port
+      contents.push(`iptables -t mangle -A PREROUTING -p udp -d ${ip} -j RETURN`)
     }
 
     // bypass lan_networks. 如果不想绕过lan, 生成一个空的lan ipset集合即可
     contents.push('# bypass lan networks')
     const rule = `-m set --match-set ${firewallInfo.ipset.lanSetName} dst -j RETURN`
     contents.push(genFWRulesHelper(rule))
+    // bypass udp too
+    contents.push(`iptables -t mangle -A PREROUTING -p udp -m set --match-set ${firewallInfo.ipset.lanSetName} dst -j RETURN`)
 
     // whitelist mode: bypass whitelist and route others
     if (profile.mode === 'whitelist') {
@@ -403,8 +407,9 @@ class Generator {
       contents.push(genFWRulesHelper(rule))
 
       if (profile.enableRelayUDP) {
-        const udpRule = `-p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${udpRedirPort}`
-        contents.push(genFWRulesHelper(udpRule))
+        contents.push('ip rule add fwmark 1 lookup 100')
+        contents.push('ip route add local default dev lo table 100 2>/dev/null')
+        contents.push(`iptables -t mangle -A PREROUTING -p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j TPROXY --on-port ${udpRedirPort} --tproxy-mark 0x01/0x01`)
       }
 
       contents.push('# bypass whitelist')
@@ -416,8 +421,7 @@ class Generator {
       contents.push(genFWRulesHelper(rule))
 
       if (profile.enableRelayUDP) {
-        const udpRule = `-p udp -j REDIRECT --to-port ${udpRedirPort}`
-        contents.push(genFWRulesHelper(udpRule))
+        contents.push(`iptables -t mangle -A PREROUTING -p udp -j TPROXY --on-port ${udpRedirPort} --tproxy-mark 0x01/0x01`)
       }
     } else if (profile.mode === 'blacklist') {
       // 仅代理黑名单模式下, 先将白名单返回(如果自定义白名单中存在黑名单相同项, 先处理白名单符合预期)
@@ -430,8 +434,9 @@ class Generator {
       contents.push(genFWRulesHelper(rule))
 
       if (profile.enableRelayUDP) {
-        const udpRule = `-p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${udpRedirPort}`
-        contents.push(genFWRulesHelper(udpRule))
+        contents.push('ip rule add fwmark 1 lookup 100')
+        contents.push('ip route add local default dev lo table 100')
+        contents.push(`iptables -t mangle -A PREROUTING -p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j TPROXY --on-port ${udpRedirPort} --tproxy-mark 0x01/0x01`)
       }
     } else if (profile.mode === 'global') {
       contents.push('# route all traffic')
@@ -439,8 +444,9 @@ class Generator {
       contents.push(genFWRulesHelper(rule))
 
       if (profile.enableRelayUDP) {
-        const udpRule = `-p udp -j REDIRECT --to-port ${udpRedirPort}`
-        contents.push(genFWRulesHelper(udpRule))
+        contents.push('ip rule add fwmark 1 lookup 100')
+        contents.push('ip route add local default dev lo table 100')
+        contents.push(`iptables -t mangle -A PREROUTING -p udp -j TPROXY --on-port ${udpRedirPort} --tproxy-mark 0x01/0x01`)
       }
     }
 
