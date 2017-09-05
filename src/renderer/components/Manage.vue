@@ -423,4 +423,7 @@ export default {
   border-right: none;
   border-bottom: 3px solid #00B5AD;
 }
+#app .ui.inverted.dimmer {
+  position: fixed;
+}
 </style>
