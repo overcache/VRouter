@@ -32,8 +32,8 @@
       <div class="content">
         <p>如果能移步至 <a href="https://github.com/icymind/VRouter/issues">github</a> 提交 issues, 将不胜感激.</p>
       </div>
-      <div class="ui button right floated" @click="toggleDeleteVRouterModal('hide')">取消</div>
-      <div class="ui button red right floated" @click="toggleDeleteVRouterModal('hide');bus.$emit('deleteVRouter')">删除</div>
+      <div class="ui basic button right floated" @click="toggleDeleteVRouterModal('hide')">取消</div>
+      <div class="ui basic button red right floated" @click="toggleDeleteVRouterModal('hide');bus.$emit('deleteVRouter')">删除</div>
     </div>
 
     <div id="login-vrouter-modal" class="ui tiny modal">
@@ -43,11 +43,11 @@
         <p>在 VirtualBox 界面, macOS 可以通过菜单栏 Machine - Detach GUI 将虚拟机转为后台运行, windows 版本的相应菜单为 控制 - 分离式界面</p>
       </div>
 
-      <div class="ui button right floated" @click="toggleLoginVRouterModal('hide')">
+      <div class="ui basic button right floated" @click="toggleLoginVRouterModal('hide')">
         <i class="checkmark icon"></i>
         取消
       </div>
-      <div class="ui red button right floated" @click="toggleLoginVRouterModal('hide');bus.$emit('loginVRouter')">
+      <div class="ui basic red button right floated" @click="toggleLoginVRouterModal('hide');bus.$emit('loginVRouter')">
         <i class="remove icon"></i>
         VirtualBox 登录
       </div>
@@ -61,10 +61,10 @@
         <p><i class="ui heart icon red"></i> Base on virtualbox/openwrt/electron/vue/semantic-ui</p>
         <p><i class="ui copyright icon"></i> Released under GPL license.</p>
       </div>
-      <div class="ui button right floated" @click="toggleAboutModal('hide')">
+      <div class="ui basic button right floated" @click="toggleAboutModal('hide')">
         确定
       </div>
-      <div class="ui button right floated" @click="goToHomepage">
+      <div class="ui basic button right floated" @click="goToHomepage">
         主页
       </div>
     </div>

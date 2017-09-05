@@ -1,4 +1,5 @@
-![img](./static/img/features.jpg)
+![img](./doc/features01.jpg)
+![img](./doc/features02.jpg)
 
 [![JavaScript Style Guide](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
@@ -12,7 +13,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 ### 如何使用
 
-前提条件: 
+前提条件:
 
 1. 因为需要转发DNS查询, 所以Shadowsocks/Shadowsocks 的服务端需要开启 udp 转发: 如果是服务端是用命令行启动, 请确保带了 `-u` 参数; 如果是用配置文件, 请确保配置文件包含: `"mode": "tcp_and_udp"`
 2. 确保上游路由器开启了DHCP, 或者给 VRouter(mac地址: 080027a8b841) 分配一个静态 IP.
@@ -91,4 +92,3 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 - [ ] updater
 - [ ] Windows 适配
 - [ ] 系统状态栏
-

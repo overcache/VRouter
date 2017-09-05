@@ -102,7 +102,7 @@ export default {
 
 <style>
 #profile-editor {
-  padding: 30px 0 30px 30px;
+  padding: 30px 0 60px 30px;
 }
 #profile-editor .ui.form {
   margin: 20px 0;
