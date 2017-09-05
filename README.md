@@ -65,3 +65,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 - 无法服务局域网内的其他设备
 - [ Windows ] Edge 浏览器和 UWP 应用无法连接网络
 - [ Windows ] 因为 Windows 非常不尊重路由表, 只能"软禁用"物理网卡, 因此宿主会变成 VRouter 下的设备, 网络邻居将无法找到宿主.
+
+### 拓扑结构
+
+![topology](./doc/topology.jpg)
