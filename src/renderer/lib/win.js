@@ -58,14 +58,14 @@ async function getActiveAdapterIndexAndName () {
   const indexAndNamePattern = /^(\d+)\s*(.*)$/i // 注意不要添加 g 标志
   headerIncludedIfs.split('\n').slice(1).forEach(line => {
     const matchResult = indexAndNamePattern.exec(line.trim())
-    if (matchResult && !/virtualbox/ig.test(matchResult[2])) {
+    if (matchResult && !/(virtualbox|vmware)/ig.test(matchResult[2])) {
       physicalIfs.push({
         index: parseInt(matchResult[1].trim()),
         infName: matchResult[2]
       })
     }
   })
-  return physicalIfs[0]
+  return physicalIfs.sort((a, b) => a.index > b.index)[0]
 }
 
 async function getActiveAdapterIndex () {
