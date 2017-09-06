@@ -63,7 +63,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 - 依赖 VirtualBox
 - 无法服务局域网内的其他设备
-- [ Windows ] Windows 改了默认路由后, 网络邻居将无法找到宿主, Edge 浏览器和 UWP 应用无法连接网络. 其他应用则不受影响
+- [ Windows ] Windows 改了默认路由后, Edge 浏览器和 UWP 应用无法连接网络. 其他应用则不受影响
 
 ### 拓扑结构
 
