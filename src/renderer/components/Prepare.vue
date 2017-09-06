@@ -189,6 +189,7 @@ export default {
         adjustModal()
       })
       try {
+        await VBox.delete(this.vrouter.name)
         await this.vrouter.build(process)
       } catch (error) {
         winston.error(`build error: ${error}`)
