@@ -80,8 +80,8 @@ async function changeGateway (index, ip) { // eslint-disable-line
   return sudoExec(cmd)
 }
 
-async function getRouterIP () { // eslint-disable-line
-  const infIndex = await getActiveAdapterIndex()
+async function getRouterIP (index) { // eslint-disable-line
+  const infIndex = index || await getActiveAdapterIndex()
   const cmd = `WMIC nicconfig where "InterfaceIndex = ${infIndex}" get DHCPServer`
 
   // DHCPServer
@@ -171,39 +171,46 @@ class Win {
   }
 
   static async trafficToVirtualRouter (infName, gateway) {
-    const hostonlyInfIndex = await infNameToIndex(infName)
     const activeAdapterIndex = await getActiveAdapterIndex()
+    const routerIP = await getRouterIP(activeAdapterIndex)
+    const hostonlyInfIndex = await infNameToIndex(infName)
     const cmds = []
 
+    // hostonlyInf
     // change dns
     cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call SetDNSServerSearchOrder ("${gateway}")`)
     // changeGateway
     cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call SetGateways ("${gateway}")`)
 
-    // set fake ip/mask
-    const fakeIP = '168.254.254.254'
-    const fakeMask = '255.0.0.0'
-    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${activeAdapterIndex}" call EnableStatic ("${fakeIP}"),("${fakeMask}")`)
+    // physicalIfs dns
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${activeAdapterIndex}" call SetDNSServerSearchOrder ("${gateway}")`)
+
+    // change route table
+    cmds.push(`route change 0.0.0.0 mask 0.0.0.0 ${routerIP} METRIC 300`)
+    cmds.push(`route add    0.0.0.0 mask 0.0.0.0 ${gateway}  METRIC 1`)
 
     return sudoExec(cmds.join(' & '))
   }
 
   static async trafficToPhysicalRouter (infName, ip, mask) {
-    const hostonlyInfIndex = await infNameToIndex(infName)
     const activeAdapterIndex = await getActiveAdapterIndex()
+    const hostonlyInfIndex = await infNameToIndex(infName)
+    const routerIP = await getRouterIP(activeAdapterIndex)
     const cmds = []
 
     // enableDHCP to get rid of gateway
-    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call EnableDHCP`)
+    // cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call EnableDHCP`)
 
     // config ip/mask
-    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call EnableStatic ("${ip}"),("${mask}")`)
+    // cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call EnableStatic ("${ip}"),("${mask}")`)
 
     // emptyDNS
     cmds.push(`WMIC nicconfig where "InterfaceIndex = ${hostonlyInfIndex}" call SetDNSServerSearchOrder`)
 
     // enable physicalIfs
-    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${activeAdapterIndex}" call EnableDHCP`)
+    // cmds.push(`WMIC nicconfig where "InterfaceIndex = ${activeAdapterIndex}" call EnableDHCP`)
+    cmds.push(`WMIC nicconfig where "InterfaceIndex = ${activeAdapterIndex}" call SetDNSServerSearchOrder`)
+    cmds.push(`route change 0.0.0.0 mask 0.0.0.0 ${routerIP} METRIC 1`)
 
     return sudoExec(cmds.join(' & '))
   }
