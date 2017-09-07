@@ -258,7 +258,7 @@ class VRouter extends Openwrt {
           return true
         }
       } catch (err) {
-        logger.error(`check isInstallPackageFinish failed, time: ${i}`)
+        logger.warn(`check isInstallPackageFinish failed, time: ${i}`)
       }
       logger.debug(`wait for ${10000} ms to retry checking isInstallPackageFinish`)
       await Utils.wait(10000)

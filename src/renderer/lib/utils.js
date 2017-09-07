@@ -323,7 +323,7 @@ class Utils {
         })
         .on('data', data => { output += data.toString('utf8') })
         .on('error', (err) => {
-          logger.error(`error when connect to serialTcpPort. ${err}`)
+          logger.warn(`error when connect to serialTcpPort. ${err}`)
           reject(err)
         })
         .send(`\r\n\r\n${command}\r\n\r\n`)

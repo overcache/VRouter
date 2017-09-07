@@ -34,7 +34,7 @@ class Openwrt {
         this.conn = null
         resolve()
       }).on('error', (error) => {
-        logger.error(`connecting to openwrt error: ${error.message}`)
+        logger.warn(`connecting to openwrt error: ${error.message}`)
         this.conn = null
         reject(error)
       }).connect({
@@ -74,7 +74,7 @@ class Openwrt {
             const output = await self.execute(cmd, true)
             return resolve(output.toString().trim())
           } else {
-            logger.error(`retry execute cmd: ${cmd} error. ${err}`)
+            logger.warn(`retry execute cmd: ${cmd} error. ${err}`)
             reject(err)
           }
         }
