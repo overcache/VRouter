@@ -11,6 +11,7 @@
 </template>
 
 <script>
+/* global $ */
 import UIModal from '@/components/Prepare/UIModal.vue'
 import VBox from '@/lib/vbox.js'
 import Utils from '@/lib/utils.js'
@@ -19,7 +20,7 @@ import winston from '@/lib/logger.js'
 
 const fs = require('fs-extra')
 const path = require('path')
-const { app, getCurrentWindow } = require('electron').remote
+const { app } = require('electron').remote
 const { EventEmitter } = require('events')
 
 let vueInstance = null
@@ -131,13 +132,6 @@ const startVmModal = {
   closable: false
 }
 
-function adjustModal () {
-  const win = getCurrentWindow()
-  const size = win.getSize()
-  win.setSize(size[0], size[1] + 1)
-  win.setSize(size[0], size[1])
-}
-
 export default {
   name: 'prepare',
   data () {
@@ -210,7 +204,9 @@ export default {
       const process = new EventEmitter()
       process.on('init', (msg) => {
         this.modalInfo.content += `<li class="ui">${msg}</li>`
-        adjustModal()
+        this.$nextTick(() => {
+          $('.ui.modal').modal('refresh')
+        })
       })
       try {
         await VBox.delete(this.vrouter.name)
@@ -219,7 +215,9 @@ export default {
         winston.error(`build error: ${error}`)
         errorModal.content = `<pre>${error.stack}</pre>`
         this.showModal('errorModal')
-        adjustModal()
+        this.$nextTick(() => {
+          $('.ui.modal').modal('refresh')
+        })
         return
       }
       return this.checkRequirement()
@@ -244,7 +242,9 @@ export default {
         winston.error('fail to start vm')
         startVMErrorModal.content = `<pre>${error.stack}</pre>`
         this.showModal('startVMErrorModal')
-        adjustModal()
+        this.$nextTick(() => {
+          $('.ui.modal').modal('refresh')
+        })
         return
       }
       clearInterval(interval)
