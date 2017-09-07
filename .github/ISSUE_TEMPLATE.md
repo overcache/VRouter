@@ -1,16 +1,19 @@
-### What version of VRouter are you using?
+### VRouter 版本
 
+### 操作系统版本
 
-### What operating system are you using?
+### VRouter 应用内, "系统"标签页的信息
 
+### 暂停 VRouter 后, 以下各命令的执行结果
+- `nslookup qq.com` (macOS && Windows)
+- `traceroute 114.114.114.114` (macOS)
+- `tracert 114.114.114.114` (Windows)
 
-### What information shows in VRouter's "System" Tab?
+### 启用 VRouter 后, 以下各命令的执行结果
+- `nslookup qq.com` (macOS && Windows)
+- `traceroute 114.114.114.114` (macOS)
+- `tracert 114.114.114.114` (Windows)
 
-
-### What is the result of command `nslookup qq.com` When turnning on and off VRouter?
-
-
-### What is the result of command `traceroute 114.114.114.114`(macOS) `tracert 114.114.114.114`(Windows) when turnning on and off VRouter?
-
-
-### What are the contents of log? `tail -n 50 ~/Library/Application\ Support/vrouter/vrouter.log`(macOS), `Get-Content ~/AppData/Roaming/vrouter/vrouter.log  -tail 50 -Encoding UTF8`(Windows Powershell)
+### 日志文件的内容是什么?
+- `tail -n 50 ~/Library/Application\ Support/vrouter/vrouter.log`(macOS)
+- `Get-Content ~/AppData/Roaming/vrouter/vrouter.log  -tail 50 -Encoding UTF8`(Windows Powershell)
