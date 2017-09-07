@@ -36,7 +36,7 @@ class Openwrt {
       }).on('error', (error) => {
         logger.warn(`connecting to openwrt error: ${error.message}`)
         this.conn = null
-        reject(error)
+        return reject(error)
       }).connect({
         host: this.ip,
         port: this.sshPort,
@@ -75,7 +75,7 @@ class Openwrt {
             return resolve(output.toString().trim())
           } else {
             logger.warn(`retry execute cmd: ${cmd} error. ${err}`)
-            reject(err)
+            return reject(err)
           }
         }
         let stdout = ''
@@ -91,7 +91,7 @@ class Openwrt {
             if (specialCmds.includes(cmd)) {
               resolve(stderr.toString().trim())
             } else {
-              reject(stderr.toString().trim())
+              return reject(stderr.toString().trim())
             }
           } else {
             resolve(stdout.toString().trim())
@@ -187,7 +187,7 @@ class Openwrt {
         let s = files[i]
         let d = isDestDir ? `${dest}${path.basename(files[i])}` : dest
         this.conn.sftp((err, sftp) => {
-          err && reject(err)
+          if (err) return reject(err)
           sftp.fastPut(s, d, (err) => {
             sftp.end()
             err ? reject(err) : resolve()
