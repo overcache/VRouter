@@ -334,7 +334,7 @@ export default {
         .then(() => {
           return this.getVrouterInfo()
         })
-      await Promise.race([p1, p2])
+      await Promise.all([p1, p2])
       if (!silent) this.activeLoader = false
     },
     openLogFile: function () {

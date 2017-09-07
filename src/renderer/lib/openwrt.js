@@ -20,7 +20,7 @@ class Openwrt {
    * @param {int} timeout 连接前的等待时间(毫秒)
    * @return {promise} 当连接成功后resovle
    */
-  connect (heartbeat = 0, timeout = 8000) {
+  connect (heartbeat = 0, timeout = 5000) {
     this.conn = new Client()
     return new Promise((resolve, reject) => {
       this.conn.on('ready', () => {
@@ -66,12 +66,16 @@ class Openwrt {
       '/etc/init.d/firewall restart'
     ]
     return new Promise((resolve, reject) => {
+      const timeoutID = setTimeout(() => {
+        reject(Error('execute timeout. The connection between virtual machine and UI may been lost'))
+      }, 8000)
       this.conn.exec(cmd, async (err, stream) => {
         if (err) {
           logger.debug(`this.conn.exec() err: ${err}`)
           if (!retry) {
             logger.debug(`retry exec cmd via ssh`)
-            const output = await self.execute(cmd, true)
+            clearTimeout(timeoutID)
+            const output = await self.execute(cmd, true).catch(err => reject(err))
             return resolve(output.toString().trim())
           } else {
             logger.warn(`retry execute cmd: ${cmd} error. ${err}`)
