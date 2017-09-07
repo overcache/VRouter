@@ -23,7 +23,7 @@
         :routing="routing"
         :proxies="proxies"
         :mode="mode"
-        @toggleRouting="toggleRouting"
+        :bus="bus"
       >
       </status-tab>
     </div>
@@ -60,6 +60,10 @@
     >
     </profile-importer>
 
+    <error-modal
+      :error="error"
+    >
+    </error-modal>
   </div>
 </template>
 
@@ -75,6 +79,7 @@ import ProfilesTab from './Manage/ProfilesTab.vue'
 import SystemTab from './Manage/SystemTab'
 import ProfileEditor from './Manage/ProfileEditor'
 import ProfileImporter from './Manage/ProfileImporter'
+import ErrorModal from './Manage/ErrorModal'
 
 const path = require('path')
 const { shell } = require('electron')
@@ -132,7 +137,8 @@ export default {
     ProfilesTab,
     SystemTab,
     ProfileEditor,
-    ProfileImporter
+    ProfileImporter,
+    ErrorModal
   },
   data: function () {
     return {
@@ -175,7 +181,8 @@ export default {
         isSsrRunning: false,
         enableKt: false,
         isKtRunning: false
-      }
+      },
+      error: {}
     }
   },
   computed: {
@@ -356,10 +363,14 @@ export default {
       this.activeLoader = false
       app.quit()
     },
-    loginVRouter: function () {
-      VBox.attachHeadless(this.vrouter.name)
-      Utils.wait(3000)
+    loginVRouter: async function () {
+      await VBox.attachHeadless(this.vrouter.name)
+      await Utils.wait(3000)
       VBox.sendKeystrokesTo(this.vrouter.name)
+    },
+    showErrorModal: function (error) {
+      this.activeLoader = false
+      this.error = error
     }
   },
   mounted: function () {
@@ -380,24 +391,25 @@ export default {
     this.profiles = this.vrouter.config.profiles
 
     this.bus = new Vue()
+    this.bus.$on('toggleRouting', () => { this.toggleRouting().catch(this.showErrorModal) })
     this.bus.$on('editExtraList', this.editExtraList)
     this.bus.$on('newProfile', this.newProfile)
     this.bus.$on('openProfileImporter', () => { this.showProfileImporter = true })
     this.bus.$on('importerCancel', () => { this.showProfileImporter = false })
-    this.bus.$on('importProfile', this.importProfile)
+    this.bus.$on('importProfile', (profile) => { this.importProfile(profile).catch(this.showErrorModal) })
     this.bus.$on('editProfile', this.editProfile)
-    this.bus.$on('applyProfile', this.applyProfile)
+    this.bus.$on('applyProfile', (index) => { this.applyProfile(index).catch(this.showErrorModal) })
     this.bus.$on('deleteProfile', this.deleteProfile)
     this.bus.$on('editorCancel', () => { this.showProfileEditor = false })
-    this.bus.$on('editorSave', this.editorSave)
-    this.bus.$on('deleteVRouter', this.deleteVRouter)
-    this.bus.$on('shutdownVRouter', this.shutdownVRouter)
+    this.bus.$on('editorSave', (profile) => { this.editorSave(profile).catch(this.showErrorModal) })
+    this.bus.$on('deleteVRouter', () => { this.deleteVRouter().catch(this.showErrorModal) })
+    this.bus.$on('shutdownVRouter', () => { this.shutdownVRouter().catch(this.showErrorModal) })
     this.bus.$on('openLogFile', this.openLogFile)
     this.bus.$on('showAboutModal', () => { this.showAboutModal = true })
-    this.bus.$on('refreshInfos', this.refreshInfos)
-    this.bus.$on('loginVRouter', this.loginVRouter)
+    this.bus.$on('refreshInfos', () => { this.refreshInfos().catch(this.showErrorModal) })
+    this.bus.$on('loginVRouter', () => { this.loginVRouter().catch(this.showErrorModal) })
 
-    await this.refreshInfos()
+    await this.refreshInfos().catch(this.showErrorModal)
   }
 }
 </script>

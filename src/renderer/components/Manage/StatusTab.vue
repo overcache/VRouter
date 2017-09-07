@@ -30,7 +30,7 @@
       </div>
     </div>
 
-    <div class="ui labeled icon button right floated" :class="[routing ? 'red' : 'teal']" @click="$emit('toggleRouting')">
+    <div class="ui labeled icon button right floated" :class="[routing ? 'red' : 'teal']" @click="bus.$emit('toggleRouting')">
       <i class="icon" :class="[routing ? 'pause' : 'play']"></i>
       {{ routing ? '暂停' : '启用' }}
     </div>
@@ -40,7 +40,7 @@
 <script>
 export default {
   name: 'status-tab',
-  props: ['routing', 'proxies', 'mode']
+  props: ['routing', 'proxies', 'mode', 'bus']
 }
 </script>
 

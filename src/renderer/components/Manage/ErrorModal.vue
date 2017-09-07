@@ -1,6 +1,6 @@
 <template lang="html">
   <div class="ui dimmer">
-    <div class="ui modal error-modal">
+    <div class="ui fullscreen modal error-modal">
       <div class="header red">Error: {{ error.message }}</div>
       <div class="scrolling content"><pre>{{ error.stack }}</pre></div>
       <div class="ui button basic right floated" @click="hideModal">
