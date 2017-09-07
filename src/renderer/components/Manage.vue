@@ -371,6 +371,9 @@ export default {
     showErrorModal: function (error) {
       this.activeLoader = false
       this.error = error
+      this.$nextTick(() => {
+        $('.ui.modal').modal('refresh')
+      })
     }
   },
   mounted: function () {
