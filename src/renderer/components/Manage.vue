@@ -406,7 +406,7 @@ export default {
     this.bus.$on('shutdownVRouter', () => { this.shutdownVRouter().catch(this.showErrorModal) })
     this.bus.$on('openLogFile', this.openLogFile)
     this.bus.$on('showAboutModal', () => { this.showAboutModal = true })
-    this.bus.$on('refreshInfos', () => { this.refreshInfos().catch(this.showErrorModal) })
+    this.bus.$on('refreshInfos', () => { this.refreshInfos(false).catch(this.showErrorModal) })
     this.bus.$on('loginVRouter', () => { this.loginVRouter().catch(this.showErrorModal) })
 
     await this.refreshInfos().catch(this.showErrorModal)
