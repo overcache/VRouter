@@ -158,17 +158,41 @@ export default {
     'ui-modal': UIModal
   },
   methods: {
+    async showModal (type) {
+      this.modalInfo.show = false
+      switch (type) {
+        case 'installVBOrNotModal':
+          this.modalInfo = installVBOrNotModal
+          break
+        case 'buildVmOrNotModal':
+          this.modalInfo = buildVmOrNotModal
+          break
+        case 'buildingVmModal':
+          this.modalInfo = buildingVmModal
+          break
+        case 'errorModal':
+          this.modalInfo = errorModal
+          break
+        case 'startVmModal':
+          this.modalInfo = startVmModal
+          break
+        case 'startVMErrorModal':
+          this.modalInfo = startVMErrorModal
+          break
+      }
+      this.modalInfo.show = true
+    },
     async checkRequirement () {
       this.modalInfo.show = false
       if (!(await VBox.isVBInstalled())) {
         winston.info('no virtualbox installed')
-        this.modalInfo = installVBOrNotModal
+        this.showModal('installVBOrNotModal')
         return
       }
       this.steps.push('check virualbox installation')
       if (!(await VBox.isVmExisted(this.vmName))) {
         winston.info('no vrouter vm detected')
-        this.modalInfo = buildVmOrNotModal
+        this.showModal('buildVmOrNotModal')
         return
       }
       this.steps.push('check virtual machine')
@@ -182,7 +206,7 @@ export default {
     },
     async buildVm () {
       winston.info('building vm')
-      this.modalInfo = buildingVmModal
+      this.showModal('buildingVmModal')
       const process = new EventEmitter()
       process.on('init', (msg) => {
         this.modalInfo.content += `<li class="ui">${msg}</li>`
@@ -194,7 +218,7 @@ export default {
       } catch (error) {
         winston.error(`build error: ${error}`)
         errorModal.content = `<pre>${error.stack}</pre>`
-        this.modalInfo = errorModal
+        this.showModal('errorModal')
         adjustModal()
         return
       }
@@ -206,7 +230,7 @@ export default {
       const waitTime = saved ? 10 : 30
       const action = saved ? '恢复' : '启动'
       let time = waitTime
-      this.modalInfo = startVmModal
+      this.showModal('startVmModal')
       const interval = setInterval(() => {
         time = time > 0 ? --time : 0
         startVmModal.content = `正在${action}虚拟机, 请稍候...${time}`
@@ -219,8 +243,7 @@ export default {
         clearInterval(interval)
         winston.error('fail to start vm')
         startVMErrorModal.content = `<pre>${error.stack}</pre>`
-        this.modalInfo = startVMErrorModal
-        this.modalInfo.show = true
+        this.showModal('startVMErrorModal')
         adjustModal()
         return
       }
