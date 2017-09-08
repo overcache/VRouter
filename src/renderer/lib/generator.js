@@ -124,6 +124,8 @@ async function getTunnelDnsCfgFrom (profile, proxiesInfo) {
   }
   cfg.local_port = proxiesInfo.tunnelDns.localPort
   cfg.mode = 'udp_only'
+  // fast_open not work in ss-tunnel
+  cfg.fast_open = false
   cfg.tunnel_address = profile.dnsServer || '8.8.8.8:53'
   return cfg
 }
@@ -232,7 +234,7 @@ async function genServiceFileHelper (proxy, proxies, proxiesInfo, remoteCfgDirPa
 function genWatchdogFileHelper (proxy, proxies, proxiesInfo) {
   let binName = proxiesInfo[proxy].binName
   let serviceName = proxiesInfo[proxy].serviceName
-  if (/^(tunnelDns|relayUDP)$/ig.test(proxies)) {
+  if (/^(tunnelDns|relayUDP)$/ig.test(proxy)) {
     binName = /ssr/ig.test(proxies) ? binName.shadowsocksr : binName.shadowsocks
     serviceName = /ssr/ig.test(proxies) ? serviceName.shadowsocksr : serviceName.shadowsocks
   }

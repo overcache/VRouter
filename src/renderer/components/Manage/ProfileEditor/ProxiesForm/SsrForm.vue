@@ -51,8 +51,11 @@
           <input type="text" v-model="shadowsocksr.obfs_param">
         </div>
         <div class="four wide field">
-          <label for="">Fast Open</label>
-          <input type="text" v-model="shadowsocksr.fast_open">
+          <label>Fast Open</label>
+          <select class="ui dropdown" v-model="fastOpen">
+            <option>true</option>
+            <option>false</option>
+          </select>
         </div>
         <div class="four wide field">
           <label for="">Others</label>
@@ -66,7 +69,17 @@
 <script>
 export default {
   name: 'ssr-form',
-  props: ['shadowsocksr']
+  props: ['shadowsocksr'],
+  computed: {
+    fastOpen: {
+      get: function () {
+        return this.shadowsocksr.fast_open.toString()
+      },
+      set: function (value) {
+        this.shadowsocksr.fast_open = Boolean(value)
+      }
+    }
+  }
 }
 </script>
 
