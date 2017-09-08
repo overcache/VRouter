@@ -1,11 +1,6 @@
 {
     "version": "0.4",
     "cfgDirName": "vrouter",
-    "host": {
-        "mac": {},
-        "linux": {},
-        "windows": {}
-    },
     "virtualbox": {
         "vmName": "vrouter",
         "hostonlyINC": 1,
