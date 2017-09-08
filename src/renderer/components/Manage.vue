@@ -209,8 +209,8 @@ export default {
     }
   },
   methods: {
-    toggleRouting: async function () {
-      this.activeLoader = true
+    toggleRouting: async function (silent = false) {
+      if (!silent) this.activeLoader = true
       logger.debug(`about to getAssignedHostonlyInf of ${this.vrouter.name}. very slow on windows platform`)
       const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
       logger.debug(`getAssignedHostonlyInf: ${hostonlyif}`)
@@ -223,7 +223,7 @@ export default {
         await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, this.vrouter.ip)
       }
       await this.getSystemInfo()
-      this.activeLoader = false
+      if (!silent) this.activeLoader = false
     },
     getSystemInfo: async function () {
       this.systemInfo.currentGWIP = await Utils.getCurrentGateway()
@@ -381,7 +381,14 @@ export default {
 
     setInterval(async () => {
       // 每15分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
+      logger.debug('refreshInfos every 15 minute')
       await this.refreshInfos().catch(console.log)
+      const isOn = (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
+      if (isOn) return
+      if ([this.systemInfo.currentGWIP, this.systemInfo.currentDnsIP].includes(this.vrouter.ip)) {
+        logger.info(`currentGWIP/currentDnsIP not match, correct them to ${this.vrouter.ip}`)
+        await this.toggleRouting(true).catch(console.log)
+      }
     }, 900000)
 
     $(document).on('click', 'a[href^="http"]', function (event) {
