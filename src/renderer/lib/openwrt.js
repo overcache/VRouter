@@ -30,7 +30,6 @@ class Openwrt {
         this.conn = null
         resolve()
       }).on('end', () => {
-        logger.info('ssh connection has been ended')
         this.conn = null
         resolve()
       }).on('error', (error) => {

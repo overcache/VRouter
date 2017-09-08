@@ -53,6 +53,7 @@ const buildVmOrNotModal = {
     {
       label: '下载并构建',
       handler: function () {
+        vueInstance.modalInfo.content = `<li class="ui">尝试重新构建...</li>`
         return vueInstance.buildVm()
       }
     },
@@ -177,6 +178,7 @@ export default {
       this.modalInfo.show = true
     },
     async checkRequirement () {
+      this.steps = []
       this.modalInfo.show = false
       if (!(await VBox.isVBInstalled())) {
         winston.info('no virtualbox installed')

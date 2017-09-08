@@ -275,10 +275,10 @@ class VRouter extends Openwrt {
 
   async updateBridgedAdapter () {
     const bridgeServices = await VBox.getAllBridgeServices()
-    logger.info(`bridgeServices: ${bridgeServices}`)
+    logger.info(`Get all bridgeServices: ${bridgeServices}`)
     const bridgeService = await Utils.getBridgeService(bridgeServices)
     if (!bridgeService) return
-    logger.info(`actived Bridge Service: ${bridgeService}`)
+    logger.info(`Get current actived bridge service: ${bridgeService}`)
     const assignedBridgeService = await VBox.getAssignedBridgeService(this.name, this.config.virtualbox.bridgeINC)
     if (assignedBridgeService !== bridgeService) {
       logger.info(`PrimaryInterface change from ${assignedBridgeService} to ${bridgeService}`)
