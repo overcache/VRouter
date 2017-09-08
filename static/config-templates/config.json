@@ -6,7 +6,6 @@
         "hostonlyINC": 1,
         "hostonlyInfIP": "10.19.28.46",
         "bridgeINC": 2,
-        "bridgeMacAddress": "889988998899",
         "serialPort": 1,
         "serialTcpPort": 10192,
         "imageUrl": "https://mirrors.tuna.tsinghua.edu.cn/openwrt/chaos_calmer/15.05.1/x86/64/openwrt-15.05.1-x86-64-combined-ext4.img.gz",

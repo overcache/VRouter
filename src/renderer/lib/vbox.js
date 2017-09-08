@@ -180,13 +180,12 @@ class VBox {
    * @param {string} bridgeService 桥接的网络, 如"en0: Wi-Fi (AirPort)"
    * @nic {string} nic 虚拟机网卡序号
    */
-  static initBridgeNetwork (name, bridgeService, nic = '2', macAddress = '889988998899') {
+  static initBridgeNetwork (name, bridgeService, nic = '2') {
     const cmd = `${bin} modifyvm ${name} ` +
       `--nic${nic} bridged ` +
       ` --nictype${nic} "82540EM" ` +
       `--bridgeadapter${nic} "${bridgeService}" ` +
-      `--cableconnected${nic} "on" ` +
-      `--macaddress${nic} "${macAddress}"`
+      `--cableconnected${nic} "on" `
     return execute(cmd)
   }
 

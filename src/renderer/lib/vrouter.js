@@ -21,7 +21,7 @@ async function initInterface (info) {
   logger.info(`bridgeServices: ${bridgeServices}`)
   const bridgeService = await Utils.getBridgeService(bridgeServices)
   logger.info(`actived Bridge Service: ${bridgeService}`)
-  await VBox.initBridgeNetwork(info.vmName, bridgeService, info.bridgeINC, info.bridgeMacAddress)
+  await VBox.initBridgeNetwork(info.vmName, bridgeService, info.bridgeINC)
 }
 
 /*
@@ -143,8 +143,7 @@ async function init (info) {
     vmName: info.vmName,
     hostonlyINC: info.hostonlyINC,
     hostonlyInfIP: info.hostonlyInfIP,
-    bridgeINC: info.bridgeINC,
-    bridgeMacAddress: info.bridgeMacAddress
+    bridgeINC: info.bridgeINC
   })
 
   info.process.emit('init', '等待虚拟机启动, 请稍候 30 秒')
@@ -197,7 +196,6 @@ class VRouter extends Openwrt {
       hostonlyINC: this.config.virtualbox.hostonlyINC,
       hostonlyInfIP: this.config.virtualbox.hostonlyInfIP,
       bridgeINC: this.config.virtualbox.bridgeINC,
-      bridgeMacAddress: this.config.virtualbox.bridgeMacAddress,
       lanIP: this.ip,
       username: this.config.openwrt.username,
       password: this.config.openwrt.password,
