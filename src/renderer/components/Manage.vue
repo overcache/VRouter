@@ -83,7 +83,7 @@ import ErrorModal from './Manage/ErrorModal'
 
 const path = require('path')
 const { shell } = require('electron')
-const { app } = require('electron').remote
+const { app, getCurrentWindow } = require('electron').remote
 
 // let vueInstance = null
 const templateProfile = {
@@ -376,26 +376,6 @@ export default {
       })
     }
   },
-  mounted: function () {
-    $('.tabular.menu .item').tab()
-
-    setInterval(async () => {
-      // 每15分钟检测一遍状态, 目前和虚拟机直接只要一个ssh连接, 所以暂时不能并发.
-      logger.debug('refreshInfos every 15 minute')
-      await this.refreshInfos().catch(console.log)
-      const isOn = (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
-      if (isOn) return
-      if ([this.systemInfo.currentGWIP, this.systemInfo.currentDnsIP].includes(this.vrouter.ip)) {
-        logger.info(`currentGWIP/currentDnsIP not match, correct them to ${this.vrouter.ip}`)
-        await this.toggleRouting(true).catch(console.log)
-      }
-    }, 900000)
-
-    $(document).on('click', 'a[href^="http"]', function (event) {
-      event.preventDefault()
-      shell.openExternal(this.href)
-    })
-  },
   created: async function () {
     this.vrouter = new VRouter(await VRouter.getLatestCfg())
     this.profiles = this.vrouter.config.profiles
@@ -418,8 +398,29 @@ export default {
     this.bus.$on('showAboutModal', () => { this.showAboutModal = true })
     this.bus.$on('refreshInfos', () => { this.refreshInfos(false).catch(this.showErrorModal) })
     this.bus.$on('loginVRouter', () => { this.loginVRouter().catch(this.showErrorModal) })
+    this.bus.$on('reloadApp', () => { getCurrentWindow().reload() })
 
     await this.refreshInfos().catch(this.showErrorModal)
+  },
+  mounted: function () {
+    $('.tabular.menu .item').tab()
+
+    setInterval(async () => {
+      // 每15分钟检测一遍状态
+      logger.debug('refreshInfos every 15 minutes')
+      await this.refreshInfos().catch(console.warn)
+      const isOn = (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
+      if (isOn) return
+      if ([this.systemInfo.currentGWIP, this.systemInfo.currentDnsIP].includes(this.vrouter.ip)) {
+        logger.info(`currentGWIP/currentDnsIP not match, correct them to ${this.vrouter.ip}`)
+        await this.toggleRouting(true).catch(console.warn)
+      }
+    }, 900000)
+
+    $(document).on('click', 'a[href^="http"]', function (event) {
+      event.preventDefault()
+      shell.openExternal(this.href)
+    })
   }
 }
 </script>

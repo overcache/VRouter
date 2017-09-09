@@ -48,6 +48,10 @@
         <label>转发 UDP 流量</label>
       </div>
     </div>
+    <div class="ui label" v-show="enableUDP">
+      <i class="ui idea icon"></i>
+      转发 DNS 查询和转发 UDP 流量都需要服务器<a href="https://github.com/icymind/VRouter/wiki/%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%BC%80%E5%90%AF-UDP-Relay">开启 UDP Relay <i class="ui external icon fitted"></i></a>
+    </div>
 
     <ss-form :shadowsocks="shadowsocks" v-show="enableSs"></ss-form>
 
@@ -100,6 +104,9 @@ export default {
         this.editingClone.enableTunnelDns = (value.length !== 0)
       }
     },
+    enableUDP: function () {
+      return this.enableTunnelDns.length !== 0 || this.enableRelayUDP.length !== 0
+    },
     proxies: {
       get: function () {
         return this.editingClone.proxies
@@ -130,4 +137,7 @@ export default {
 </script>
 
 <style lang="css">
+.ui.label a {
+  color: red;
+}
 </style>

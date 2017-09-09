@@ -48,7 +48,7 @@ const installVBOrNotModal = {
 
 const buildVmOrNotModal = {
   header: '检测虚拟机',
-  content: '没有检测到 VRouter 虚拟机, 需要下载 openwrt 官方镜像 ( 5 MB ) 进行构建.',
+  content: '没有检测到 VRouter 虚拟机, 需要下载 openwrt 官方镜像 ( 5 MB ) 进行构建. 请确保上游路由器开启了 DHCP , 否则 VRouter 获取不到 IP 将无法联网',
   buttons: [
     {
       label: '下载并构建',

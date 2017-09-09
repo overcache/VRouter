@@ -6,6 +6,9 @@
       <div class="ui button basic right floated" @click="hideModal">
         确定
       </div>
+      <div class="ui button basic right floated" @click="bus.$emit('reloadApp')">
+        重载应用
+      </div>
     </div>
   </div>
 </template>
@@ -14,7 +17,7 @@
 /* global $ */
 export default {
   name: 'error-modal',
-  props: ['error', 'showErrorModal'],
+  props: ['error', 'showErrorModal', 'bus'],
   watch: {
     error (val) {
       $('.ui.modal.error-modal').modal('show')
