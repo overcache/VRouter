@@ -323,7 +323,7 @@ class Utils {
         .wait(waitTime)
         .connect()
         .on('close', () => {
-          logger.debug('netcat close-event detected')
+          logger.debug('close netcat connection')
           clearTimeout(timoutID)
           resolve(trimOutput(output))
         })
