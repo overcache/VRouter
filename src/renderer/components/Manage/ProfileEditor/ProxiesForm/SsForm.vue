@@ -1,6 +1,6 @@
 <template lang="html">
   <form id="shadowsocks-form" class="ui form">
-    <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocks/shadowsocks-libev#usage">Shadowsocks <i class="icon hand pointer"></i></a></h4>
+    <h4 class="ui header dividing teal"><a href="https://github.com/shadowsocks/openwrt-shadowsocks#配置">Shadowsocks <i class="icon hand pointer"></i></a></h4>
 
     <div class="field">
       <div class="three fields">

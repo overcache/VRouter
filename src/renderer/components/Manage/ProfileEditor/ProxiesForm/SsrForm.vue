@@ -1,6 +1,6 @@
 <template lang="html">
   <form id="shadowsocksr-form" class="ui form">
-    <h4 class="ui header dividing pink"><a href="https://github.com/shadowsocksr/shadowsocksr-libev#usage">ShadowsocksR <i class="icon hand pointer"></i></a></h4>
+    <h4 class="ui header dividing pink"><a href="https://github.com/ywb94/openwrt-ssr/blob/master/files/luci/model/cbi/shadowsocksr/client-config.lua#L24">ShadowsocksR <i class="icon hand pointer"></i></a></h4>
 
     <div class="field">
       <div class="three fields">
