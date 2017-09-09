@@ -1,5 +1,6 @@
 import Mac from './mac.js'
 import Win from './win.js'
+import Linux from './linux.js'
 import logger from './logger.js'
 // const { Mac } = require('./mac.js')
 const { URL } = require('url')
@@ -261,6 +262,8 @@ class Utils {
         return Mac.getActiveAdapter()
       case 'win32':
         return Win.getActiveAdapter()
+      case 'linux':
+        return Linux.getActiveAdapter()
       default:
         return Mac.getActiveAdapter()
     }
@@ -283,6 +286,9 @@ class Utils {
             return bridgeServices[i]
           }
         }
+        break
+      case 'linux':
+        await Linux.getActiveAdapter()
         break
     }
   }
@@ -338,6 +344,8 @@ class Utils {
         return Mac.trafficToPhysicalRouter()
       case 'win32':
         return Win.trafficToPhysicalRouter(hostonlyInf, ip, mask)
+      case 'linux':
+        return Linux.trafficToPhysicalRouter()
     }
   }
   static trafficToVirtualRouter (infName, ip, gateway) {
@@ -346,6 +354,8 @@ class Utils {
         return Mac.trafficToVirtualRouter(gateway)
       case 'win32':
         return Win.trafficToVirtualRouter(infName, gateway)
+      case 'linux':
+        return Linux.trafficToVirtualRouter(gateway)
     }
   }
   static getCurrentDns () {
@@ -354,6 +364,8 @@ class Utils {
         return Mac.getCurrentDns()
       case 'win32':
         return Win.getCurrentDns()
+      case 'linux':
+        return Linux.getCurrentDns()
     }
   }
   static getCurrentGateway () {
@@ -362,6 +374,8 @@ class Utils {
         return Mac.getCurrentGateway()
       case 'win32':
         return Win.getCurrentGateway()
+      case 'linux':
+        return Linux.getCurrentGateway()
     }
   }
   static getProxiesText (proxies) {

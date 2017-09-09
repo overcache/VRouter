@@ -1,6 +1,6 @@
 <template lang="html">
   <form class="ui form kcptun">
-    <h4 class="ui header dividing teal"><a href="https://github.com/xtaci/kcptun#usage">Kcptun<i class="small icon external square"></i></a></h4>
+    <h4 class="ui header dividing teal"><a href="https://github.com/xtaci/kcptun#usage">Kcptun <i class="icon hand pointer"></i></a></h4>
 
     <div class="field">
       <div class="three fields">
