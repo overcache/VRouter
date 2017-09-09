@@ -32,6 +32,7 @@ install:
 - npm install -g xvfb-maybe
 - yarn
 script:
+# 不可能在 travis 上安装 virtualbox 依赖
 #- xvfb-maybe node_modules/.bin/karma start test/unit/karma.conf.js
 #- yarn run pack && xvfb-maybe node_modules/.bin/mocha test/e2e
 - yarn run build
