@@ -4,7 +4,7 @@
   "description": "a virtual router providing transparent proxy.",
   "main": "./dist/electron/main.bundle.js",
   "scripts": {
-    "build": "node .electron-vue/build.js && electron-builder",
+    "build": "node .electron-vue/build.js && electron-builder -p always",
     "build:win32": "node .electron-vue/build.js && electron-builder --win --ia32",
     "build:dir": "node .electron-vue/build.js && electron-builder --dir",
     "build:clean": "cross-env BUILD_TARGET=clean node .electron-vue/build.js",
