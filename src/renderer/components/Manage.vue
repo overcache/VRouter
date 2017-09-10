@@ -335,6 +335,14 @@ export default {
           return this.getVrouterInfo()
         })
       await Promise.all([p1, p2])
+      if (this.routing) {
+        if (!silent) this.activeLoader = false
+        return
+      }
+      if ([this.systemInfo.currentGWIP, this.systemInfo.currentDnsIP].includes(this.vrouter.ip)) {
+        logger.info(`currentGWIP/currentDnsIP not match, correct them to ${this.vrouter.ip}`)
+        await this.toggleRouting(true).catch(console.warn)
+      }
       if (!silent) this.activeLoader = false
     },
     openLogFile: function () {
@@ -409,12 +417,6 @@ export default {
       // 每15分钟检测一遍状态
       logger.debug('refreshInfos every 15 minutes')
       await this.refreshInfos().catch(console.warn)
-      const isOn = (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
-      if (isOn) return
-      if ([this.systemInfo.currentGWIP, this.systemInfo.currentDnsIP].includes(this.vrouter.ip)) {
-        logger.info(`currentGWIP/currentDnsIP not match, correct them to ${this.vrouter.ip}`)
-        await this.toggleRouting(true).catch(console.warn)
-      }
     }, 900000)
 
     $(document).on('click', 'a[href^="http"]', function (event) {
