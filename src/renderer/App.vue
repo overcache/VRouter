@@ -9,6 +9,8 @@
 import '@/vendor/semantic.min.js'
 import Prepare from '@/components/Prepare'
 import Manage from '@/components/Manage'
+import logger from '@/lib/logger'
+const { ipcRenderer } = require('electron')
 
 export default {
   name: 'vrouter',
@@ -25,6 +27,11 @@ export default {
     showManage () {
       this.prepared = true
     }
+  },
+  mounted: function () {
+    ipcRenderer.on('updater', (event, arg) => {
+      logger.debug(arg)
+    })
   }
 }
 </script>

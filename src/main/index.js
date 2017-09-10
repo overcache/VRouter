@@ -148,18 +148,35 @@ process.on('uncaughtException', function (err) {
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-electron-builder.html#auto-updating
  */
 
+function sendToRenderer (arg) {
+  win.webContents.send('updater', arg)
+}
+
 autoUpdater.Logger = console
 autoUpdater.autoDownload = true
 autoUpdater.allowPrerelease = false
+
+autoUpdater.on('checking-for-update', () => {
+  sendToRenderer('updater', 'checking-for-update')
+})
 autoUpdater.on('update-downloaded', () => {
+  sendToRenderer('updater', 'update downloaded')
   autoUpdater.quitAndInstall()
 })
 autoUpdater.on('update-available', () => {
+  sendToRenderer('updater', 'update available')
   console.log('update available')
 })
 autoUpdater.on('update-not-available', () => {
+  sendToRenderer('updater', 'no update available')
   console.info('no update available')
 })
+autoUpdater.on('error', (err) => {
+  sendToRenderer('updater', err.toString())
+})
+if (os.platform() === 'darwin') {
+  autoUpdater.checkForUpdates()
+}
 app.on('ready', () => {
-  if (os.platform() === 'darwin') autoUpdater.checkForUpdates()
+  autoUpdater.checkForUpdates()
 })
