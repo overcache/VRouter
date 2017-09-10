@@ -9,7 +9,7 @@ const os = require('os')
  * 根据rule, 生成PREROUTING和OUTPUT两条iptables规则
  */
 function genFWRulesHelper (rule) {
-  return `iptables -t nat -A PREROUTING ${rule}\niptables -t nat -A OUTPUT ${rule}\n`
+  return `iptables -t nat -A PREROUTING ${rule}\niptables -t nat -A OUTPUT ${rule}`
 }
 
 async function genIPsetFileHelper (fPath, ipsetName) {
@@ -371,14 +371,14 @@ class Generator {
 
     // if kcp protocol: speedup ssh
     if (/kt/ig.test(proxies) && profile.speedupServerSSH) {
-      contents.push('# speedup server ssh connection')
+      contents.push('\n# speedup server ssh connection')
       const rule = `-d ${profile.kcptun.server} -p tcp --dport ${profile.serverSSHPort} -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
     }
 
     // bypass serverIPs
     // bypass shadowsocks server_ip
-    contents.push('# bypass server ip')
+    contents.push('\n# bypass server ip')
     const ips = []
     ;/kt/ig.test(proxies) && ips.push(profile.kcptun.server)
     ;/ssr/ig.test(proxies) && ips.push(profile.shadowsocksr.server)
@@ -395,7 +395,7 @@ class Generator {
     }
 
     // bypass lan_networks. 如果不想绕过lan, 生成一个空的lan ipset集合即可
-    contents.push('# bypass lan networks')
+    contents.push('\n# bypass lan networks')
     const rule = `-m set --match-set ${firewallInfo.ipset.lanSetName} dst -j RETURN`
     contents.push(genFWRulesHelper(rule))
     // bypass udp too
@@ -404,7 +404,7 @@ class Generator {
     // whitelist mode: bypass whitelist and route others
     if (profile.mode === 'whitelist') {
       // "绕过白名单"模式下, 先将黑名单导向代理(如果自定义黑名单中存在白名单相同项, 先处理黑名单符合预期)
-      contents.push('# route all blacklist traffic')
+      contents.push('\n# route all blacklist traffic')
       let rule = `-p tcp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
 
@@ -414,11 +414,11 @@ class Generator {
         contents.push(`iptables -t mangle -A PREROUTING -p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j TPROXY --on-port ${udpRedirPort} --tproxy-mark 0x01/0x01`)
       }
 
-      contents.push('# bypass whitelist')
+      contents.push('\n# bypass whitelist')
       rule = `-m set --match-set ${firewallInfo.ipset.whiteSetName} dst -j RETURN`
       contents.push(genFWRulesHelper(rule))
 
-      contents.push('# route all other traffic')
+      contents.push('\n# route all other traffic')
       rule = `-p tcp -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
 
@@ -427,11 +427,11 @@ class Generator {
       }
     } else if (profile.mode === 'blacklist') {
       // 仅代理黑名单模式下, 先将白名单返回(如果自定义白名单中存在黑名单相同项, 先处理白名单符合预期)
-      contents.push('# bypass whitelist')
+      contents.push('\n# bypass whitelist')
       let rule = `-m set --match-set ${firewallInfo.ipset.whiteSetName} dst -j RETURN`
       contents.push(genFWRulesHelper(rule))
 
-      contents.push('# route all blacklist traffic')
+      contents.push('\n# route all blacklist traffic')
       rule = `-p tcp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
 
@@ -441,7 +441,7 @@ class Generator {
         contents.push(`iptables -t mangle -A PREROUTING -p udp -m set --match-set ${firewallInfo.ipset.blackSetName} dst -j TPROXY --on-port ${udpRedirPort} --tproxy-mark 0x01/0x01`)
       }
     } else if (profile.mode === 'global') {
-      contents.push('# route all traffic')
+      contents.push('\n# route all traffic')
       let rule = `-p tcp -j REDIRECT --to-port ${redirPort}`
       contents.push(genFWRulesHelper(rule))
 
