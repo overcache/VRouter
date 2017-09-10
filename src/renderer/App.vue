@@ -30,7 +30,7 @@ export default {
   },
   mounted: function () {
     ipcRenderer.on('updater', (event, arg) => {
-      logger.debug(arg)
+      logger.info(arg)
     })
   }
 }

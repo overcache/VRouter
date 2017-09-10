@@ -152,31 +152,32 @@ function sendToRenderer (arg) {
   win.webContents.send('updater', arg)
 }
 
-autoUpdater.Logger = console
 autoUpdater.autoDownload = true
 autoUpdater.allowPrerelease = false
 
 autoUpdater.on('checking-for-update', () => {
-  sendToRenderer('updater', 'checking-for-update')
+  sendToRenderer('checking-for-update')
 })
 autoUpdater.on('update-downloaded', () => {
-  sendToRenderer('updater', 'update downloaded')
+  sendToRenderer('update downloaded')
   autoUpdater.quitAndInstall()
 })
 autoUpdater.on('update-available', () => {
-  sendToRenderer('updater', 'update available')
+  sendToRenderer('update available')
   console.log('update available')
 })
 autoUpdater.on('update-not-available', () => {
-  sendToRenderer('updater', 'no update available')
+  sendToRenderer('no update available')
   console.info('no update available')
 })
 autoUpdater.on('error', (err) => {
-  sendToRenderer('updater', err.toString())
+  sendToRenderer(err.toString())
 })
 if (os.platform() === 'darwin') {
   autoUpdater.checkForUpdates()
 }
 app.on('ready', () => {
-  autoUpdater.checkForUpdates()
+  setTimeout(() => {
+    autoUpdater.checkForUpdates()
+  }, 5000)
 })
