@@ -4,6 +4,7 @@ import { autoUpdater } from 'electron-updater'
 // import logger from '@/lib/logger'
 
 const { app, BrowserWindow, Menu } = require('electron')
+const os = require('os')
 
 let win
 const winURL = process.env.NODE_ENV === 'development'
@@ -160,5 +161,5 @@ autoUpdater.on('update-not-available', () => {
   console.info('no update available')
 })
 app.on('ready', () => {
-  autoUpdater.checkForUpdates()
+  if (os.platform() === 'darwin') autoUpdater.checkForUpdates()
 })
