@@ -204,7 +204,7 @@ class Openwrt {
 
   // dnsmasq
   configDnsmasq () {
-    const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/' > /etc/dnsmasq.conf"
+    const cmd = "mkdir /etc/dnsmasq.d && echo 'conf-dir=/etc/dnsmasq.d/\nmin-cache-ttl=3600' > /etc/dnsmasq.conf"
     return this.execute(cmd)
   }
 
