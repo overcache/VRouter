@@ -154,6 +154,7 @@ autoUpdater.on('update-downloaded', () => {
   autoUpdater.quitAndInstall()
 })
 autoUpdater.on('update-available', () => {
+  console.log('update available')
 })
 autoUpdater.on('update-not-available', () => {
   console.info('no update available')
