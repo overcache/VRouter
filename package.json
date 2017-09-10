@@ -107,7 +107,10 @@
       "dist/electron/**/*"
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "static/icons/icon.icns"
     },
     "win": {
