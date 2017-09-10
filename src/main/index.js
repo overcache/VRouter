@@ -1,5 +1,7 @@
 'use strict'
 
+import { autoUpdater } from 'electron-updater'
+
 const { app, BrowserWindow, Menu } = require('electron')
 
 let win
@@ -144,8 +146,7 @@ process.on('uncaughtException', function (err) {
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-electron-builder.html#auto-updating
  */
 
-/*
-import { autoUpdater } from 'electron-updater'
+// import { autoUpdater } from 'electron-updater'
 
 autoUpdater.on('update-downloaded', () => {
   autoUpdater.quitAndInstall()
@@ -154,4 +155,3 @@ autoUpdater.on('update-downloaded', () => {
 app.on('ready', () => {
   if (process.env.NODE_ENV === 'production') autoUpdater.checkForUpdates()
 })
- */
