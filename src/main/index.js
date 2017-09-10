@@ -173,11 +173,10 @@ autoUpdater.on('update-not-available', () => {
 autoUpdater.on('error', (err) => {
   sendToRenderer(err.toString())
 })
-if (os.platform() === 'darwin') {
-  autoUpdater.checkForUpdates()
-}
 app.on('ready', () => {
   setTimeout(() => {
-    autoUpdater.checkForUpdates()
+    if (os.platform() === 'darwin') {
+      autoUpdater.checkForUpdates()
+    }
   }, 5000)
 })
