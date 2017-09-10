@@ -45,6 +45,13 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 - 如果路由器性能不足, 使用 kcptun 等软件时, 负载会非常高. 而且速度比在桌面端运行 kcptun 慢很多
 - 路由器只能在固定地点使用
 
+#### 为什么不用 TUN/TAP 虚拟网络接口?
+
+TUN/TAP 是一个很优雅的方案, 不需要依赖 VirtualBox. Windows 上有很好的 TAP 透明代理方案 [SSTap](https://www.sockscap64.com/en/sstap-enjoy-gaming-enjoy-sstap), Linux 上也有诸如 [kone](https://github.com/xjdrew/kone) 这样的项目. 遗憾的是 kone 的上游项目 [water](https://github.com/songgao/water) 目前对 macOS 的[支持有限](https://github.com/songgao/water#supported-platforms), 即使 water 引入依赖 [tuntaposx](http://tuntaposx.sourceforge.net/), 因为 SIP 的存在, OSX El Capitan 及以上版本安装 tuntaposx 也比较繁琐. 因此:
+- 在目前来看, 在 macOS 上用轻量的 OpenWRT 实现透明代理, 仍然是一个实用的方案.
+- 相对新的个人开发者项目, OpenWRT 和 VirtualBox 的运行更稳定, bug 的修复速度更有保障.
+- 在 OpenWRT 上可以根据情况随时更换代理软件, 适应性更强.
+
 #### 用虚拟机会不会有点杀鸡用牛刀?
 
 大材小用确实有点委屈了虚拟机. 幸运的是 openwrt 非常轻量, 官网提供的镜像不足 5 MB, 转化为 virtualbox 虚拟机磁盘文件, 并在虚拟机上安装必要的软件后, 磁盘空间占用不足 30 MB. 虚拟机在 macOS 上的内存占用在 150MB 以内, 在 Windows 上的内存占用仅仅 20 MB 左右. CPU 占用率则跟网络流量正相关, 没有流量的情况下, Windows 版本 CPU 占用率接近 0% ( 2010 年的 Thinkpad ), macOS则是在 5% 以下 ( 2014 年的中端 13 寸 Macbook ).
