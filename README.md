@@ -47,7 +47,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 #### 为什么不用 TUN/TAP 虚拟网络接口?
 
-TUN/TAP 是一个很优雅的方案, 不需要依赖 VirtualBox. Windows 上有很好的 TAP 透明代理方案 [SSTap](https://www.sockscap64.com/en/sstap-enjoy-gaming-enjoy-sstap), Linux 上也有诸如 [kone](https://github.com/xjdrew/kone) 这样的项目. 遗憾的是 kone 的上游项目 [water](https://github.com/songgao/water) 目前对 macOS 的[支持有限](https://github.com/songgao/water#supported-platforms), 即使 water 引入依赖 [tuntaposx](http://tuntaposx.sourceforge.net/), 因为 SIP 的存在, OSX El Capitan 及以上版本安装 tuntaposx 也比较繁琐. 因此:
+TUN/TAP 是一个很优雅的方案, 不需要依赖 VirtualBox. Windows 上有很好的 TAP 透明代理方案 [SSTap](https://www.sockscap64.com/en/sstap-enjoy-gaming-enjoy-sstap), Linux 上也有诸如 [kone](https://github.com/xjdrew/kone) 这样的项目. 遗憾的是 kone 的上游项目 [water](https://github.com/songgao/water) 目前对 macOS 的[支持有限](https://github.com/songgao/water#supported-platforms). 因此:
 - 在目前来看, 在 macOS 上用轻量的 OpenWRT 实现透明代理, 仍然是一个实用的方案.
 - 相对新的个人开发者项目, OpenWRT 和 VirtualBox 的运行更稳定, bug 的修复速度更有保障.
 - 在 OpenWRT 上可以根据情况随时更换代理软件, 适应性更强.
