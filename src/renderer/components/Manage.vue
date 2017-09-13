@@ -84,6 +84,7 @@ import ErrorModal from './Manage/ErrorModal'
 const path = require('path')
 const { shell } = require('electron')
 const { app, getCurrentWindow } = require('electron').remote
+const { ipcRenderer } = require('electron')
 
 // let vueInstance = null
 const templateProfile = {
@@ -205,23 +206,14 @@ export default {
     },
     routing: function () {
       const current = (this.systemInfo.currentGWIP === this.vrouter.ip) && (this.systemInfo.currentDnsIP === this.vrouter.ip)
+      ipcRenderer.send('toggleRouting', current)
       return current
     }
   },
   methods: {
     toggleRouting: async function (silent = false) {
       if (!silent) this.activeLoader = true
-      logger.debug(`about to getAssignedHostonlyInf of ${this.vrouter.name}. very slow on windows platform`)
-      const hostonlyif = await VBox.getAssignedHostonlyInf(this.vrouter.name)
-      logger.debug(`getAssignedHostonlyInf: ${hostonlyif}`)
-      const hostonlyInfIP = this.vrouter.config.virtualbox.hostonlyInfIP
-      if (await this.routing) {
-        await this.vrouter.disconnect()
-        logger.debug('about to trafficToPhysicalRouter')
-        await Utils.trafficToPhysicalRouter(hostonlyif, hostonlyInfIP, '255.255.255.0')
-      } else {
-        await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, this.vrouter.ip)
-      }
+      await VRouter.toggleRouting()
       await this.getSystemInfo()
       if (!silent) this.activeLoader = false
     },
@@ -408,6 +400,7 @@ export default {
     this.bus.$on('loginVRouter', () => { this.loginVRouter().catch(this.showErrorModal) })
     this.bus.$on('reloadApp', () => { getCurrentWindow().reload() })
 
+    ipcRenderer.on('toggleRouting', () => { this.toggleRouting(true).catch() })
     await this.refreshInfos().catch(this.showErrorModal)
   },
   mounted: function () {

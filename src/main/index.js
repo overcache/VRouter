@@ -1,10 +1,11 @@
 'use strict'
 
 import { autoUpdater } from 'electron-updater'
-// import logger from '@/lib/logger'
+import VRouter from '@/lib/vrouter'
 
-const { app, BrowserWindow, Menu } = require('electron')
+const { app, BrowserWindow, Menu, Tray, ipcMain } = require('electron')
 const os = require('os')
+const path = require('path')
 
 let win
 const winURL = process.env.NODE_ENV === 'development'
@@ -121,12 +122,15 @@ function setMenu () {
 app.on('ready', () => {
   createWindow()
   setMenu()
+  app.dock.show()
 })
 
 app.on('window-all-closed', () => {
-  // if (process.platform !== 'darwin') {
-  app.quit()
-  // }
+  if (process.platform !== 'darwin') {
+    app.quit()
+  } else {
+    app.dock.hide()
+  }
 })
 
 app.on('activate', () => {
@@ -174,9 +178,55 @@ autoUpdater.on('error', (err) => {
   sendToRenderer(err.toString())
 })
 app.on('ready', () => {
+  if (process.env.NODE_ENV === 'development') return
   setTimeout(() => {
     if (os.platform() === 'darwin') {
       autoUpdater.checkForUpdates()
     }
   }, 5000)
+})
+
+/**
+ * tray
+*/
+
+let tray = null
+app.on('ready', () => {
+  tray = new Tray(path.join(__static, 'icons/icon.png')) // eslint-disable-line
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Open VRouter',
+      click: () => {
+        if (win === null) {
+          createWindow()
+        }
+        app.show()
+        app.focus()
+        app.dock.show()
+      }
+    },
+    {
+      label: 'Pause',
+      type: 'checkbox',
+      click: async () => {
+        if (win === null) {
+          await VRouter.toggleRouting()
+          return
+        }
+        win.webContents.send('toggleRouting', !contextMenu.items[1].checked)
+      }
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: 'Quit VRouter',
+      role: 'quit'
+    }
+  ])
+  tray.setToolTip('VRouter')
+  tray.setContextMenu(contextMenu)
+  ipcMain.on('toggleRouting', (event, arg) => {
+    contextMenu.items[1].checked = !arg
+  })
 })
