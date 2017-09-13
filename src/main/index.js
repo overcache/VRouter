@@ -1,6 +1,7 @@
 'use strict'
 
 import { autoUpdater } from 'electron-updater'
+import logger from '@/lib/logger'
 import VRouter from '@/lib/vrouter'
 
 const { app, BrowserWindow, Menu, Tray, ipcMain } = require('electron')
@@ -192,7 +193,15 @@ app.on('ready', () => {
 
 let tray = null
 app.on('ready', () => {
-  tray = new Tray(path.join(__static, 'icons/icon.png')) // eslint-disable-line
+  try {
+    if (process.env.NODE_ENV !== 'development') {
+      tray = new Tray(path.join(__dirname, '/static/icons/icon.png'))
+    } else {
+      tray = new Tray(path.join(__static, 'icons/icon.png')) // eslint-disable-line
+    }
+  } catch (err) {
+    logger.error(err)
+  }
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Open VRouter',
