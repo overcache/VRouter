@@ -62,18 +62,18 @@ async function getSsCfgFrom (profile, proxiesInfo) {
   const data = profile.shadowsocks
   const cfg = {
     'server': data.server,
-    'server_port': data.server_port,
+    'server_port': parseInt(data.server_port),
     'local_address': '0.0.0.0',
-    'local_port': proxiesInfo.shadowsocks.localPort,
+    'local_port': parseInt(proxiesInfo.shadowsocks.localPort),
     'password': data.password,
-    'timeout': data.timeout,
-    'method': data.method,
+    'timeout': parseInt(data.timeout),
+    'method': data.method.toLowerCase(),
     'fast_open': data.fast_open,
     'mode': 'tcp_only'
   }
   if (profile.proxies === 'ssKt') {
     cfg.server = '127.0.0.1'
-    cfg.server_port = proxiesInfo.kcptun.localPort
+    cfg.server_port = parseInt(proxiesInfo.kcptun.localPort)
   } else {
     cfg.server = await Utils.resolveDomain(cfg.server)
   }
@@ -84,12 +84,12 @@ async function getSsrCfgFrom (profile, proxiesInfo) {
   const data = profile.shadowsocksr
   const cfg = {
     'server': data.server,
-    'server_port': data.server_port,
+    'server_port': parseInt(data.server_port),
     'local_address': '0.0.0.0',
-    'local_port': proxiesInfo.shadowsocksr.localPort,
+    'local_port': parseInt(proxiesInfo.shadowsocksr.localPort),
     'password': data.password,
-    'timeout': data.timeout,
-    'method': data.method,
+    'timeout': parseInt(data.timeout),
+    'method': data.method.toLowerCase(),
     'fast_open': data.fast_open,
     'mode': 'tcp_oly',
     'protocol': data.protocol,
@@ -105,7 +105,7 @@ async function getSsrCfgFrom (profile, proxiesInfo) {
   })
   if (profile.proxies === 'ssrKt') {
     cfg.server = '127.0.0.1'
-    cfg['server_port'] = proxiesInfo.kcptun.localPort
+    cfg['server_port'] = parseInt(proxiesInfo.kcptun.localPort)
   } else {
     cfg.server = await Utils.resolveDomain(cfg.server)
   }
@@ -120,9 +120,9 @@ async function getTunnelDnsCfgFrom (profile, proxiesInfo) {
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
-    cfg.server_port = profile[type].server_port
+    cfg.server_port = parseInt(profile[type].server_port)
   }
-  cfg.local_port = proxiesInfo.tunnelDns.localPort
+  cfg.local_port = parseInt(proxiesInfo.tunnelDns.localPort)
   cfg.mode = 'udp_only'
   // fast_open not work in ss-tunnel
   cfg.fast_open = false
@@ -164,9 +164,9 @@ async function getRelayUDPCfgFrom (profile, proxiesInfo) {
 
   if (/kt/ig.test(profile.proxies)) {
     cfg.server = await Utils.resolveDomain(profile.kcptun.server)
-    cfg.server_port = profile[type].server_port
+    cfg.server_port = parseInt(profile[type].server_port)
   }
-  cfg.local_port = proxiesInfo.relayUDP.localPort
+  cfg.local_port = parseInt(proxiesInfo.relayUDP.localPort)
   cfg.mode = 'udp_only'
   return cfg
 }
