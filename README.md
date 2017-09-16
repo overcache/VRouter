@@ -70,6 +70,7 @@ TUN/TAP 是一个很优雅的方案, 不需要依赖 VirtualBox. Windows 上有�
 
 - 依赖 VirtualBox
 - 无法服务局域网内的其他设备
+- UI 用 Electron 进行封装, 体积比虚拟机大太多
 - [ Windows ] Windows 改了默认路由后, Edge 浏览器和 UWP 应用无法连接网络. 其他应用则不受影响
 
 ### 拓扑结构

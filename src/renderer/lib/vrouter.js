@@ -332,6 +332,7 @@ class VRouter extends Openwrt {
       logger.debug('about to trafficToPhysicalRouter')
       await Utils.trafficToPhysicalRouter(hostonlyif, hostonlyInfIP, '255.255.255.0')
     } else {
+      logger.debug('about to trafficToVirtualRouter')
       await Utils.trafficToVirtualRouter(hostonlyif, hostonlyInfIP, ip)
     }
   }

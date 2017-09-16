@@ -219,8 +219,7 @@ app.on('ready', () => {
       type: 'checkbox',
       click: async () => {
         if (win === null) {
-          await VRouter.toggleRouting()
-          return
+          return VRouter.toggleRouting()
         }
         win.webContents.send('toggleRouting', !contextMenu.items[1].checked)
       }
