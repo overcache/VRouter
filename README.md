@@ -21,11 +21,11 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 - 每个域名/IP/IP段一行, 注释行以#开头
 - 域名
-    - 域名可以是裸域名如 `example.com`, 将会匹配该域下的所有子域名如  `a.example.com`, `b.example.com` 等等
-    - 也可以填写子域名如 `a.example.com`, 如此不会匹配到 `b.example.com`
+	- 域名可以是裸域名如 `example.com`, 将会匹配该域下的所有子域名如  `a.example.com`, `b.example.com` 等等
+	- 也可以填写子域名如 `a.example.com`, 如此不会匹配到 `b.example.com`
 - IP
-    - 可以是独立的IP, 如 `123.123.123.123`
-    - 也可以是IP段, 如 `123.123.123.0/8` 将会匹配 `123.123.123.0~123.123.123.255` 之间的IP地址. `123.123.0.0/16`将匹配 `123.123.0.0 ~ 123.123.255.255`之间的IP地址
+	- 可以是独立的IP, 如 `123.123.123.123`
+	- 也可以是IP段, 如 `123.123.123.0/8` 将会匹配 `123.123.123.0~123.123.123.255` 之间的IP地址. `123.123.0.0/16`将匹配 `123.123.0.0 ~ 123.123.255.255`之间的IP地址
 
 ### 项目的意义
 
@@ -49,7 +49,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 TUN/TAP 是一个很优雅的方案, 不需要依赖 VirtualBox. Windows 上有很好的 TAP 透明代理方案 [SSTap](https://www.sockscap64.com/en/sstap-enjoy-gaming-enjoy-sstap), Linux 上也有诸如 [kone](https://github.com/xjdrew/kone) 这样的项目. 遗憾的是 kone 的上游项目 [water](https://github.com/songgao/water) 目前对 macOS 的[支持有限](https://github.com/songgao/water#supported-platforms). 因此:
 - 在目前来看, 在 macOS 上用轻量的 OpenWRT 实现透明代理, 仍然是一个实用的方案.
-- 相对新的个人开发者项目, OpenWRT 和 VirtualBox 的运行更稳定, bug 的修复速度更有保障.
+- 相对新的项目, OpenWRT 和 VirtualBox 的组合更稳定.
 - 在 OpenWRT 上可以根据情况随时更换代理软件, 适应性更强.
 
 #### 用虚拟机会不会有点杀鸡用牛刀?
