@@ -145,9 +145,7 @@ app.on('ready', () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.hide()
-  } else {
+  if (process.platform === 'darwin') {
     app.dock.hide()
   }
 })
@@ -212,7 +210,7 @@ app.on('ready', () => {
 let tray = null
 app.on('ready', () => {
   try {
-    tray = new Tray(path.join(__static, 'icons/trayTemplate.png')) // eslint-disable-line
+    tray = new Tray(path.join(__static, 'icons', os.platform() === 'darwin' ? 'trayTemplate.png' : 'trayWindows.png')) // eslint-disable-line
   } catch (err) {
     logger.error(err)
   }
