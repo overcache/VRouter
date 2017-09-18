@@ -1,6 +1,6 @@
 {
   "name": "VRouter",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "a virtual router providing transparent proxy.",
   "main": "./dist/electron/main.bundle.js",
   "scripts": {
