@@ -9,6 +9,14 @@ const { app, BrowserWindow, Menu, Tray, ipcMain } = require('electron')
 const os = require('os')
 const path = require('path')
 
+/**
+ * Set `__static` path to static files in production
+ * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
+ */
+if (process.env.NODE_ENV !== 'development') {
+  global.__static = require('path').join(__dirname, '/static').replace(/\\/g, '\\\\')
+}
+
 let win
 const winURL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:9080'
@@ -91,7 +99,16 @@ function setMenu () {
         {role: 'hideothers'},
         {role: 'unhide'},
         {type: 'separator'},
-        {role: 'quit'}
+        {
+          label: 'quit',
+          click: async () => {
+            logger.info('about to quit VRouter')
+            await VRouter.toggleRouting(true, 'off')
+            const cfg = await VRouter.getLatestCfg()
+            await VBox.saveState(cfg.virtualbox.vmName)
+            app.quit()
+          }
+        }
       ]
     })
 
@@ -124,12 +141,12 @@ function setMenu () {
 app.on('ready', () => {
   createWindow()
   setMenu()
-  app.dock.show()
+  if (os.platform() === 'darwin') app.dock.show()
 })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    app.quit()
+    app.hide()
   } else {
     app.dock.hide()
   }
@@ -195,11 +212,7 @@ app.on('ready', () => {
 let tray = null
 app.on('ready', () => {
   try {
-    if (process.env.NODE_ENV !== 'development') {
-      tray = new Tray(path.join(__dirname, '/static/icons/trayTemplate.png'))
-    } else {
-      tray = new Tray(path.join(__static, 'icons/trayTemplate.png')) // eslint-disable-line
-    }
+    tray = new Tray(path.join(__static, 'icons/trayTemplate.png')) // eslint-disable-line
   } catch (err) {
     logger.error(err)
   }
@@ -212,7 +225,9 @@ app.on('ready', () => {
         }
         app.show()
         app.focus()
-        app.dock.show()
+        if (os.platform() === 'darwin') {
+          app.dock.show()
+        }
       }
     },
     {
@@ -231,10 +246,15 @@ app.on('ready', () => {
     {
       label: 'Quit VRouter',
       click: async () => {
-        await VRouter.toggleRouting(true, 'off')
-        const cfg = await VRouter.getLatestCfg()
-        await VBox.saveState(cfg.virtualbox.vmName)
-        app.quit()
+        try {
+          logger.info('about to quit VRouter')
+          await VRouter.toggleRouting(true, 'off')
+          const cfg = await VRouter.getLatestCfg()
+          await VBox.saveState(cfg.virtualbox.vmName)
+          app.quit()
+        } catch (err) {
+          logger.error(err)
+        }
       }
     }
   ])

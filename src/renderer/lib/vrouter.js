@@ -323,11 +323,12 @@ class VRouter extends Openwrt {
     return appDirCfg
   }
   static async toggleRouting (action = false, type = 'off') {
+    logger.info('action', type)
     const config = await VRouter.getLatestCfg()
     const ip = config.openwrt.ip
     const hostonlyif = await VBox.getAssignedHostonlyInf(config.virtualbox.vmName)
     const hostonlyInfIP = config.virtualbox.hostonlyInfIP
-    let isVRouterOn = (await Utils.getCurrentGateway() === ip) && (await Utils.getCurrentDns() === ip)
+    let isVRouterOn = true
     if (action) {
       isVRouterOn = type === 'off'
     } else {
