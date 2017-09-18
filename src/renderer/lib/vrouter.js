@@ -322,12 +322,17 @@ class VRouter extends Openwrt {
     // appDirCfg 已经是最新版本的配置文件
     return appDirCfg
   }
-  static async toggleRouting () {
+  static async toggleRouting (action = false, type = 'off') {
     const config = await VRouter.getLatestCfg()
     const ip = config.openwrt.ip
     const hostonlyif = await VBox.getAssignedHostonlyInf(config.virtualbox.vmName)
     const hostonlyInfIP = config.virtualbox.hostonlyInfIP
-    const isVRouterOn = (await Utils.getCurrentGateway() === ip) && (await Utils.getCurrentDns() === ip)
+    let isVRouterOn = (await Utils.getCurrentGateway() === ip) && (await Utils.getCurrentDns() === ip)
+    if (action) {
+      isVRouterOn = type === 'off'
+    } else {
+      isVRouterOn = (await Utils.getCurrentGateway() === ip) && (await Utils.getCurrentDns() === ip)
+    }
     if (isVRouterOn) {
       logger.debug('about to trafficToPhysicalRouter')
       await Utils.trafficToPhysicalRouter(hostonlyif, hostonlyInfIP, '255.255.255.0')

@@ -3,6 +3,7 @@
 import { autoUpdater } from 'electron-updater'
 import logger from '@/lib/logger'
 import VRouter from '@/lib/vrouter'
+import VBox from '@/lib/vbox'
 
 const { app, BrowserWindow, Menu, Tray, ipcMain } = require('electron')
 const os = require('os')
@@ -229,7 +230,12 @@ app.on('ready', () => {
     },
     {
       label: 'Quit VRouter',
-      role: 'quit'
+      click: async () => {
+        await VRouter.toggleRouting(true, 'off')
+        const cfg = await VRouter.getLatestCfg()
+        await VBox.saveState(cfg.virtualbox.vmName)
+        app.quit()
+      }
     }
   ])
   tray.setToolTip('VRouter')
