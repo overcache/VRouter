@@ -195,9 +195,9 @@ let tray = null
 app.on('ready', () => {
   try {
     if (process.env.NODE_ENV !== 'development') {
-      tray = new Tray(path.join(__dirname, '/static/icons/icon.png'))
+      tray = new Tray(path.join(__dirname, '/static/icons/trayTemplate.png'))
     } else {
-      tray = new Tray(path.join(__static, 'icons/icon.png')) // eslint-disable-line
+      tray = new Tray(path.join(__static, 'icons/trayTemplate.png')) // eslint-disable-line
     }
   } catch (err) {
     logger.error(err)
