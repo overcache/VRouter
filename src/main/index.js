@@ -221,11 +221,11 @@ app.on('ready', () => {
         if (win === null) {
           createWindow()
         }
-        app.show()
-        app.focus()
         if (os.platform() === 'darwin') {
+          // app.show()
           app.dock.show()
         }
+        app.focus()
       }
     },
     {

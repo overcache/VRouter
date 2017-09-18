@@ -62,6 +62,7 @@
 
     <error-modal
       :error="error"
+      :bus="bus"
     >
     </error-modal>
   </div>
