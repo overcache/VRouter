@@ -247,7 +247,7 @@ forward-zone:
     dnsServers.forEach(ip => {
       cfg += `  forward-addr: ${ip}`
     })
-    const cmd = `echo ${cfg} > /etc/unbound/unbound.conf`
+    const cmd = `echo ${cfg} > /etc/unbound/unbound.conf && /etc/init.d/unbound enable && /etc/inid./unbound restart`
     return this.execute(cmd)
   }
 
