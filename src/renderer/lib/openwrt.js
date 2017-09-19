@@ -212,6 +212,45 @@ class Openwrt {
     return this.execute(cmd)
   }
 
+  configUnbound (port = '5353', dnsServers = ['8.8.8.8', '8.8.4.4']) {
+    let cfg = String.raw`
+server:
+  port: ${port}
+  outgoing-range: 60
+  outgoing-num-tcp: 1
+  incoming-num-tcp: 1
+  msg-buffer-size: 8192
+  msg-cache-size: 100k
+  msg-cache-slabs: 1
+  num-queries-per-thread: 30
+  rrset-cache-size: 100k
+  rrset-cache-slabs: 1
+  infra-cache-slabs: 1
+  infra-cache-numhosts: 200
+  tcp-upstream: yes
+  access-control: 0.0.0.0/0 allow
+  access-control: ::0/0 allow
+  username: ""
+  pidfile: "/var/run/unbound.pid"
+  root-hints: "/etc/unbound/named.cache"
+  target-fetch-policy: "2 1 0 0 0 0"
+  harden-short-bufsize: yes
+  harden-large-queries: yes
+  auto-trust-anchor-file: "/etc/unbound/root.key"
+  key-cache-size: 100k
+  key-cache-slabs: 1
+  neg-cache-size: 10k
+forward-zone:
+  name: "."
+  forward-first: no
+`
+    dnsServers.forEach(ip => {
+      cfg += `  forward-addr: ${ip}`
+    })
+    const cmd = `echo ${cfg} > /etc/unbound/unbound.conf`
+    return this.execute(cmd)
+  }
+
   // shadowsocks
   async installSs (targzFPath) {
     // need move out of asar file
