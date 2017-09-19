@@ -1,5 +1,5 @@
 {
-    "version": "0.4",
+    "version": "0.5",
     "cfgDirName": "vrouter",
     "virtualbox": {
         "vmName": "vrouter",
@@ -25,6 +25,7 @@
             "proxies": "ss",
             "enableRelayUDP": true,
             "enableTunnelDns": true,
+            "dnsOverTcp": "udp",
             "speedupServerSSH": false,
             "dnsServer": "8.8.8.8:53",
             "serverSSHPort": 22,
@@ -46,6 +47,7 @@
             "proxies": "ssKt",
             "enableRelayUDP": false,
             "enableTunnelDns": true,
+            "dnsOverTcp": "udp",
             "dnsServer": "8.8.8.8:53",
             "speedupServerSSH": false,
             "serverSSHPort": 22,
@@ -76,6 +78,7 @@
             "enableRelayUDP": false,
             "enableTunnelDns": true,
             "dnsServer": "8.8.8.8:53",
+            "dnsOverTcp": "udp",
             "speedupServerSSH": false,
             "serverSSHPort": 22,
             "selectedBL": {"gfwList":true, "extraBlackList":true},
