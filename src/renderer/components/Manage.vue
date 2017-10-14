@@ -109,7 +109,7 @@ const templateProfile = {
     'timeout': 300,
     'method': 'chacha20',
     'fast_open': false,
-    'plugin': 'obfs-local',
+    'plugin': '',
     'plugin_opts': 'obfs=http;obfs-host=www.bing.com'
   },
   'shadowsocksr': {
@@ -273,7 +273,13 @@ export default {
       this.showProfileEditor = true
     },
     editProfile: function (index) {
-      this.editingClone = Object.assign({}, this.vrouter.config.profiles[index])
+      const profile = Object.assign({}, this.vrouter.config.profiles[index])
+      ;['shadowsocks', 'shadowsocksr', 'kcptun'].forEach(proxy => {
+        if (!profile[proxy]) {
+          profile[proxy] = Object.assign({}, templateProfile[proxy])
+        }
+      })
+      this.editingClone = profile
       // 编辑配置: index >= 0; 新建配置: index = -1; 导入配置: index = -2
       this.editingClone.index = index
       this.showProfileEditor = true
