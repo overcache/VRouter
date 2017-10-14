@@ -93,7 +93,7 @@ async function getSsrCfgFrom (profile, proxiesInfo) {
     'timeout': parseInt(data.timeout),
     'method': data.method.toLowerCase(),
     'fast_open': data.fast_open,
-    'mode': 'tcp_oly',
+    'mode': 'tcp_only',
     'protocol': data.protocol,
     'protocol_param': data.protocol_param,
     'obfs': data.obfs,
