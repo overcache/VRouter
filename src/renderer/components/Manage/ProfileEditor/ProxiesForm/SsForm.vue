@@ -43,7 +43,7 @@
     <div class="field">
       <div class="ui checkbox field">
         <input type="checkbox" value="obfs" v-model="enableObfs">
-        <label>Obfuscating</label>
+        <label>Obfuscating <a href="https://github.com/shadowsocks/simple-obfs#plugin-mode-with-shadowsocks"><i class="icon help circle"></i></a></label>
       </div>
       <div class="ui fluid input">
         <input type="text" v-model="shadowsocks.plugin_opts" v-bind:disabled="!enableObfs">
