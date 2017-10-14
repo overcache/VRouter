@@ -40,12 +40,14 @@
       </div>
     </div>
 
-    <div class="inline field">
-      <div class="ui checkbox">
+    <div class="field">
+      <div class="ui checkbox field">
         <input type="checkbox" value="obfs" v-model="enableObfs">
         <label>Obfuscating</label>
       </div>
-      <input type="text" v-model="shadowsocks.obfs_opts">
+      <div class="ui fluid input">
+        <input type="text" v-model="shadowsocks.plugin_opts" v-bind:disabled="!enableObfs">
+      </div>
     </div>
   </form>
 </template>
@@ -72,7 +74,7 @@ export default {
         return this.shadowsocks.plugin === 'obfs-local'
       },
       set: function (value) {
-        this.shadowsocks.plugin = value ? 'obfs-local' : 'none'
+        this.shadowsocks.plugin = value ? 'obfs-local' : ''
       }
     }
   }

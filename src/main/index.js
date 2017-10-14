@@ -104,7 +104,7 @@ function setMenu () {
           click: async () => {
             logger.info('about to quit VRouter')
             await VRouter.toggleRouting(true, 'off')
-            const cfg = await VRouter.getLatestCfg()
+            const {cfg} = await VRouter.getLatestCfg()
             await VBox.saveState(cfg.virtualbox.vmName)
             app.quit()
           }
@@ -247,7 +247,7 @@ app.on('ready', () => {
         try {
           logger.info('about to quit VRouter')
           await VRouter.toggleRouting(true, 'off')
-          const cfg = await VRouter.getLatestCfg()
+          const {cfg} = await VRouter.getLatestCfg()
           await VBox.saveState(cfg.virtualbox.vmName)
           app.quit()
         } catch (err) {

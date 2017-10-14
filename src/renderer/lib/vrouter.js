@@ -313,21 +313,53 @@ class VRouter extends Openwrt {
     } catch (error) {
       // appdircfg 不存在
       await fs.copy(templateCfgPath, appDirCfgPath)
-      return templateCfg
+      return {
+        cfg: templateCfg,
+        needUpdate: false
+      }
     }
 
-    if (appDirCfg.version < 0.4) {
+    if (parseFloat(appDirCfg.version) < 0.4) {
       // 对 0.4 以下版本不作兼容
       await fs.copy(templateCfgPath, appDirCfgPath)
-      return templateCfg
+      return {
+        cfg: templateCfg,
+        needUpdate: true
+      }
+    }
+
+    if (parseFloat(appDirCfg.version) === 0.4 && parseFloat(templateCfg.version) === 0.5) {
+      logger.info('update config.json to version 0.5')
+      appDirCfg.profiles.forEach(profile => {
+        if (profile.shadowsocks) {
+          profile.shadowsocks.plugin = profile.shadowsocks.plugin || ''
+          profile.shadowsocks.plugin_opts = profile.shadowsocks.plugin_opts || 'obfs=http;obfs-host:www.bing.com'
+        }
+      })
+
+      appDirCfg.version = '0.5'
+      return {
+        cfg: appDirCfg,
+        needUpdate: true
+      }
     }
 
     // appDirCfg 已经是最新版本的配置文件
-    return appDirCfg
+    return {
+      cfg: appDirCfg,
+      needUpdate: false
+    }
+  }
+  async installApkAfterUpdate (version) {
+    if (version === 0.5) {
+      // install obfs-local.apk
+      const targzFPath = path.join(__static, 'bin/shadowsocks.tar.gz')
+      await this.installSs(targzFPath)
+    }
   }
   static async toggleRouting (action = false, type = 'off') {
     logger.info('action', type)
-    const config = await VRouter.getLatestCfg()
+    const config = await VRouter.getLatestCfg().cfg
     const ip = config.openwrt.ip
     const hostonlyif = await VBox.getAssignedHostonlyInf(config.virtualbox.vmName)
     const hostonlyInfIP = config.virtualbox.hostonlyInfIP

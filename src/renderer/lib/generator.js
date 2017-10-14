@@ -69,7 +69,9 @@ async function getSsCfgFrom (profile, proxiesInfo) {
     'timeout': parseInt(data.timeout),
     'method': data.method.toLowerCase(),
     'fast_open': data.fast_open,
-    'mode': 'tcp_only'
+    'mode': 'tcp_only',
+    'plugin': data.plugin,
+    'plugin_opts': data.plugin_opts
   }
   if (profile.proxies === 'ssKt') {
     cfg.server = '127.0.0.1'

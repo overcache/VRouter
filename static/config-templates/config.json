@@ -1,5 +1,5 @@
 {
-    "version": "0.6",
+    "version": "0.5",
     "cfgDirName": "vrouter",
     "virtualbox": {
         "vmName": "vrouter",
@@ -38,8 +38,8 @@
                 "timeout": 600,
                 "method": "chacha20",
                 "fast_open": false,
-                "plugin": "none",
-                "plugin_obfs": ""
+                "plugin": "",
+                "plugin_opts": ""
             }
         },
         {
@@ -62,8 +62,8 @@
                 "timeout": 300,
                 "method": "chacha20",
                 "fast_open": false,
-                "plugin": "none",
-                "plugin_obfs": ""
+                "plugin": "",
+                "plugin_opts": ""
             },
             "kcptun": {
                 "server": "123.123.123.123",

@@ -110,7 +110,7 @@ const templateProfile = {
     'method': 'chacha20',
     'fast_open': false,
     'plugin': 'obfs-local',
-    'obfs_opts': ''
+    'plugin_opts': 'obfs=http;obfs-host=www.bing.com'
   },
   'shadowsocksr': {
     'server': '123.123.123.123',
@@ -380,7 +380,12 @@ export default {
     }
   },
   created: async function () {
-    this.vrouter = new VRouter(await VRouter.getLatestCfg())
+    const {cfg, needUpdate} = await VRouter.getLatestCfg()
+    this.vrouter = new VRouter(cfg)
+    if (needUpdate) {
+      await this.vrouter.saveCfg2File()
+      await this.vrouter.installApkAfterUpdate(cfg.version)
+    }
     this.profiles = this.vrouter.config.profiles
 
     this.bus = new Vue()
