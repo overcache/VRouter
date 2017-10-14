@@ -108,7 +108,9 @@ const templateProfile = {
     'password': 'demo-paswd',
     'timeout': 300,
     'method': 'chacha20',
-    'fast_open': false
+    'fast_open': false,
+    'plugin': 'obfs-local',
+    'obfs_opts': ''
   },
   'shadowsocksr': {
     'server': '123.123.123.123',
