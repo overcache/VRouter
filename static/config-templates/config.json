@@ -1,5 +1,5 @@
 {
-    "version": "0.5",
+    "version": "0.6",
     "cfgDirName": "vrouter",
     "virtualbox": {
         "vmName": "vrouter",
@@ -35,9 +35,11 @@
                 "server": "123.123.123.123",
                 "server_port": "8989",
                 "password": "demo-paswd",
-                "timeout": 300,
+                "timeout": 600,
                 "method": "chacha20",
-                "fast_open": false
+                "fast_open": false,
+                "plugin": "none",
+                "plugin_obfs": ""
             }
         },
         {
@@ -59,7 +61,9 @@
                 "password": "demo-paswd",
                 "timeout": 300,
                 "method": "chacha20",
-                "fast_open": false
+                "fast_open": false,
+                "plugin": "none",
+                "plugin_obfs": ""
             },
             "kcptun": {
                 "server": "123.123.123.123",
