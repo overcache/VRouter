@@ -360,12 +360,12 @@ forward-zone:
     const serviceName = proxiesInfo[proxy].serviceName.shadowsocks
     const servicePath = `/etc/init.d/${serviceName}`
     const serviceStop = `${servicePath} disable; ${servicePath} stop;`
-    const serviceStart = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} start;`
+    const serviceStart = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} restart;`
 
     const serviceNameR = proxiesInfo[proxy].serviceName.shadowsocksr
     const servicePathR = `/etc/init.d/${serviceNameR}`
     const serviceStopR = `${servicePathR} disable; ${servicePathR} stop;`
-    const serviceStartR = `chmod +x ${servicePathR} && ${servicePathR} enable; ${servicePathR} start;`
+    const serviceStartR = `chmod +x ${servicePathR} && ${servicePathR} enable; ${servicePathR} restart;`
 
     if (tunnelDnsAction === 'off') {
       let cmd = `${serviceStop}${serviceStopR}`
@@ -386,7 +386,7 @@ forward-zone:
     logger.info(`${servicePath} ${action}`)
 
     // ${servicePath} enable 执行的结果是1, 而不是常规的0
-    const startCmd = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} start`
+    const startCmd = `chmod +x ${servicePath} && ${servicePath} enable; ${servicePath} restart`
     const stopCmd = `${servicePath} disable; ${servicePath} stop`
     if (action === 'off') {
       return this.execute(stopCmd)
