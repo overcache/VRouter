@@ -322,9 +322,9 @@ class Generator {
       contents = contents.concat(subs)
     }
 
-    // add google DNS to black list
-    contents.push(`add ${firewallInfo.ipset.blackSetName} 8.8.8.8`)
-    contents.push(`add ${firewallInfo.ipset.blackSetName} 8.8.4.4`)
+    // add google DNS to black list. bad config in dnsmasq.conf
+    // contents.push(`add ${firewallInfo.ipset.blackSetName} 8.8.8.8`)
+    // contents.push(`add ${firewallInfo.ipset.blackSetName} 8.8.4.4`)
 
     await fs.outputFile(tempFPath, contents.join('\n'), 'utf8')
     return tempFPath
