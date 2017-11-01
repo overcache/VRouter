@@ -1,5 +1,9 @@
 # 注释以#号开始, 每个域名/IP/IP段各一行
 
+# google dns
+8.8.8.8
+8.8.4.4
+
 # npmjs.com
 
 # telegram
