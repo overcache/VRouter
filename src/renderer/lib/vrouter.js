@@ -90,7 +90,7 @@ function installPackage (serialTcpPort, waitForOutput = 20000) {
   const subCmds = []
   subCmds.push(`sed -i 's/downloads.openwrt.org/mirrors.tuna.tsinghua.edu.cn\\/openwrt/g' /etc/opkg/distfeeds.conf`)
   subCmds.push('opkg update')
-  subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server libopenssl rng-tools iptables-mod-tproxy ip unbound')
+  subCmds.push('opkg remove dnsmasq && opkg install dnsmasq-full ipset openssh-sftp-server libopenssl rng-tools iptables-mod-tproxy ip')
   subCmds.push('/etc/init.d/dropbear restart')
   subCmds.push('echo "done" > /tmp/log/vrouter')
   const cmd = subCmds.join(' && ')
@@ -216,9 +216,6 @@ class VRouter extends Openwrt {
 
     process.emit('init', '配置 Dnsmasq')
     await this.configDnsmasq()
-
-    process.emit('init', '配置 unbound')
-    await this.configUnbound()
 
     process.emit('init', '修改虚拟机时区')
     await this.changeTZ(this.name)
