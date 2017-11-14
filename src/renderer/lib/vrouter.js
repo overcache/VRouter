@@ -354,6 +354,8 @@ class VRouter extends Openwrt {
       await this.installSs(targzFPath)
     }
   }
+
+  // when action is true, ignore currnetGateway/currentDNS test, turn on/off directly.
   static async toggleRouting (action = false, type = 'off') {
     logger.info('action', type)
     const {cfg} = await VRouter.getLatestCfg()

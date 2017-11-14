@@ -4,6 +4,7 @@ import { autoUpdater } from 'electron-updater'
 import logger from '@/lib/logger'
 import VRouter from '@/lib/vrouter'
 import VBox from '@/lib/vbox'
+import Utils from '@/lib/utils'
 
 const { app, BrowserWindow, Menu, Tray, ipcMain } = require('electron')
 const os = require('os')
@@ -261,4 +262,16 @@ app.on('ready', () => {
   ipcMain.on('toggleRouting', (event, arg) => {
     contextMenu.items[1].checked = !arg
   })
+
+  ;(async function () {
+    const {cfg} = await VRouter.getLatestCfg()
+    setInterval(async () => {
+      const currentGWIP = await Utils.getCurrentGateway()
+      const currentDnsIP = await Utils.getCurrentDns()
+      if (currentGWIP !== currentDnsIP && [currentGWIP, currentDnsIP].includes(cfg.openwrt.ip)) {
+        logger.info(`currentGWIP/currentDnsIP not match, correct them to ${cfg.openwrt.ip}`)
+        await VRouter.toggleRouting(true, 'on').catch(console.warn)
+      }
+    }, 120000)
+  })()
 })
