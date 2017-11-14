@@ -16,7 +16,7 @@ VRouter 在后台运行一个 openwrt 的虚拟机, 通过更改系统的默认�
 
 1. 为了能在服务端进行 DNS 查询, 请确保 ss-server 开启了 UDP 转发.
 2. 为了能确保虚拟机可以联网, 确保上游路由器开启了 DHCP.
-3. [避免每次切换网关都输入密码](https://github.com/icymind/VRouter/wiki/%E9%81%BF%E5%85%8D%E6%AF%8F%E6%AC%A1%E5%88%87%E6%8D%A2%E7%BD%91%E5%85%B3%E9%83%BD%E8%BE%93%E5%85%A5%E5%AF%86%E7%A0%81)
+3. [为了避免频繁在弹窗里输入密码，请设置免密码切换网关](https://github.com/icymind/VRouter/wiki/%E9%81%BF%E5%85%8D%E6%AF%8F%E6%AC%A1%E5%88%87%E6%8D%A2%E7%BD%91%E5%85%B3%E9%83%BD%E8%BE%93%E5%85%A5%E5%AF%86%E7%A0%81)
 
 ### 自定义黑白名单
 

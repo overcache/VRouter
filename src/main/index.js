@@ -271,6 +271,8 @@ app.on('ready', () => {
       if (currentGWIP !== currentDnsIP && [currentGWIP, currentDnsIP].includes(cfg.openwrt.ip)) {
         logger.info(`currentGWIP/currentDnsIP not match, correct them to ${cfg.openwrt.ip}`)
         await VRouter.toggleRouting(true, 'on').catch(console.warn)
+      } else {
+        // change menubar icon
       }
     }, 120000)
   })()
