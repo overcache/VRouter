@@ -263,17 +263,19 @@ app.on('ready', () => {
     contextMenu.items[1].checked = !arg
   })
 
-  ;(async function () {
-    const {cfg} = await VRouter.getLatestCfg()
-    setInterval(async () => {
-      const currentGWIP = await Utils.getCurrentGateway()
-      const currentDnsIP = await Utils.getCurrentDns()
-      if (currentGWIP !== currentDnsIP && [currentGWIP, currentDnsIP].includes(cfg.openwrt.ip)) {
-        logger.info(`currentGWIP/currentDnsIP not match, correct them to ${cfg.openwrt.ip}`)
-        await VRouter.toggleRouting(true, 'on').catch(console.warn)
-      } else {
-        // change menubar icon
-      }
-    }, 120000)
-  })()
+  if (os.platform() === 'darwin') {
+    ;(async function () {
+      const {cfg} = await VRouter.getLatestCfg()
+      setInterval(async () => {
+        const currentGWIP = await Utils.getCurrentGateway()
+        const currentDnsIP = await Utils.getCurrentDns()
+        if (currentGWIP !== currentDnsIP && [currentGWIP, currentDnsIP].includes(cfg.openwrt.ip)) {
+          logger.info(`currentGWIP/currentDnsIP not match, correct them to ${cfg.openwrt.ip}`)
+          await VRouter.toggleRouting(true, 'on').catch(console.warn)
+        } else {
+          // change menubar icon
+        }
+      }, 120000)
+    })()
+  }
 })
