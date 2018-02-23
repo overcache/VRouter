@@ -4,6 +4,7 @@ const { exec } = require('child_process')
 const os = require('os')
 const fs = require('fs-extra')
 const path = require('path')
+const scanCodes = require('./scan-codes.js')
 
 let bin = (function () {
   switch (os.platform()) {
@@ -33,9 +34,45 @@ const execute = function (command) {
   })
 }
 
+const getCodesDownAndUp = function (char) {
+  return [
+    ...scanCodes[char.toUpperCase()],
+    ...scanCodes.getBreakCode(char.toUpperCase())
+  ]
+}
+
+const getCodesSequence = function (str, type = 'text') {
+  const sequence = []
+  if (type === 'modifier') {
+    sequence.push(...getCodesDownAndUp(str))
+  }
+
+  if (type === 'text') {
+    str.split('').forEach((char) => {
+      sequence.push(...getCodesDownAndUp(char))
+    })
+  }
+
+  return sequence.map((code) => {
+    let s = code.toString(16)
+    if (s.length === 1) {
+      s = '0' + s
+    }
+    return s
+  }).join(' ')
+}
+
 class VBox {
-  static sendKeystrokesTo (name, key = '1c 9c') {
-    const cmd = `${bin} controlvm ${name} keyboardputscancode ${key}`
+  static async sendKeystrokesOfStrTo (name, str, type) {
+    str.match(/.{1,10}/g).forEach(async (subStr) => {
+      const codes = getCodesSequence(subStr, type)
+      logger.info(codes)
+      await VBox.sendKeystrokesTo(name, codes)
+    })
+  }
+
+  static sendKeystrokesTo (name, sequence = '1c 9c') {
+    const cmd = `${bin} controlvm ${name} keyboardputscancode ${sequence}`
     return execute(cmd)
   }
   static getVersion () {
