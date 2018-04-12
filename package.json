@@ -27,7 +27,7 @@
   "author": "icymind (icymindt@gmail.com)",
   "license": "GPL-3.0",
   "dependencies": {
-    "electron-updater": "^2.13.0",
+    "electron-updater": "^2.18.2",
     "fs-extra": "^4.0.2",
     "jquery": "^3.2.1",
     "moment": "^2.19.1",
