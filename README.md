@@ -1,6 +1,11 @@
-### update
+## update
 
-已停止开发. 推荐关注其他透明代理的开源项目, 如 [mellow](https://github.com/mellow-io/mellow)
+已停止开发. 
+
+
+推荐关注其他透明代理的开源项目, 如 [mellow](https://github.com/mellow-io/mellow)
+
+---
 
 ![img](./doc/features01.jpg)
 
